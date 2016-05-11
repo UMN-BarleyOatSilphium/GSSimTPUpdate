@@ -1,0 +1,38 @@
+#!/bin/bash
+
+#PBS -l walltime=48:00:00,mem=15gb,nodes=1:ppn=16
+#PBS -N hypred_simulations
+#PBS -M neyha001@umn.edu
+#PBS -m abe
+#PBS -r n
+
+# Change the working directory
+cd /home/smithkp/neyhartj/Genomic_Selection/Simulations/Barley_GS_PEV/Hypred
+
+module load R
+
+#Rscript hypred_barley_simulations.R MN cumulative
+#Rscript hypred_barley_simulations.R ND cumulative
+#Rscript hypred_barley_simulations.R MNxND cumulative
+
+#Rscript hypred_barley_simulations.R MN random
+#Rscript hypred_barley_simulations.R ND random
+#Rscript hypred_barley_simulations.R MNxND rando
+
+#Rscript hypred_barley_simulations_part2_032816.R MN cumulative
+#Rscript hypred_barley_simulations_part2_032816.R ND cumulative
+#Rscript hypred_barley_simulations_part2_032816.R MNxND cumulative
+
+#Rscript hypred_barley_simulations_part2_032816.R MN window
+#Rscript hypred_barley_simulations_part2_032816.R ND window
+#Rscript hypred_barley_simulations_part2_032816.R MNxND window
+
+
+
+#Rscript hypred_barley_simulations_part3_042616.R MN cumulative
+#Rscript hypred_barley_simulations_part3_042616.R ND cumulative
+Rscript hypred_barley_simulations_part3_042616.R MNxND cumulative
+
+#Rscript hypred_barley_simulations_part3_042616.R MN window
+#Rscript hypred_barley_simulations_part3_042616.R ND window
+#Rscript hypred_barley_simulations_part3_042616.R MNxND window
