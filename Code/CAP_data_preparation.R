@@ -51,7 +51,7 @@ round2 = function(x, n) {
 
 # Load the marker data
 ## This marker data was downloaded from T3 with the following filters:
-## Minimum MAF: 0.03
+## Minimum MAF: 0
 ## Max marker missingness: 0.1
 ## Max entry missingness: 0.1
 CAP.hmp <- read.table("Files/MN_ND_CAP_genotypes_hmp.txt", header = T)
@@ -63,6 +63,18 @@ marker.info <- CAP.hmp[,c(1:4)]
 CAP.M <- t(CAP.hmp[,-c(1:4)])
 # Set column names to marker names
 colnames(CAP.M) <- marker.info$rs
+
+# Filter on minor allele frequency
+CAP.MAF <- apply(X = CAP.M + 1, MARGIN = 2, FUN = function(snp) {
+  freq.1 <- sum(snp, na.rm = T) / (2 * length(snp))
+  min(freq.1, 1-freq.1) })
+
+min.maf <- 0.03
+# Filter
+CAP.M <- CAP.M[,CAP.MAF >= min.maf]
+# Remove markers from the marker info data.frame
+marker.info <- marker.info[CAP.MAF >= min.maf,]
+
 
 ### Processing of the marker matrix for use in simulation
 # Remove redundant markers

@@ -1,7 +1,7 @@
 ## Script to graph results of GS simulations
 
 # Set working directory
-setwd("C:/Users/Jeff/Google Drive/Barley Lab/Projects/Side Projects/Simulations/Barley_GS_Simulations/Files/Results/")
+setwd("C:/Users/Jeff/Google Drive/Barley Lab/Projects/Side Projects/Simulations/Barley_GS_Simulations/Results/")
 
 # Load data
 # filename <- "simulation_results_q100_sel0.1_popmakeup-MN_tpformation-window_collective_090416.RData"
@@ -12,11 +12,11 @@ setwd("C:/Users/Jeff/Google Drive/Barley Lab/Projects/Side Projects/Simulations/
 # filename <- "simulation_results_q100_sel0.1_popmakeup-MNxND_tpformation-cumulative_collective_220316.RData"
 
 # filename <- "simulation_results_q100_sel0.1_popmakeup-MN_tpformation-window_collective_part3.RData"
-filename <- "simulation_results_q100_sel0.1_popmakeup-ND_tpformation-window_collective_part3.RData"
+# filename <- "simulation_results_q100_sel0.1_popmakeup-ND_tpformation-window_collective_part3.RData"
 # filename <- "simulation_results_q100_sel0.1_popmakeup-MNxND_tpformation-window_collective_part3.RData"
 # filename <- "simulation_results_q100_sel0.1_popmakeup-MN_tpformation-cumulative_collective_part3.RData"
 # filename <- "simulation_results_q100_sel0.1_popmakeup-ND_tpformation-cumulative_collective_part3.RData"
-# filename <- "simulation_results_q100_sel0.1_popmakeup-MNxND_tpformation-cumulative_collective_part3.RData"
+filename <- "simulation_results_q100_sel0.1_popmakeup-MNxND_tpformation-cumulative_collective_part3.RData"
 
 
 load(filename)
@@ -57,10 +57,13 @@ for (i in 1:length(V_g.list)) {
   V_g.sd <- apply(X = V_g.list[[i]], MARGIN = 1, FUN = sd, na.rm = T)
   
   # Add points to the plot
-  points(x = 1:n.cycles, V_g.mu, pch = as.numeric(plot.shapes.factor[i]))
-  
+  x.jitter <- - (0.1 * scale(1:length(V_g.list), scale = F)[i])
+  points(x = (1:n.cycles + x.jitter), V_g.mu, pch = as.numeric(plot.shapes.factor[i]), type = "p")
+  # points(x = 1:n.cycles, scale = F)[i])), V_g.mu, pch = as.numeric(plot.shapes.factor[i]))
+
+
   # Add standard deviation bars
-  segments(x0 = 1:n.cycles, y0 = (V_g.mu - V_g.sd), x1 = 1:n.cycles, y1 = (V_g.mu + V_g.sd))
+  segments(x0 = (1:n.cycles + x.jitter), y0 = (V_g.mu - V_g.sd), x1 = (1:n.cycles + x.jitter), y1 = (V_g.mu + V_g.sd))
   
 }
   
@@ -126,7 +129,7 @@ plot(0,
 plot.shapes.factor <- factor(names(gen.mu.list))
 
 # Add legend
-legend("topleft", legend = names(gen.mu.list), pch = as.numeric(factor(names(gen.mu.list))))
+legend("bottomright", legend = names(gen.mu.list), pch = as.numeric(factor(names(gen.mu.list))))
 
 for (i in 1:length(gen.mu.list)) {
   
@@ -135,10 +138,11 @@ for (i in 1:length(gen.mu.list)) {
   gen.sd <- apply(X = gen.mu.list[[i]], MARGIN = 1, FUN = sd, na.rm = T)
   
   # Add points to the plot
-  points(x = 1:n.cycles, gen.mu, pch = as.numeric(plot.shapes.factor[i]))
+  x.jitter <- - (0.1 * scale(1:length(V_g.list), scale = F)[i])
+  points(x = 1:n.cycles + x.jitter, gen.mu, pch = as.numeric(plot.shapes.factor[i]))
   
   # Add standard deviation bars
-  segments(x0 = 1:n.cycles, y0 = (gen.mu - gen.sd), x1 = 1:n.cycles, y1 = (gen.mu + gen.sd))
+  segments(x0 = 1:n.cycles + x.jitter, y0 = (gen.mu - gen.sd), x1 = 1:n.cycles + x.jitter, y1 = (gen.mu + gen.sd))
   
 }
 
@@ -181,12 +185,53 @@ for (i in 1:length(val.pred.list)) {
   phen_r_sd.mu <- apply(X = val.pred.list[[i]]$pred_r_sd, MARGIN = 1, FUN = mean, na.rm = T)
   
   # Add points to the plot
-  points(x = 1:n.cycles, pred_r.mu, pch = as.numeric(plot.shapes.factor[i]))
+  x.jitter <- - (0.1 * scale(1:length(V_g.list), scale = F)[i])
+  points(x = 1:n.cycles + x.jitter, pred_r.mu, pch = as.numeric(plot.shapes.factor[i]))
   
   # Add standard deviation bars
-  segments(x0 = 1:n.cycles, y0 = (pred_r.mu - phen_r_sd.mu), x1 = 1:n.cycles, y1 = (pred_r.mu + phen_r_sd.mu))
+  segments(x0 = 1:n.cycles + x.jitter, y0 = (pred_r.mu - phen_r_sd.mu), x1 = 1:n.cycles + x.jitter, y1 = (pred_r.mu + phen_r_sd.mu))
   
 }
+
+
+## Find the number of polymorphic markers used in each cycle
+poly.marker.list <- lapply(X = collective.abbreviated.results, FUN = function(tpc) 
+  do.call("cbind", sapply(tpc$prediction.results.list, FUN = function(set) 
+    sapply(set, function(rep) 
+      sapply(rep, FUN = function(cycle) 
+        return(cycle$parameters$n.markers))))) )
+
+# Empty plot
+plot(0, 
+     type = "n",
+     xlim = c(0, n.cycles),
+     xlab = "Cycle Number",
+     # ylim = range(pretty(range(V_g.list)))
+     ylim = c(0, 700),
+     ylab = "Mean Number of Polymorphic Markers Used in Prediction",
+     main = paste("Mean Number of Polymorphic Markers", paste("Population:", pop.makeup, ", TP formation:", tp.formation), sep = "\n")
+)
+
+# Plotting shape factors
+plot.shapes.factor <- factor(names(poly.marker.list))
+
+# Add legend
+legend("topright", legend = names(poly.marker.list), pch = as.numeric(factor(names(poly.marker.list))))
+
+for (i in 1:length(poly.marker.list)) {
+  
+  # Find the mean and sd
+  marker.mu <- apply(X = poly.marker.list[[i]], MARGIN = 1, FUN = mean, na.rm = T)
+  marker.sd <- apply(X = poly.marker.list[[i]], MARGIN = 1, FUN = sd, na.rm = T)
+  
+  # Add points to the plot
+  points(x = 1:n.cycles, marker.mu, pch = as.numeric(plot.shapes.factor[i]))
+  
+  # Add standard deviation bars
+  segments(x0 = 1:n.cycles, y0 = (marker.mu - marker.sd), x1 = 1:n.cycles, y1 = (marker.mu + marker.sd))
+  
+}
+
 
 
 

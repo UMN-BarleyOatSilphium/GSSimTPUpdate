@@ -1,0 +1,4 @@
+## To Do
+
+1. Adjust the PEVmean and CDmean algorithms such that the genetic variance is equal to V_u * #.polymorphic markers, not total markers
+2. 
