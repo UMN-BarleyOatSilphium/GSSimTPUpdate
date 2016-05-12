@@ -56,158 +56,172 @@ round2 = function(x, n) {
 ## Max entry missingness: 0.1
 CAP.hmp <- read.table("Files/MN_ND_CAP_genotypes_hmp.txt", header = T)
 
-# Extract the marker data, including marker name, chromosome, alleles, and position
-marker.info <- CAP.hmp[,c(1:4)]
-
-# Create a n x m genotype matrix for filtering
-CAP.M <- t(CAP.hmp[,-c(1:4)])
-# Set column names to marker names
-colnames(CAP.M) <- marker.info$rs
-
-# Filter on minor allele frequency
-CAP.MAF <- apply(X = CAP.M + 1, MARGIN = 2, FUN = function(snp) {
-  freq.1 <- sum(snp, na.rm = T) / (2 * length(snp))
-  min(freq.1, 1-freq.1) })
-
-min.maf <- 0.03
-# Filter
-CAP.M <- CAP.M[,CAP.MAF >= min.maf]
-# Remove markers from the marker info data.frame
-marker.info <- marker.info[CAP.MAF >= min.maf,]
-
-
-### Processing of the marker matrix for use in simulation
-# Remove redundant markers
-# These are characterized by having the same genotypes across all samples AND fall on the same cM position
-marker.info.known <- marker.info[marker.info$chrom != "UNK",]
-# Find all unique chromosome-cM positions
-unique.positions <- unique(marker.info.known[,c(3,4)])
-
-# Apply a function over the unique positions
-non.redundant.marker.list <- apply(X = unique.positions, MARGIN = 1, FUN = function(uniq) {
-  # For each position, find all markers with that position
-  markers.at.uniq <- as.matrix(marker.info.known$chrom) %in% as.matrix(uniq[1]) & as.matrix(marker.info.known$pos) %in% as.numeric(uniq[2])
-  # If the number of markers is 1, just return the marker
-  if (sum(markers.at.uniq) == 1) {
-    return(marker.info.known[markers.at.uniq,])
-  } else { # Otherwise look more closely
-    # Extract the marker names
-    marker.names <- as.character(marker.info.known[markers.at.uniq,1])
-    M.i <- CAP.M[,marker.names]
-    # Determine if the genotype calls are the same between markers
-    same.genos <- identical.columns(input.matrix = M.i)
-    # Choose the first index from each group
-    # Gather the names of the chosen markers
-    non.redundant.marker.names <- colnames(M.i)[sapply(X = same.genos, FUN = function(group) group[1])]
-    
-    # Extract marker info for those markers
-    marker.info.non.redundant <- marker.info.known[marker.info.known$rs %in% non.redundant.marker.names,]
-    # Add or subtract a deviation for the marker position
-    # A deviation of 0.01 cM will be sufficient because the minimum positive difference is 0.05
-    # Determine the deviation to add/substract
-    deviation <- as.vector(round2(scale(x = 1:nrow(marker.info.non.redundant), scale = F), 0)) * 10
-    marker.info.non.redundant$pos <- marker.info.non.redundant$pos + deviation
-    
-    # Return the new marker info
-    return(marker.info.non.redundant)
-  } })
-
-# Collapse the list
-non.redundant.markers <- do.call("rbind", non.redundant.marker.list)
-          
-# Subset the marker matrix
-CAP.M <- CAP.M[,as.character(non.redundant.markers$rs)]
-
-# Change all heterozygotes to NA
-CAP.M[CAP.M == 0] <- NA
-
-# Impute marker data based on the mean across a marker, 
-# then round the non-integer values to either -1 or 1
-CAP.M.impute <- apply(X = CAP.M, MARGIN = 2, FUN = function(snp) {
-  # Find the index of NA
-  na.index <- is.na(snp)
-  # Calculate the mean
-  snp.mean <- mean(snp, na.rm = T)
-  # Round the mean to -1 or 1
-  if (snp.mean > 0) snp.mean = 1
-  if (snp.mean < 0) snp.mean = -1
-  # If the mean is 0, round to 1
-  if (snp.mean == 0) snp.mean = 1
-  # Replace the missing with the mean
-  snp[na.index] <- snp.mean
-  # Return
-  return(snp)
-})
-
-### Processing of markers
-# Convert the marker positions to Morgans (currently in 1000 * cM)\
-non.redundant.markers$pos <- non.redundant.markers$pos / 1000 / 100
-# Remove the "UNK" factor from the chrom levels
-non.redundant.markers$chrom <- as.numeric(non.redundant.markers$chrom)
-
-# Find the minimum number of markers per chromsome
-min(table(non.redundant.markers$chrom))
-
-### Sampling an even number of markers per chromosome
-# Set the max number of markers per chromosome
-max.marker = min(table(non.redundant.markers$chrom))
-# or set it manually
-max.marker = 100
-
-# Use an algorithm to find the set of markers per chromosome that minimizes the range of 
-## Morgan distances between adjacent markers
-sampled.markers.per.chrom <- tapply(X = non.redundant.markers$rs, INDEX = non.redundant.markers$chrom, FUN = function(chrom.rs) {
-  # Take a random sample and save it
-  rs.sample.start <- sort(sample(chrom.rs, size = max.marker))
-  rs.sample.save <- rs.sample.start
+# Multiple MAF filters
+for (min.maf in c(0.03, 0.10)) {
   
-  # Find the position of the sampled markers
-  pos.sample <- non.redundant.markers$pos[non.redundant.markers$rs %in% rs.sample.save]
+  # Extract the marker data, including marker name, chromosome, alleles, and position
+  marker.info <- CAP.hmp[,c(1:4)]
+
+  # Create a n x m genotype matrix for filtering
+  CAP.M <- t(CAP.hmp[,-c(1:4)])
+  # Set column names to marker names
+  colnames(CAP.M) <- marker.info$rs
   
-  # Find the range of adjacent marker distances
-  # This involves finding the adjacent position differrences, then finding the difference between the range
-  pos.range.save <- diff(range(diff(pos.sample)))
+  # Filter on minor allele frequency
+  CAP.MAF <- apply(X = CAP.M + 1, MARGIN = 2, FUN = function(snp) {
+    freq.1 <- sum(snp, na.rm = T) / (2 * length(snp))
+    min(freq.1, 1-freq.1) })
+
+
+  # Filter
+  CAP.M <- CAP.M[,CAP.MAF >= min.maf]
+  # Remove markers from the marker info data.frame
+  marker.info <- marker.info[CAP.MAF >= min.maf,]
   
-  # While loop
-  iter = 0
-  while (iter <= 500) {
-    iter = iter + 1
-    # Take a random sample
+  
+  ### Processing of the marker matrix for use in simulation
+  # Remove redundant markers
+  # These are characterized by having the same genotypes across all samples AND fall on the same cM position
+  marker.info.known <- marker.info[marker.info$chrom != "UNK",]
+  # Find all unique chromosome-cM positions
+  unique.positions <- unique(marker.info.known[,c(3,4)])
+  
+  # Apply a function over the unique positions
+  non.redundant.marker.list <- apply(X = unique.positions, MARGIN = 1, FUN = function(uniq) {
+    # For each position, find all markers with that position
+    markers.at.uniq <- as.matrix(marker.info.known$chrom) %in% as.matrix(uniq[1]) & as.matrix(marker.info.known$pos) %in% as.numeric(uniq[2])
+    # If the number of markers is 1, just return the marker
+    if (sum(markers.at.uniq) == 1) {
+      return(marker.info.known[markers.at.uniq,])
+    } else { # Otherwise look more closely
+      # Extract the marker names
+      marker.names <- as.character(marker.info.known[markers.at.uniq,1])
+      M.i <- CAP.M[,marker.names]
+      # Determine if the genotype calls are the same between markers
+      same.genos <- identical.columns(input.matrix = M.i)
+      # Choose the first index from each group
+      # Gather the names of the chosen markers
+      non.redundant.marker.names <- colnames(M.i)[sapply(X = same.genos, FUN = function(group) group[1])]
+      
+      # Extract marker info for those markers
+      marker.info.non.redundant <- marker.info.known[marker.info.known$rs %in% non.redundant.marker.names,]
+      marker.info.non.redundant1 <- marker.info.non.redundant
+      # Add or subtract a deviation for the marker position
+      # A deviation of 0.01 cM will be sufficient because the minimum positive difference is 0.05
+      # Determine the deviation to add/substract
+      deviation <- as.vector(round2(scale(x = 1:nrow(marker.info.non.redundant), scale = F), 0)) * 10
+      marker.info.non.redundant1$pos <- marker.info.non.redundant$pos + deviation
+      # Use a while loop to ensure that the final genetic position is not negative
+      while(any(marker.info.non.redundant1$pos < 0)) {
+        deviation = deviation + 10
+        marker.info.non.redundant1$pos <- marker.info.non.redundant$pos + deviation
+      }
+      # Return the new marker info
+      return(marker.info.non.redundant1)
+    } })
+  
+  # Collapse the list
+  non.redundant.markers <- do.call("rbind", non.redundant.marker.list)
+            
+  # Subset the marker matrix
+  CAP.M <- CAP.M[,as.character(non.redundant.markers$rs)]
+  
+  # Change all heterozygotes to NA
+  CAP.M[CAP.M == 0] <- NA
+  
+  # Impute marker data based on the mean across a marker, 
+  # then round the non-integer values to either -1 or 1
+  CAP.M.impute <- apply(X = CAP.M, MARGIN = 2, FUN = function(snp) {
+    # Find the index of NA
+    na.index <- is.na(snp)
+    # Calculate the mean
+    snp.mean <- mean(snp, na.rm = T)
+    # Round the mean to -1 or 1
+    if (snp.mean > 0) snp.mean = 1
+    if (snp.mean < 0) snp.mean = -1
+    # If the mean is 0, round to 1
+    if (snp.mean == 0) snp.mean = 1
+    # Replace the missing with the mean
+    snp[na.index] <- snp.mean
+    # Return
+    return(snp)
+  })
+  
+  
+  ### Processing of markers
+  # Convert the marker positions to Morgans (currently in 1000 * cM)\
+  non.redundant.markers$pos <- non.redundant.markers$pos / 1000 / 100
+  # Remove the "UNK" factor from the chrom levels
+  non.redundant.markers$chrom <- as.numeric(non.redundant.markers$chrom)
+  
+  # Find the minimum number of markers per chromsome
+  min(table(non.redundant.markers$chrom))
+  
+  ### Sampling an even number of markers per chromosome
+  # Set the max number of markers per chromosome
+  # max.marker = min(table(non.redundant.markers$chrom))
+  # or set it manually
+  max.marker = min(100, min(table(non.redundant.markers$chrom)))
+  
+  # Use an algorithm to find the set of markers per chromosome that minimizes the range of 
+  ## Morgan distances between adjacent markers
+  sampled.markers.per.chrom <- tapply(X = non.redundant.markers$rs, INDEX = non.redundant.markers$chrom, FUN = function(chrom.rs) {
+    # Take a random sample and save it
     rs.sample.start <- sort(sample(chrom.rs, size = max.marker))
+    rs.sample.save <- rs.sample.start
     
-    pos.sample <- non.redundant.markers$pos[non.redundant.markers$rs %in% rs.sample.start]
-    pos.range.start <- diff(range(diff(pos.sample)))
+    # Find the position of the sampled markers
+    pos.sample <- non.redundant.markers$pos[non.redundant.markers$rs %in% rs.sample.save]
     
-    # If statement to reject the sample if the range is not less than the previous
-    if (pos.range.start < pos.range.save) {
-      pos.range.save <- pos.range.start
-      rs.sample.save <- rs.sample.start
+    # Find the range of adjacent marker distances
+    # This involves finding the adjacent position differrences, then finding the difference between the range
+    pos.range.save <- diff(range(diff(pos.sample)))
+    
+    # While loop
+    iter = 0
+    while (iter <= 500) {
+      iter = iter + 1
+      # Take a random sample
+      rs.sample.start <- sort(sample(chrom.rs, size = max.marker))
+      
+      pos.sample <- non.redundant.markers$pos[non.redundant.markers$rs %in% rs.sample.start]
+      pos.range.start <- diff(range(diff(pos.sample)))
+      
+      # If statement to reject the sample if the range is not less than the previous
+      if (pos.range.start < pos.range.save) {
+        pos.range.save <- pos.range.start
+        rs.sample.save <- rs.sample.start
+      }
     }
-  }
+    
+    # Return the sample
+    return(as.character(rs.sample.save))
+  })
   
-  # Return the sample
-  return(as.character(rs.sample.save))
-})
-
-# Concatenate
-sampled.markers.per.chrom <- as.character(do.call("c", sampled.markers.per.chrom))
-
-# Pull out the sampled markers
-sampled.markers <- non.redundant.markers[non.redundant.markers$rs %in% sampled.markers.per.chrom,]
-
-
-# Subset the genotype matrix for the same markers
-CAP.M.final <- CAP.M.impute[,as.character(sampled.markers$rs)]
-
-# Since all genotypes are completely homozygous, it is easy to create the gamete matrix
-CAP.gametes <- rbind(CAP.M.final, CAP.M.final)
-# Change all -1 to zeros
-CAP.gametes[CAP.gametes == -1] <- 0
-# Rename the genotypes
-row.names(CAP.gametes) <- paste(rep(row.names(CAP.M.final), 2), rep(1:2, each = nrow(CAP.M.final)), sep = ".")
-# Sort on row.names
-CAP.gametes <- CAP.gametes[order(row.names(CAP.gametes)),]
+  # Concatenate
+  sampled.markers.per.chrom <- as.character(do.call("c", sampled.markers.per.chrom))
+  
+  # Pull out the sampled markers
+  sampled.markers <- non.redundant.markers[non.redundant.markers$rs %in% sampled.markers.per.chrom,]
+  
+  
+  # Subset the genotype matrix for the same markers
+  CAP.M.final <- CAP.M.impute[,as.character(sampled.markers$rs)]
+  
+  
+  # Since all genotypes are completely homozygous, it is easy to create the gamete matrix
+  CAP.gametes <- rbind(CAP.M.final, CAP.M.final)
+  # Change all -1 to zeros
+  CAP.gametes[CAP.gametes == -1] <- 0
+  # Rename the genotypes
+  row.names(CAP.gametes) <- paste(rep(row.names(CAP.M.final), 2), rep(1:2, each = nrow(CAP.M.final)), sep = ".")
+  # Sort on row.names
+  CAP.gametes <- CAP.gametes[order(row.names(CAP.gametes)),]
+  
+  assign(x = paste("CAP.gametes.", min.maf, sep = ""), value = CAP.gametes)
+  assign(x = paste("sampled.markers.", min.maf, sep = ""), value = sampled.markers)
+}
 
 # Save the data
-save.list <- c("CAP.gametes", "sampled.markers")
+save.list <- c(apropos(what = "^CAP.gametes.[0-9]"), apropos(what = "^sampled.markers.[0-9]"))
 save(list = save.list, file = "Files/Barley_CAP_simuation_starting_material.RData")
