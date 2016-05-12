@@ -16,7 +16,7 @@
 module load R
 
 # Set working directory
-cd /panfs/roc/groups/6/smithkp/neyhartj/Genomic_Selection/Simulations/Barley_GS_PEV/Hypred/
+cd /panfs/roc/groups/6/smithkp/neyhartj/Genomic_Selection/Simulations/Barley_GS_Simulations
 
 # Set the directory containing the files to parse
 parsedir=Files/Part3

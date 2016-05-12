@@ -7,7 +7,7 @@
 #PBS -r n
 
 # Change the working directory
-cd /home/smithkp/neyhartj/Genomic_Selection/Simulations/Barley_GS_PEV/Hypred
+cd /home/smithkp/neyhartj/Genomic_Selection/Simulations/Barley_GS_Simulations
 
 module load R
 
