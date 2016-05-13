@@ -28,6 +28,10 @@ library(parallel)
 # Load already-curated gamete data
 load(file = "Files/Barley_CAP_simuation_starting_material.RData")
 
+# Set the CAP gametes and sample markers matricies
+CAP.gametes <- CAP.gametes.0.03
+sampled.markers <- sampled.markers.0.03
+
 # Are we using MSI?
 MSI = TRUE
 
