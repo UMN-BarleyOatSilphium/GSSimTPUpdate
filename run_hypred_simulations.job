@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#PBS -l walltime=48:00:00,mem=15gb,nodes=1:ppn=16
+#PBS -l walltime=24:00:00,mem=22gb,nodes=1:ppn=16
 #PBS -N hypred_simulations
 #PBS -M neyha001@umn.edu
 #PBS -m abe
@@ -28,11 +28,23 @@ module load R
 #Rscript hypred_barley_simulations_part2_032816.R MNxND window
 
 
+## Run the regular simulation
 
 #Rscript hypred_barley_simulations_part3_042616.R MN cumulative
 #Rscript hypred_barley_simulations_part3_042616.R ND cumulative
-Rscript hypred_barley_simulations_part3_042616.R MNxND cumulative
+#Rscript hypred_barley_simulations_part3_042616.R MNxND cumulative
 
 #Rscript hypred_barley_simulations_part3_042616.R MN window
 #Rscript hypred_barley_simulations_part3_042616.R ND window
 #Rscript hypred_barley_simulations_part3_042616.R MNxND window
+
+
+## Run the allele frequency experiment
+
+#Rscript Code/barley_gs_simulation_maf_run_experiment.R MN window
+#Rscript Code/barley_gs_simulation_maf_run_experiment.R ND window
+#Rscript Code/barley_gs_simulation_maf_run_experiment.R MNxND window
+
+#Rscript Code/barley_gs_simulation_maf_run_experiment.R MN cumulative
+#Rscript Code/barley_gs_simulation_maf_run_experiment.R ND cumulative
+Rscript Code/barley_gs_simulation_maf_run_experiment.R MNxND cumulative
