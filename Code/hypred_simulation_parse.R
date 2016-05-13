@@ -9,6 +9,7 @@ filename <- args[1]
 # Output list
 collective.abbreviated.results <- list()
 
+
 # Loop over every file in "args"
 for (f in args[-1]) {
   
@@ -82,8 +83,11 @@ for (f in args[-1]) {
   
   # Build a list
   collective.abbreviated.results[[change]] <- abbreviate.output.list
+  # collective.abbreviated.results[["no.change_0.1"]] <- abbreviate.output.list
+  
   
 } # Close the for loop
 
+# filename <- sub(pattern = ".RData", replacement = "_collective.RData", x = f)
 # Save the file
 save("collective.abbreviated.results", file = filename)

@@ -1,16 +1,12 @@
 ## Script to graph results of GS simulations
 
 # Set working directory
-setwd("C:/Users/Jeff/Google Drive/Barley Lab/Projects/Side Projects/Simulations/Barley_GS_Simulations/Results/")
+# setwd("C:/Users/Jeff/Google Drive/Barley Lab/Projects/Side Projects/Simulations/Barley_GS_Simulations/Results/")
+setwd("C:/Users/Jeff/Google Drive/Barley Lab/Projects/Side Projects/Simulations/Barley_GS_Simulations/Results/Allele Freq Experiment/")
+
+
 
 # Load data
-# filename <- "simulation_results_q100_sel0.1_popmakeup-MN_tpformation-window_collective_090416.RData"
-# filename <- "simulation_results_q100_sel0.1_popmakeup-ND_tpformation-window_collective_090416.RData"
-# filename <- "simulation_results_q100_sel0.1_popmakeup-MNxND_tpformation-window_collective_090416.RData"
-# filename <- "simulation_results_q100_sel0.1_popmakeup-MN_tpformation-cumulative_collective_220316.RData"
-# filename <- "simulation_results_q100_sel0.1_popmakeup-ND_tpformation-cumulative_collective_220316.RData"
-# filename <- "simulation_results_q100_sel0.1_popmakeup-MNxND_tpformation-cumulative_collective_220316.RData"
-
 # filename <- "simulation_results_q100_sel0.1_popmakeup-MN_tpformation-window_collective_part3.RData"
 # filename <- "simulation_results_q100_sel0.1_popmakeup-ND_tpformation-window_collective_part3.RData"
 # filename <- "simulation_results_q100_sel0.1_popmakeup-MNxND_tpformation-window_collective_part3.RData"
@@ -18,6 +14,9 @@ setwd("C:/Users/Jeff/Google Drive/Barley Lab/Projects/Side Projects/Simulations/
 # filename <- "simulation_results_q100_sel0.1_popmakeup-ND_tpformation-cumulative_collective_part3.RData"
 filename <- "simulation_results_q100_sel0.1_popmakeup-MNxND_tpformation-cumulative_collective_part3.RData"
 
+# Allele freq experiment
+all.files <- list.files()
+filename <- all.files[5]
 
 load(filename)
 
@@ -39,7 +38,7 @@ plot(0,
      xlim = c(0, n.cycles),
      xlab = "Cycle Number",
      # ylim = range(pretty(range(V_g.list)))
-     ylim = c(0,10),
+     ylim = c(0,15),
      ylab = "Mean V_g",
      main = paste("Mean Genetic Variance Across Cycles", paste("Population:", pop.makeup, ", TP formation:", tp.formation), sep = "\n")
 )
@@ -233,7 +232,43 @@ for (i in 1:length(poly.marker.list)) {
 }
 
 
+# Size of training population
+tp.size.list <- lapply(X = collective.abbreviated.results, FUN = function(tpc) 
+  do.call("cbind", sapply(tpc$prediction.results.list, FUN = function(set) 
+    sapply(set, function(rep) 
+      sapply(rep, FUN = function(cycle) 
+        return(cycle$parameters$n.TP))))) )
 
+# Empty plot
+plot(0, 
+     type = "n",
+     xlim = c(0, n.cycles),
+     xlab = "Cycle Number",
+     # ylim = range(pretty(range(V_g.list)))
+     ylim = range(pretty(range(0, max(unlist(tp.size.list))))),
+     ylab = "Training Population Size Used in Prediction",
+     main = paste("Training Population Size", paste("Population:", pop.makeup, ", TP formation:", tp.formation), sep = "\n")
+)
+
+# Plotting shape factors
+plot.shapes.factor <- factor(names(tp.size.list))
+
+# Add legend
+legend("topright", legend = names(tp.size.list), pch = as.numeric(factor(names(tp.size.list))))
+
+for (i in 1:length(tp.size.list)) {
+  
+  # Find the mean and sd
+  n.tp.mu <- apply(X = tp.size.list[[i]], MARGIN = 1, FUN = mean, na.rm = T)
+  n.tp.sd <- apply(X = tp.size.list[[i]], MARGIN = 1, FUN = sd, na.rm = T)
+  
+  # Add points to the plot
+  points(x = 1:n.cycles, n.tp.mu, pch = as.numeric(plot.shapes.factor[i]))
+  
+  # Add standard deviation bars
+  segments(x0 = 1:n.cycles, y0 = (n.tp.mu - n.tp.sd), x1 = 1:n.cycles, y1 = (n.tp.mu + n.tp.sd))
+  
+}
 
 
 ## Calculate the proportion of loci that are fixed for one allele or the other
