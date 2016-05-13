@@ -30,13 +30,13 @@ module load R
 
 ## Run the regular simulation
 
-#Rscript hypred_barley_simulations_part3_042616.R MN cumulative
-#Rscript hypred_barley_simulations_part3_042616.R ND cumulative
-#Rscript hypred_barley_simulations_part3_042616.R MNxND cumulative
+Rscript Code/barley_gs_simulation_run_experiment.R MN cumulative
+#Rscript Code/barley_gs_simulation_run_experiment.R ND cumulative
+#Rscript Code/barley_gs_simulation_run_experiment.R MNxND cumulative
 
-#Rscript hypred_barley_simulations_part3_042616.R MN window
-#Rscript hypred_barley_simulations_part3_042616.R ND window
-#Rscript hypred_barley_simulations_part3_042616.R MNxND window
+#Rscript Code/barley_gs_simulation_run_experiment.R MN window
+#Rscript Code/barley_gs_simulation_run_experiment.R ND window
+#Rscript Code/barley_gs_simulation_run_experiment.R MNxND window
 
 
 ## Run the allele frequency experiment
@@ -47,4 +47,4 @@ module load R
 
 #Rscript Code/barley_gs_simulation_maf_run_experiment.R MN cumulative
 #Rscript Code/barley_gs_simulation_maf_run_experiment.R ND cumulative
-Rscript Code/barley_gs_simulation_maf_run_experiment.R MNxND cumulative
+#Rscript Code/barley_gs_simulation_maf_run_experiment.R MNxND cumulative

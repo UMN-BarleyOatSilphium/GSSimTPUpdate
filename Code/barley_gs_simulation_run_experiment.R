@@ -29,7 +29,7 @@ library(parallel)
 load(file = "Files/Barley_CAP_simuation_starting_material.RData")
 
 # Are we using MSI?
-MSI = FALSE
+MSI = TRUE
 
 # # Other tools
 if (MSI) {
@@ -49,7 +49,7 @@ source("Code/hypred_simulation_FUNCTIONS.R")
 # Entry-mean heritability
 h2 = 0.5
 # How many cycles?
-n.cycles = 20
+n.cycles = 15
 # Number of QTL underlying trait
 n.QTL = 100
 # Selection intensity
@@ -60,7 +60,7 @@ n.rep = 1
 
 # Barley population genetics data
 mutation.rate.snp = 7e-8
-mutation.rate.qtl = 2.5e-5
+mutation.rate.qtl = 7e-8
 
 tp.change = c("best", "worst", "random", "parents", "no.change", "PEVmean", "CDmean")
 # The number of lines to add the TP after each cycle
@@ -73,7 +73,7 @@ n.crosses = 40
 ind.per.cross = 30
 
 # Computation parameters
-n.iterations = 100
+n.iterations = 200
 
 date <- format(Sys.time(), "%d%m%y-%H%M%S")
 
@@ -270,7 +270,7 @@ for (change in tp.change) {
             
             # The V_e and V_a will be taken from the REML estimates of the previous mixed model
             V_e.i <- candidate.i.prediction$solve.out$Ve
-            V_a.i <- candidate.i.prediction$solve.out$Vu * ncol(candidate.i.genos) # genetic variance is V_u * n.markers
+            V_a.i <- candidate.i.prediction$solve.out$Vu * ncol(candidate.genos.use) # genetic variance is V_u * n.markers
             
             optimized.TP.additions <- try(TP.optimization(genos = candidate.genos.use,
                                                           phenotyped.lines = phenotyped.lines,
