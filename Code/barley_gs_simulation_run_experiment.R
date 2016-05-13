@@ -77,8 +77,6 @@ n.iterations = 100
 
 date <- format(Sys.time(), "%d%m%y-%H%M%S")
 
-# Create the final experiment output list
-experiment.results <- list()
 
 #### Define genome characteristics ####
 # Find the snps per chromsome

@@ -78,9 +78,6 @@ n.iterations = 100
 
 date <- format(Sys.time(), "%d%m%y-%H%M%S")
 
-# Create the final experiment output list
-experiment.results <- list()
-
 #### Define genome characteristics ####
 
 ### 05.12.16 Filtering markers based on minor allele prior to running the simulation
@@ -400,7 +397,7 @@ for (min.maf in gsub(pattern = "CAP.gametes.", apropos("CAP.gametes"), replaceme
     
   } # Close the tp.change for loop
   
-  maf.filt.results.list[[as.character(min.maf)]] <- experiment.results
+  maf.filt.results.list[[as.character(min.maf)]] <- experiment.sub.results
   
 } # Close the maf.filter loop
 
