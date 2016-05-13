@@ -29,7 +29,7 @@ library(parallel)
 load(file = "Files/Barley_CAP_simuation_starting_material.RData")
 
 # Are we using MSI?
-MSI = FALSE
+MSI = TRUE
 
 # # Other tools
 if (MSI) {
