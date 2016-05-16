@@ -33,7 +33,8 @@ CAP.gametes <- CAP.gametes.0.03
 sampled.markers <- sampled.markers.0.03
 
 # Are we using MSI?
-MSI = TRUE
+MSI = FALSE
+# MSI = TRUE
 
 # # Other tools
 if (MSI) {
