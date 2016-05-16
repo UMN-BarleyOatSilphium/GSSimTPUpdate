@@ -30,13 +30,13 @@ module load R
 
 ## Run the regular simulation
 
-Rscript Code/barley_gs_simulation_run_experiment.R MN cumulative
+#Rscript Code/barley_gs_simulation_run_experiment.R MN cumulative
 #Rscript Code/barley_gs_simulation_run_experiment.R ND cumulative
 #Rscript Code/barley_gs_simulation_run_experiment.R MNxND cumulative
 
 #Rscript Code/barley_gs_simulation_run_experiment.R MN window
 #Rscript Code/barley_gs_simulation_run_experiment.R ND window
-#Rscript Code/barley_gs_simulation_run_experiment.R MNxND window
+Rscript Code/barley_gs_simulation_run_experiment.R MNxND window
 
 
 ## Run the allele frequency experiment

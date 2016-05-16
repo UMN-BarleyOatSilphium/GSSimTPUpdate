@@ -67,7 +67,7 @@ n.rep = 1
 mutation.rate.snp = 7e-8
 mutation.rate.qtl = 7e-8
 
-tp.change = c("best", "worst", "random", "parents", "no.change", "PEVmean", "CDmean")
+tp.change = c("best", "worst", "random", "no.change", "PEVmean", "CDmean")
 # The number of lines to add the TP after each cycle
 tp.update.increment = 150
 # Size of the TP to maintain - this is the same as the starting TP
