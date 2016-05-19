@@ -7,7 +7,7 @@
 #PBS -r n
 
 # Change the working directory
-cd /home/smithkp/neyhartj/Genomic_Selection/Simulations/Barley_GS_Simulations
+cd /home/smithkp/neyhartj/Genomic_Selection/Simulations/BarleySimGS-TPUpdate
 
 module load R
 
@@ -30,21 +30,17 @@ module load R
 
 ## Run the regular simulation
 
-#Rscript Code/barley_gs_simulation_run_experiment.R MN cumulative
-#Rscript Code/barley_gs_simulation_run_experiment.R ND cumulative
-#Rscript Code/barley_gs_simulation_run_experiment.R MNxND cumulative
+#Rscript Code/run_experiment.R MN cumulative
+#Rscript Code/run_experiment.R ND cumulative
+#Rscript Code/run_experiment.R MNxND cumulative
 
-#Rscript Code/barley_gs_simulation_run_experiment.R MN window
-#Rscript Code/barley_gs_simulation_run_experiment.R ND window
-Rscript Code/barley_gs_simulation_run_experiment.R MNxND window
+#Rscript Code/run_experiment.R MN window
+#Rscript Code/run_experiment.R ND window
+Rscript Code/run_experiment.R MNxND window
 
 
 ## Run the allele frequency experiment
 
-#Rscript Code/barley_gs_simulation_maf_run_experiment.R MN window
-#Rscript Code/barley_gs_simulation_maf_run_experiment.R ND window
-#Rscript Code/barley_gs_simulation_maf_run_experiment.R MNxND window
-
-#Rscript Code/barley_gs_simulation_maf_run_experiment.R MN cumulative
-#Rscript Code/barley_gs_simulation_maf_run_experiment.R ND cumulative
-#Rscript Code/barley_gs_simulation_maf_run_experiment.R MNxND cumulative
+#Rscript Code/run_experiment_maf.R MN window
+#Rscript Code/run_experiment_maf.R ND window
+#Rscript Code/run_experiment_maf.R MNxND window

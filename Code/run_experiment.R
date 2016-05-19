@@ -30,7 +30,7 @@ library(parallel, quietly = T)
 
 # # Other tools
 if (MSI) {
-  setwd("/panfs/roc/groups/6/smithkp/neyhartj/Genomic_Selection/Simulations/Barley_GS_Simulations")
+  setwd("/panfs/roc/groups/6/smithkp/neyhartj/Genomic_Selection/Simulations/BarleySimGS-TPUpdate")
   # source("/panfs/roc/groups/6/smithkp/neyhartj/GitHub_Repos/Quant-Gen-Scripts/genotype_matrix_utils.R")
   n.cores = 16
 } else {
