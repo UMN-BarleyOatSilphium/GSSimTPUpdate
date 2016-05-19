@@ -1,10 +1,11 @@
-## Genomic selection simulations
-# This code runs iterations of long-term genomic selection simulations to 
-## test the usefulness of updating a training population and how it impacts
-## prediction accuracy, genetic variance, and selection potential
+## BarleSimGS-TPUpdate
+# This code is a modified version of the main code, however here we are trying
+## to interrogate the reason behind the large differences in results between
+## doing some sort of training population updating and not doing it. For this 
+## experiment, we are looking at the effect of different starting MAF cutoffs.
 
-## Update: April 26, 2016
-# This update will test whether including the parents is sufficient for updating the TP and maintaining predictive ability
+# Are we using MSI?
+MSI = F
 
 # Arguments
 args <- commandArgs(trailingOnly = T)
@@ -20,16 +21,10 @@ if (all(is.na(args))) {
 }
 
 # Load the packages
-library(hypred)
-library(rrBLUP)
-library(boot)
-library(parallel)
-
-# Load already-curated gamete data
-load(file = "Files/Barley_CAP_simuation_starting_material.RData")
-
-# Are we using MSI?
-MSI = TRUE
+library(hypred, quietly = T)
+library(rrBLUP, quietly = T)
+library(boot, quietly = T)
+library(parallel, quietly = T)
 
 # # Other tools
 if (MSI) {
@@ -37,9 +32,12 @@ if (MSI) {
   # source("/panfs/roc/groups/6/smithkp/neyhartj/GitHub_Repos/Quant-Gen-Scripts/genotype_matrix_utils.R")
   n.cores = 16
 } else {
-  setwd("C:/Users/Jeff/Google Drive/Barley Lab/Projects/Side Projects/Simulations/Barley_GS_Simulations/")
+  setwd("C:/Users/Jeff/Google Drive/Barley Lab/Projects/Side Projects/Simulations/BarleySimGS-TPUpdate/")
   n.cores = 1
 }
+
+# Load already-curated gamete data
+load(file = "Files/Barley_CAP_simuation_starting_material.RData")
 
 # Source functions
 source("Code/hypred_simulation_FUNCTIONS.R")
@@ -60,7 +58,7 @@ n.rep = 1
 
 # Barley population genetics data
 mutation.rate.snp = 7e-8
-mutation.rate.qtl = 2.5e-5
+mutation.rate.qtl = 7e-8
 
 # tp.change = c("best", "worst", "random", "parents", "no.change", "PEVmean", "CDmean")
 tp.change = "no.change"
@@ -74,7 +72,7 @@ n.crosses = 40
 ind.per.cross = 30
 
 # Computation parameters
-n.iterations = 100
+n.iterations = 200
 
 date <- format(Sys.time(), "%d%m%y-%H%M%S")
 
@@ -142,7 +140,7 @@ for (min.maf in gsub(pattern = "CAP.gametes.", apropos("CAP.gametes"), replaceme
         
         TP.gametes <- CAP.gametes
         # Convert the gametes to genotypes
-        TP.genos <- genotype.markers(gametes = TP.gametes, genome = hv.genome, DH = F)
+        TP.genos <- genotype.markers(gametes = TP.gametes, genome = hv.genome)
         
         ## Select the TP lines for use as parents
         # First separate MN and ND lines
@@ -199,23 +197,28 @@ for (min.maf in gsub(pattern = "CAP.gametes.", apropos("CAP.gametes"), replaceme
                                                              mutation.rate.snp = mutation.rate.snp,
                                                              mutation.rate.qtl = mutation.rate.qtl))
           
-          # Genotype the population
+          # Find the genotypes of the markers and the QTL
           candidate.i.genos <- genotype.markers(gametes = candidate.gametes.i, 
                                                 genome = hv.genome, 
-                                                DH = F)
-        
+                                                include.QTL = T)
+          
+          # Remove the QTL genotypes
+          candidate.i.marker.genos <- candidate.i.genos[,-slot(hv.genome, "pos.add.qtl")$ID]
+          
           # Measure summary statistics
           candidate.i.genos.allele.freq <- calculate.allele.freq(geno.mat = candidate.i.genos)
           candidate.i.genos.pairwise.div <- SNP.pairwise.div(geno.mat = candidate.i.genos)
           # Measure heterozygosity of the entries
           candidate.i.genos.het <- apply(X = candidate.i.genos, MARGIN = 1, FUN = function(geno) sum(geno == 0) / length(geno))
+          # Measure LD
+          candidate.i.genos.LD <- measure.LD(genome = hv.genome, gametes = candidate.gametes.i, sliding.window.cM = 0.1)
         
           # Remove monomorphic markers before making predictions
           # Determine monomorphic markers
-          poly.snps <- apply(X = candidate.i.genos, MARGIN = 2, FUN = function(snp) length(unique(snp)) > 1)
+          poly.snps <- apply(X = candidate.i.marker.genos, MARGIN = 2, FUN = function(snp) length(unique(snp)) > 1)
           # Filter the TP and candidate marker matrices for those markers
           TP.genos.use <- TP.genos.i[,poly.snps]
-          candidate.genos.use <- candidate.i.genos[,poly.snps]
+          candidate.genos.use <- candidate.i.marker.genos[,poly.snps]
           
           ##### Step 3 - Genomic prediction
           system.time(candidate.i.prediction <- make.predictions(pheno.train = TP.phenos.i, 
@@ -238,7 +241,7 @@ for (min.maf in gsub(pattern = "CAP.gametes.", apropos("CAP.gametes"), replaceme
           # Find the correlation between the GEBVs and the true genotypic value
           pred.validation.i <- validate.predictions(predicted.GEBVs = candidate.i.GEBV,
                                                     observed.values = candidate.i.values$geno.values,
-                                                    boot.reps = 1000)
+                                                    boot.reps = NULL)
           
           ##### Step 4 - Select the Next Parents #####
           
@@ -279,12 +282,12 @@ for (min.maf in gsub(pattern = "CAP.gametes.", apropos("CAP.gametes"), replaceme
               # Analyze using PEVmean or CDmean
               # We want to see what optimized TP is best for the parents, so we will optimize the training set based
               ## on the lines from the whole candidate set, including the parents?
-              phenotyped.lines <- row.names(candidate.i.genos)
+              phenotyped.lines <- row.names(candidate.i.marker.genos)
               unphenotyped.lines <- parent.lines
               
               # The V_e and V_a will be taken from the REML estimates of the previous mixed model
               V_e.i <- candidate.i.prediction$solve.out$Ve
-              V_a.i <- candidate.i.prediction$solve.out$Vu * ncol(candidate.i.genos) # genetic variance is V_u * n.markers
+              V_a.i <- candidate.i.prediction$solve.out$Vu * ncol(candidate.genos.use) # genetic variance is V_u * n.markers
               
               optimized.TP.additions <- try(TP.optimization(genos = candidate.genos.use,
                                                             phenotyped.lines = phenotyped.lines,
@@ -324,7 +327,7 @@ for (min.maf in gsub(pattern = "CAP.gametes.", apropos("CAP.gametes"), replaceme
                                                   line.names = TP.addition.lines)
             
             # Subset the geno matrix for these lines
-            TP.addtion.genos <- candidate.i.genos[TP.addition.lines,]
+            TP.addtion.genos <- candidate.i.marker.genos[TP.addition.lines,]
             
             # Gather genotypic and phenotypic values of the TP additions
             TP.addition.values <- subset.values(values.list = candidate.i.values, TP.addition.lines)
@@ -372,15 +375,14 @@ for (min.maf in gsub(pattern = "CAP.gametes.", apropos("CAP.gametes"), replaceme
           # Gather data for analysis
           simulation.results[[cycle.name]] <- list(geno.summary.stats = list(pairwise.div = candidate.i.genos.pairwise.div,
                                                                              allele.freq = candidate.i.genos.allele.freq,
-                                                                             heterozygosity = candidate.i.genos.het),
-                                                   prediction.results = list(GEBV = candidate.i.prediction$GEBV,
+                                                                             heterozygosity = candidate.i.genos.het,
+                                                                             pairwise.LD = candidate.i.genos.LD),
+                                                   prediction.results = list(marker.effects = candidate.i.prediction$solve.out$u,
                                                                              parameters = candidate.i.prediction$parameters),
                                                    candidate.values = candidate.i.values,
                                                    selection.values = parent.values,
                                                    prediction.accuracy = pred.validation.i,
                                                    tp.update = TP.addition.list )
-  
-                                     
           
         } # Close the per-cycle loop
         

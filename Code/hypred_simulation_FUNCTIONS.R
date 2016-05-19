@@ -895,7 +895,7 @@ subset.gametes <- function(gametes,
 # This function essentially "genotypes" the family or population for markers
 genotype.markers <- function(gametes,
                              genome,
-                             DH = FALSE) {
+                             include.QTL = FALSE) {
   
   # Deal with input
   if (!is.list(gametes)) {
@@ -906,21 +906,48 @@ genotype.markers <- function(gametes,
   
   # Pull out the position of the QTL
   qtl.pos <- slot(genome, "pos.add.qtl")$ID
+  # Pull out column names
+  loci.names <- colnames(gamete.mat)
   # Pull out marker names that are not QTL
-  markers <- colnames(gamete.mat)[-qtl.pos]
-  
-  # Code to genotypes
-  geno.mat <- hypredCode(genome,
-                         gamete.mat,
-                         DH = DH,
-                         type = "-101")
-  
+  markers <- loci.names[-qtl.pos]
+  # Pull out the qtl names
+  qtl <- loci.names[qtl.pos]
   # Pull out line names
   line.names <- unique(sub(pattern = "\\.[0-9]$", replacement = "", x = row.names(gamete.mat)))
-  # Add line names to the rows
-  row.names(geno.mat) <- line.names
-  # Add marker names to the columns
-  colnames(geno.mat) <- markers
+  
+  if (!include.QTL) {
+  
+    # Code to genotypes
+    geno.mat <- hypredCode(genome,
+                           gamete.mat,
+                           DH = FALSE,
+                           type = "-101")
+    
+    # Add line names to the rows
+    row.names(geno.mat) <- line.names
+    # Add marker names to the columns
+    colnames(geno.mat) <- markers
+    
+  } else { # If the genotypes of the QTL are desired
+    
+    # Make a list of each pair of rows
+    gamete.split <- split(1:nrow(gamete.mat), cut(1:nrow(gamete.mat), breaks = nrow(gamete.mat)/2))
+    
+    # Apply a function to generate -1, 0, 1 genotype values for each pair of rows
+    geno.list <- lapply(X = gamete.split, FUN = function(pair) {
+      # Subset the gamete matrix
+      line.gametes <- gamete.mat[pair,]
+      # Find the number of 1 alleles
+      line.alleles <- colSums(line.gametes)
+      # Subtract one to get the coded genotypes
+      line.alleles - 1
+    })
+    
+    # Collapse
+    geno.mat <- do.call("rbind", geno.list)
+    # Rename rows and columns
+    dimnames(geno.mat) <- list(line.names, loci.names)
+  }
   
   # Return the matrix
   return(geno.mat)
@@ -990,27 +1017,36 @@ make.predictions <- function(pheno.train,
 ## validation marker genotypes
 validate.predictions <- function(predicted.GEBVs,
                                  observed.values,
-                                 boot.reps = 5000) {
+                                 boot.reps = NULL) {
   
   # Deal with input
   predicted.GEBVs <- as.matrix(predicted.GEBVs)
   observed.values <- as.matrix(observed.values)
   
-  # Perform bootstrapping to measure the correlation between GEBVs and phenotypes
-  # First combine the data
-  data.to.bootstrap <- cbind(predicted.GEBVs, observed.values)
-  # Define a function for performing a correlation of the sample given by the ith replication
-  boot.cor <- function(input.data, i) {
-    rep.data <- input.data[i,]
-    rep.cor <- cor(rep.data[,1], rep.data[,2])
-    return(rep.cor)
-  }
-  # Perform bootstrapping
-  boot.results <- boot(data = data.to.bootstrap, statistic = boot.cor, R = boot.reps)
+  # If no boot.reps, do not perform bootstrapping
+  if (is.null(boot.reps)) {
+    
+    pred.r <- cor(predicted.GEBVs, observed.values)
+    pred.r.sd <- NULL
+    
+  } else { # Otherwise perform bootstrapping
   
-  # Parse the results
-  pred.r <- boot.results$t0
-  pred.r.sd <- sd(boot.results$t)
+    # Perform bootstrapping to measure the correlation between GEBVs and phenotypes
+    # First combine the data
+    data.to.bootstrap <- cbind(predicted.GEBVs, observed.values)
+    # Define a function for performing a correlation of the sample given by the ith replication
+    boot.cor <- function(input.data, i) {
+      rep.data <- input.data[i,]
+      rep.cor <- cor(rep.data[,1], rep.data[,2])
+      return(rep.cor)
+    }
+    # Perform bootstrapping
+    boot.results <- boot(data = data.to.bootstrap, statistic = boot.cor, R = boot.reps)
+    
+    # Parse the results
+    pred.r <- boot.results$t0
+    pred.r.sd <- sd(boot.results$t)
+  }
   
   # Create an output list
   output.list <- list(pred.r = pred.r, pred.r.sd = pred.r.sd, boot.reps = boot.reps)
@@ -2139,6 +2175,107 @@ augment.gamete.mat <- function(genome, # The object of class "hypredGenome"
   
 } # Close the function
 
+
+# Define a function to measure the LD between adjacent markers and QTL on the same
+## chromosome. The function will measure the LD of all markers against all QTL,
+## but not between markers and markers.
+measure.LD <- function(genome, # Genome object
+                       gametes, # 2n x m matrix of gamete genotype data or list of gamete data
+                       sliding.window.cM # Floating numeric of cM length along which to use the sliding window
+                       ) {
+  
+  # Conver cM to M
+  sliding.window.M <- sliding.window.cM / 100
+  
+  # Deal with input
+  if (!is.list(gametes)) {
+    gamete.mat <- as.matrix(gametes)
+  } else {
+    gamete.mat <- as.matrix(do.call("rbind", gametes))
+  }
+  
+  # Pull out genome info
+  n.chr <- slot(genome, "num.chr")
+  
+  # Pull out QTL and marker locations
+  loci.pos.M <- slot(genome, "pos.snp")
+  names(loci.pos.M) <- colnames(gamete.mat)
+  
+  # Split loci positions into chromosomes
+  loci.pos.M.split <- split(x = loci.pos.M, cut(x = 1:length(loci.pos.M), breaks = n.chr))
+  
+  # Define functions to calculate LD
+  LD <- function(g1, g2) {
+    # Calculate frequency of 1 allele in the snp and qtl
+    p.A <- sum(g1 == 1) / length(g1)
+    p.a = 1 - p.A
+    p.B <- sum(g2 == 1) / length(g2)
+    p.b = 1 - p.B
+    p.AB <- sum(apply(X = cbind(g1, g2), MARGIN = 1, FUN = function(allele.pair) all(allele.pair == c(1,1)) )) / length(g1)
+  
+    # Calculate LD
+    # D
+    D = p.AB - (p.A * p.B)
+    
+    # D'
+    if (D == 0) {
+      # If D is 0, so is D.prime
+      D.prime = 0
+    } else {
+      if (D > 0) {
+        D.max = min( (p.A * p.b), (p.a * p.B) )
+      } else {
+        D.max = max( -(p.A * p.B), -(p.a * p.b) )
+      }
+      # Calculate D prime
+      D.prime = D / D.max
+    }
+    
+    # r
+    r = -D / sqrt( (p.A * p.a * p.B * p.b) )
+    
+    # Return a vector
+    out.vec <- c(D, D.prime, r); names(out.vec) <- c("D", "D.prime", "r")
+    return(out.vec)
+  }
+  
+  # Define a function to split a vector of genetic positions by a certain window
+  split.pos <- function(pos.vector, window) {
+    # Assign groups
+    f <- as.factor(sapply(X = pos.vector, FUN = function(i) findInterval(x = c(i, i + window), vec = pos.vector))[2,])
+    # Split
+    return(split(x = pos.vector, f = f))
+  }
+    
+  # Apply a function over the split loci list
+  pairwise.LD <- lapply(X = loci.pos.M.split, FUN = function(chr) {
+    # Find the loci that are separated in distance by no more than the sliding window length
+    loci.split <- split.pos(pos.vector = chr, window = sliding.window.M)
+    # Remove groups of less than 2
+    loci.split <- loci.split[sapply(X = loci.split, FUN = length) > 1]
+    # Apply LD function over the groups
+    do.call("cbind", sapply(X = loci.split, FUN = function(group) {
+      # Generate combinations
+      combn.mat <- data.frame(t(combn(x = names(group), 2)))
+      # Apply over combinations
+      combn.LD <- apply(X = combn.mat, MARGIN = 1, FUN = function(pair) {
+        LD(g1 = gamete.mat[,pair[1]], g2 = gamete.mat[,pair[2]]) })
+      # Add columns
+      colnames(combn.LD) <- apply(X = combn.mat, MARGIN = 1, FUN = paste, collapse = ".")
+      return(combn.LD)
+    })) })
+  
+  names(pairwise.LD) <- 1:n.chr
+  
+  # Return list
+  return(list(pairwise.LD = pairwise.LD, sliding.window.cM = sliding.window.cM))
+  
+} # Close the function
+  
+  
+      
+    
+  
   
   
   
