@@ -149,7 +149,12 @@ for (min.maf in gsub(pattern = "CAP.gametes.", apropos("CAP.gametes"), replaceme
         MN.lines <- setdiff(x = line.names, y = c(ND.lines))
         
         # Phenotype the training population
-        TP.values <- measure.values(genome = hv.genome, gametes = TP.gametes, h2 = h2, n.env = n.env, n.rep = n.rep, model = NULL)
+        TP.values <- evaluate.population(genome = hv.genome, 
+                                         gametes = TP.gametes, 
+                                         h2 = h2, 
+                                         n.env = n.env, 
+                                         n.rep = n.rep)
+        
         TP.phenos <- TP.values$mean.pheno.values
         
         # Next select the top 80 MN and top 80 ND
@@ -230,7 +235,7 @@ for (min.maf in gsub(pattern = "CAP.gametes.", apropos("CAP.gametes"), replaceme
           candidate.i.GEBV <- candidate.i.prediction$GEBV
           
           # Measure the phenotype and true genotypic values of all selection candidates
-          candidate.i.values <- measure.values( genome = hv.genome,
+          candidate.i.values <- evaluate.population( genome = hv.genome,
                                                 gametes = candidate.gametes.i,
                                                 h2 = h2,
                                                 n.env = n.env,
