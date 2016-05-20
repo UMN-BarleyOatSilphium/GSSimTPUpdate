@@ -36,11 +36,11 @@ module load R
 
 #Rscript Code/run_experiment.R MN window
 #Rscript Code/run_experiment.R ND window
-Rscript Code/run_experiment.R MNxND window
+#Rscript Code/run_experiment.R MNxND window
 
 
 ## Run the allele frequency experiment
 
 #Rscript Code/run_experiment_maf.R MN window
 #Rscript Code/run_experiment_maf.R ND window
-#Rscript Code/run_experiment_maf.R MNxND window
+Rscript Code/run_experiment_maf.R MNxND window

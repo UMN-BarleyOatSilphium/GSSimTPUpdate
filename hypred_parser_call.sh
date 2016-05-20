@@ -19,7 +19,7 @@ module load R
 cd /panfs/roc/groups/6/smithkp/neyhartj/Genomic_Selection/Simulations/BarleySimGS-TPUpdate
 
 # Set the directory containing the files to parse
-parsedir=Files
+parsedir=Files/Base_experiment
 
 # For each combination, declare a filename, then launch the R script
 
