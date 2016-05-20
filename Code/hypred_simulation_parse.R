@@ -31,54 +31,82 @@ for (f in args[-1]) {
       lapply(X = rep$sim.result, FUN = function(cycle) {
         return(cycle$candidate.values$mu.g) })})})
   
+  # Variance components of the selections
+  selection.variance.components.list <- lapply(X = experiment.sub.results, FUN = function(set) {
+    lapply(X = set, FUN = function(rep) {
+      lapply(X = rep$sim.result, FUN = function(cycle) {
+        return(cycle$selection.values$var.components) })})})
+  
+  # Genotypic value of the selections
+  selection.genotypic.value.list <- lapply(X = experiment.sub.results, FUN = function(set) {
+    lapply(X = set, FUN = function(rep) {
+      lapply(X = rep$sim.result, FUN = function(cycle) {
+        return(cycle$selection.values$mu.g) })})})
+  
   # Allele frequencies
   allele.freq.list <- lapply(X = experiment.sub.results, FUN = function(set) {
     lapply(X = set, FUN = function(rep) {
       lapply(X = rep$sim.result, FUN = function(cycle) {
         return(cycle$geno.summary.stats$allele.freq) })})})
   
+  # Pairwise diversity
   pairwise.div.list <- lapply(X = experiment.sub.results, FUN = function(set) {
     lapply(X = set, FUN = function(rep) {
       lapply(X = rep$sim.result, FUN = function(cycle) {
         return(cycle$geno.summary.stats$pairwise.div) })})})
   
+  # Pairwise LD
+  pairwise.LD.list <- lapply(X = experiment.sub.results, FUN = function(set) {
+    lapply(X = set, FUN = function(rep) {
+      lapply(X = rep$sim.result, FUN = function(cycle) {
+        return(cycle$geno.summary.stats$pairwise.LD) })})})
+  
+  # Heterzygosity 
   heterozygosity.list <- lapply(X = experiment.sub.results, FUN = function(set) {
     lapply(X = set, FUN = function(rep) {
       lapply(X = rep$sim.result, FUN = function(cycle) {
         return(cycle$geno.summary.stats$heterozygosity) })})})
   
-  genome.list <- lapply(X = experiment.sub.results, FUN = function(set) {
-    lapply(X = set, FUN = function(rep) {
-      return(rep$genome) })})
-  
-  # pheno.value.list <- lapply(X = experiment.sub.results, FUN = function(set) {
-  #   lapply(X = set, FUN = function(rep) {
-  #     lapply(X = rep$sim.result, FUN = function(cycle) {
-  #       return(cycle$selection.pheno.values) })})})
-  
+  # Genomic prediction results
   prediction.results.list<- lapply(X = experiment.sub.results, FUN = function(set) {
     lapply(X = set, FUN = function(rep) {
       lapply(X = rep$sim.result, FUN = function(cycle) {
         return(cycle$prediction.results) })})})
   
+  # Prediction accuracy results
   validation.results.list <- lapply(X = experiment.sub.results, FUN = function(set) {
     lapply(X = set, FUN = function(rep) {
       lapply(X = rep$sim.result, FUN = function(cycle) {
         return(cycle$prediction.accuracy) })})})
   
+  # Training population updating
+  tp.update.list <- lapply(X = experiment.sub.results, FUN = function(set) {
+    lapply(X = set, FUN = function(rep) {
+      lapply(X = rep$sim.result, FUN = function(cycle) {
+        return(cycle$tp.update) })})})
+  
+  # The genome
+  genome.list <- lapply(X = experiment.sub.results, FUN = function(set) {
+    lapply(X = set, FUN = function(rep) {
+      return(rep$genome) })})
+  
+  
   
   
   # Create a shorter output list
   abbreviate.output.list <- list(
+    candidate.variance.components.list = candidate.variance.components.list,
+    candidate.genotypic.value.list = candidate.genotypic.value.list,
+    selection.variance.components.list = selection.variance.components.list,
+    selection.genotypic.value.list = selection.genotypic.value.list,
     allele.freq.list = allele.freq.list,
     pairwise.div.list = pairwise.div.list,
+    pairwise.LD.list = pairwise.LD.list,
     heterozygosity.list = heterozygosity.list,
-    genome.list = genome.list,
     prediction.results.list = prediction.results.list,
     validation.results.list = validation.results.list,
-    # pheno.value.list = pheno.value.list,
-    candidate.variance.components.list = candidate.variance.components.list,
-    candidate.genotypic.value.list = candidate.genotypic.value.list
+    tp.update.list = tp.update.list,
+    genome.list = genome.list
   )
   
   # Build a list

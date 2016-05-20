@@ -575,15 +575,14 @@ genotypic.value <- function(genome, gametes) {
 # Define a function to generate value measures on the population of interest. The values can be the genotypic values (sum
 # of the a values at each locus) or the phenoypic values (genetic values + error)
 # This function will require the genome, the matrix, heritability, and distribution of phenotypes
-measure.values <- function(genome, 
-                           gametes, 
-                           h2,
-                           just.geno.values = F, # Should the function only output the genotypic values?
-                           V_e.scale = 8, # By how much should the environmental variance be larger than the genotypic variance?
-                           n.env = 3,
-                           n.rep = 2,
-                           model = NULL # Model type; if NULL, estimates of variance are not made. Choices are otherwise "anova" or "mixed"
-                           ) {
+evaluate.population <- function(genome, 
+                                gametes, 
+                                h2,
+                                just.geno.values = F, # Should the function only output the genotypic values?
+                                V_e.scale = 8, # By how much should the environmental variance be larger than the genotypic variance?
+                                n.env = 3,
+                                n.rep = 2
+) {
   
   # Deal with inpute
   if(!is.list(gametes)) {
@@ -627,131 +626,11 @@ measure.values <- function(genome,
   residual <- matrix(rnorm(n.geno * n.env * n.rep, 0, sqrt(V_residual)), n.geno, n.env * n.rep)
   
   # Calculate phenotypic values
-  y <- matrix(g, n.geno, (n.env * n.rep)) + matrix(e, n.geno, (n.rep * n.env), byrow = T) + residual
+  y <- matrix(g, n.geno, (n.env * n.rep)) + matrix(e, n.geno, (n.env * n.rep), byrow = T) + residual
   
-  # To estimate variance, we will use a generalized linear mixed model
-  # Genos and gxe will be fit as random effects, and environment will be fit as a fixed effect
-  # First develop factors
-  g_i = factor(rep(1:n.geno, n.env * n.rep))
-  e_j = factor(rep(1:n.env, each = n.geno, n.rep))
-  r_k = factor(rep(1:n.rep, each = n.geno * n.env))
-  
-  # If no model is called, don't estimate variances
-  if (is.null(model)) {
-    V_g.hat <- NA
-    V_residual.hat <- NA
-    h2.hat <- NA
-    V_p.hat <- NA
-  
-  } else {
-  
-    # If the model is anova, run an anova
-    if (model == "anova") {
-      
-      p <- as.vector(y)
-      
-      # Phenotypic variance
-      V_p.hat <- var(p)
-      
-      # With more than one rep and more than one environment
-      if (all(n.rep > 1, n.env > 1)) {
-        p.anova <- anova(aov(p ~ g_i + e_j + r_k %in% e_j + g_i:e_j))
-        
-        # Find the mean squares
-        MS_g <- p.anova['g_i',]$`Mean Sq`
-        MS_ge <- p.anova['g_i:e_j',]$'Mean Sq'
-        MS_error <- p.anova['Residuals',]$`Mean Sq`
-        
-        # Calculate variance
-        V_g.hat <- (MS_g - MS_ge) / (n.env * n.rep)
-        V_ge.hat <- (MS_ge - MS_error) / n.rep
-        V_residual.hat <- MS_error
-        
-        # Calculate heritability
-        h2.hat = V_g.hat / (V_g.hat + (V_ge.hat / n.env) + (V_residual.hat / (n.env * n.rep)))
-      
-      } else {
-        # With 1 rep
-        if (n.rep == 1) {
-          p.anova <- anova(aov(p ~ g_i + e_j))
-          
-          # Find the mean squares
-          MS_g <- p.anova['g_i',]$`Mean Sq`
-          MS_error <- p.anova['Residuals',]$`Mean Sq`
-          
-          # Calculate variances
-          V_g.hat = (MS_g - MS_error) / (n.env * n.rep)
-          V_ge.hat <- NA
-          V_residual.hat = MS_error
-          
-          # Calculate heritability
-          h2.hat = V_g.hat / (V_g.hat + (V_residual.hat / (n.env * n.rep)))
-        }
-        
-        # With 1 env
-        if (n.env == 1) {
-          p.anova <- anova(aov(p ~ g_i + r_k))
-          
-          # Find the mean squares
-          MS_g <- p.anova['g_i',]$`Mean Sq`
-          MS_error <- p.anova['Residuals',]$`Mean Sq`
-          
-          # Calculate variance
-          V_g.hat = (MS_g - MS_error) / (n.env * n.rep)
-          V_ge.hat <- NA
-          V_residual.hat = MS_error
-          
-          # Calculate heritability
-          h2.hat = V_g.hat / (V_g.hat + (V_residual.hat / (n.env * n.rep)))
-        }
-      }
-    }
-    
-    # Use the mixed model if called on
-    if (model == "mixed") {
-      
-      # Stack the data 
-      y.stack <- data.frame(value = stack(as.data.frame(y))[,1], env = e_j, geno = g_i, rep = r_k)
-      
-      if (all(n.rep > 1, n.env > 1)) {
-        stop("This option is not yet developed")
-        # Solve a generalized linear mixed model
-        glm.fit <- lmer(value ~ -1 + env + (1|geno) + (geno|env), data = y.stack)
-        
-        # Extract variance estimates
-        V_g.hat <- VarCorr(glm.fit)$geno[1]
-        V_e.hat <- var(fixef(glm.fit))
-        V_residual.hat <- attr(VarCorr(glm.fit), "sc") ^ 2
-        
-      } else {
-        # With 1 rep
-        if (n.rep == 1) {
-          # Solve a generalized linear mixed model
-          glm.fit <- lmer(value ~ -1 + (1|geno) + env, data = y.stack)
-          
-          # Extract variance estimates
-          V_g.hat <- VarCorr(glm.fit)$geno[1]
-          V_e.hat <- var(fixef(glm.fit))
-          V_residual.hat <- attr(VarCorr(glm.fit), "sc") ^ 2
-          
-          # Estimate heritability
-          h2.hat = V_g.hat / (V_g.hat + (V_residual.hat / n.env))
-        }
-        
-        if (n.env == 1) {
-          glm.fit <- lmer(value ~ -1 + (1|geno), data = y.stack)
-          
-          # Extract variance estimates
-          V_g.hat <- VarCorr(glm.fit)$geno[1]
-          V_e.hat <- NA
-          V_residual.hat <- attr(VarCorr(glm.fit), "sc") ^ 2
-          
-          # Estimate heritability
-          h2.hat <- V_g.hat / (V_g.hat + (V_residual.hat / n.rep))
-        }
-      }
-    }
-  } # Close the model null else statement
+  # Label the matrix
+  row.names(y) <- line.names
+  colnames(y) <- paste( paste("env", 1:n.env, sep = ""), rep(paste("rep", 1:n.rep, sep = ""), each = n.env), sep = "." )
   
   # Find the average across environments as the value to use
   mu_y <- as.matrix(rowMeans(y))
@@ -762,13 +641,12 @@ measure.values <- function(genome,
   mu.g <- mean(g) # Genotypic values
   
   # Output list
-  output.list <- list(geno.values = g,
+  output.list <- list(full.matrix = y,
+                      geno.values = g,
                       mean.pheno.values = mu_y,
                       mu.p = mu.p,
                       mu.g = mu.g,
-                      var.components = list(true = list(V_g = V_g, V_e = V_e, V_residual = V_residual),
-                                            estimated = list(V_p.hat = V_p.hat, V_g.hat = V_g.hat, V_residual.hat = V_residual.hat, h2.hat = h2.hat)) )
-                      
+                      var.components = list(V_g = V_g, V_e = V_e, V_residual = V_residual))
   
   return(output.list)
   
@@ -2274,7 +2152,129 @@ measure.LD <- function(genome, # Genome object
   
   
       
-    
+# # To estimate variance, we will use a generalized linear mixed model
+# # Genos and gxe will be fit as random effects, and environment will be fit as a fixed effect
+# # First develop factors
+# g_i = factor(rep(1:n.geno, n.env * n.rep))
+# e_j = factor(rep(1:n.env, each = n.geno, n.rep))
+# r_k = factor(rep(1:n.rep, each = n.geno * n.env))
+# 
+# # If no model is called, don't estimate variances
+# if (is.null(model)) {
+#   V_g.hat <- NA
+#   V_residual.hat <- NA
+#   h2.hat <- NA
+#   V_p.hat <- NA
+#   
+# } else {
+#   
+#   # If the model is anova, run an anova
+#   if (model == "anova") {
+#     
+#     p <- as.vector(y)
+#     
+#     # Phenotypic variance
+#     V_p.hat <- var(p)
+#     
+#     # With more than one rep and more than one environment
+#     if (all(n.rep > 1, n.env > 1)) {
+#       p.anova <- anova(aov(p ~ g_i + e_j + r_k %in% e_j + g_i:e_j))
+#       
+#       # Find the mean squares
+#       MS_g <- p.anova['g_i',]$`Mean Sq`
+#       MS_ge <- p.anova['g_i:e_j',]$'Mean Sq'
+#       MS_error <- p.anova['Residuals',]$`Mean Sq`
+#       
+#       # Calculate variance
+#       V_g.hat <- (MS_g - MS_ge) / (n.env * n.rep)
+#       V_ge.hat <- (MS_ge - MS_error) / n.rep
+#       V_residual.hat <- MS_error
+#       
+#       # Calculate heritability
+#       h2.hat = V_g.hat / (V_g.hat + (V_ge.hat / n.env) + (V_residual.hat / (n.env * n.rep)))
+#       
+#     } else {
+#       # With 1 rep
+#       if (n.rep == 1) {
+#         p.anova <- anova(aov(p ~ g_i + e_j))
+#         
+#         # Find the mean squares
+#         MS_g <- p.anova['g_i',]$`Mean Sq`
+#         MS_error <- p.anova['Residuals',]$`Mean Sq`
+#         
+#         # Calculate variances
+#         V_g.hat = (MS_g - MS_error) / (n.env * n.rep)
+#         V_ge.hat <- NA
+#         V_residual.hat = MS_error
+#         
+#         # Calculate heritability
+#         h2.hat = V_g.hat / (V_g.hat + (V_residual.hat / (n.env * n.rep)))
+#       }
+#       
+#       # With 1 env
+#       if (n.env == 1) {
+#         p.anova <- anova(aov(p ~ g_i + r_k))
+#         
+#         # Find the mean squares
+#         MS_g <- p.anova['g_i',]$`Mean Sq`
+#         MS_error <- p.anova['Residuals',]$`Mean Sq`
+#         
+#         # Calculate variance
+#         V_g.hat = (MS_g - MS_error) / (n.env * n.rep)
+#         V_ge.hat <- NA
+#         V_residual.hat = MS_error
+#         
+#         # Calculate heritability
+#         h2.hat = V_g.hat / (V_g.hat + (V_residual.hat / (n.env * n.rep)))
+#       }
+#     }
+#   }
+#   
+#   # Use the mixed model if called on
+#   if (model == "mixed") {
+#     
+#     # Stack the data 
+#     y.stack <- data.frame(value = stack(as.data.frame(y))[,1], env = e_j, geno = g_i, rep = r_k)
+#     
+#     if (all(n.rep > 1, n.env > 1)) {
+#       stop("This option is not yet developed")
+#       # Solve a generalized linear mixed model
+#       glm.fit <- lmer(value ~ -1 + env + (1|geno) + (geno|env), data = y.stack)
+#       
+#       # Extract variance estimates
+#       V_g.hat <- VarCorr(glm.fit)$geno[1]
+#       V_e.hat <- var(fixef(glm.fit))
+#       V_residual.hat <- attr(VarCorr(glm.fit), "sc") ^ 2
+#       
+#     } else {
+#       # With 1 rep
+#       if (n.rep == 1) {
+#         # Solve a generalized linear mixed model
+#         glm.fit <- lmer(value ~ -1 + (1|geno) + env, data = y.stack)
+#         
+#         # Extract variance estimates
+#         V_g.hat <- VarCorr(glm.fit)$geno[1]
+#         V_e.hat <- var(fixef(glm.fit))
+#         V_residual.hat <- attr(VarCorr(glm.fit), "sc") ^ 2
+#         
+#         # Estimate heritability
+#         h2.hat = V_g.hat / (V_g.hat + (V_residual.hat / n.env))
+#       }
+#       
+#       if (n.env == 1) {
+#         glm.fit <- lmer(value ~ -1 + (1|geno), data = y.stack)
+#         
+#         # Extract variance estimates
+#         V_g.hat <- VarCorr(glm.fit)$geno[1]
+#         V_e.hat <- NA
+#         V_residual.hat <- attr(VarCorr(glm.fit), "sc") ^ 2
+#         
+#         # Estimate heritability
+#         h2.hat <- V_g.hat / (V_g.hat + (V_residual.hat / n.rep))
+#       }
+#     }
+#   }
+# } # Close the model null else statement
   
   
   
