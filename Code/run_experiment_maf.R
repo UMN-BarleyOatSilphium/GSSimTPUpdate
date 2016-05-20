@@ -404,11 +404,9 @@ for (min.maf in gsub(pattern = "CAP.gametes.", apropos("CAP.gametes"), replaceme
     
   } # Close the tp.change for loop
   
-  maf.filt.results.list[[as.character(min.maf)]] <- experiment.sub.results
+  filename = paste("Files/", "simulation_results_q", n.QTL, "_sel", GEBV.sel.intensity, "_popmakeup-", pop.makeup, "_tpchange-", change, "_tpformation-", tp.formation, "_maf-", min.maf, "_", date, ".RData", sep = "")
+  save(list = c("experiment.sub.results", "change", "min.maf"), file = filename)
   
 } # Close the maf.filter loop
 
-# Save the tp.change data
-filename = paste("Files/", "simulation_results_q", n.QTL, "_sel", GEBV.sel.intensity, "_popmakeup-", pop.makeup, "_tpchange-", change, "_tpformation-", tp.formation, "_maf_experiment_", date, ".RData", sep = "")
-save(list = c("maf.filt.results.list", "change"), file = filename)
 
