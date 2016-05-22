@@ -2055,99 +2055,162 @@ augment.gamete.mat <- function(genome, # The object of class "hypredGenome"
 
 
 # Define a function to measure the LD between adjacent markers and QTL on the same
-## chromosome. The function will measure the LD of all markers against all QTL,
-## but not between markers and markers.
+## chromosome. The function will measure the LD between all polymorphic QTL and markers by finding
+## the correlation between that QTL and the markerrs
 measure.LD <- function(genome, # Genome object
-                       gametes, # 2n x m matrix of gamete genotype data or list of gamete data
-                       sliding.window.cM # Floating numeric of cM length along which to use the sliding window
+                       genos # n x m matrix of genotype data with QTL
                        ) {
   
-  # Conver cM to M
-  sliding.window.M <- sliding.window.cM / 100
+  # Pull out the position of the QTL
+  pos.qtl <- slot(genome, "pos.add.qtl")$ID; names(pos.qtl) <- colnames(genos)[pos.qtl]
+  # Figure the positions of the SNPs
+  pos.snps <- setdiff(1:ncol(genos), pos.qtl)
   
-  # Deal with input
-  if (!is.list(gametes)) {
-    gamete.mat <- as.matrix(gametes)
-  } else {
-    gamete.mat <- as.matrix(do.call("rbind", gametes))
-  }
+  # Pull out the effects of qtl
+  qtl.eff <- slot(genome, "add.and.dom.eff")$add
+  # Remove the qtl with effect size 0
+  pos.qtl <- pos.qtl[qtl.eff != 0]
   
-  # Pull out genome info
-  n.chr <- slot(genome, "num.chr")
+  # Determine the index of the polymorphic qtl
+  poly.qtl.index <- pos.qtl[apply(X = genos[,pos.qtl], MARGIN = 2, FUN = function(locus) length(unique(locus)) > 1)]
+  # Determine the index of the polymorphic markers (monomorphic markers will return a NA for the correlation)
+  poly.snp.index <- pos.snps[apply(X = genos[,pos.snps], MARGIN = 2, FUN = function(locus) length(unique(locus)) > 1)]
   
-  # Pull out QTL and marker locations
-  loci.pos.M <- slot(genome, "pos.snp")
-  names(loci.pos.M) <- colnames(gamete.mat)
-  
-  # Split loci positions into chromosomes
-  loci.pos.M.split <- split(x = loci.pos.M, cut(x = 1:length(loci.pos.M), breaks = n.chr))
-  
-  # Define functions to calculate LD
-  LD <- function(g1, g2) {
-    # Calculate frequency of 1 allele in the snp and qtl
-    p.A <- sum(g1 == 1) / length(g1)
-    p.a = 1 - p.A
-    p.B <- sum(g2 == 1) / length(g2)
-    p.b = 1 - p.B
-    p.AB <- sum(apply(X = cbind(g1, g2), MARGIN = 1, FUN = function(allele.pair) all(allele.pair == c(1,1)) )) / length(g1)
-  
-    # Calculate LD
-    # D
-    D = p.AB - (p.A * p.B)
+  # Apply the function over the genotype matrix of just the polymorphic qtl
+  poly.qtl.marker.LD <- sapply(X = poly.qtl.index, FUN = function(qtl.id) {
     
-    # D'
-    if (D == 0) {
-      # If D is 0, so is D.prime
-      D.prime = 0
-    } else {
-      if (D > 0) {
-        D.max = min( (p.A * p.b), (p.a * p.B) )
-      } else {
-        D.max = max( -(p.A * p.B), -(p.a * p.b) )
-      }
-      # Calculate D prime
-      D.prime = D / D.max
-    }
+    # Subset the geno matrix
+    qtl <- genos[,qtl.id]
     
-    # r
-    r = -D / sqrt( (p.A * p.a * p.B * p.b) )
+    # Measure LD as the correlation between the qtl genotypes and the marker genotypes
+    apply(X = genos[,poly.snp.index], MARGIN = 2, FUN = function(snp)
+      # Correlate
+      cor(qtl, snp) ) })
     
-    # Return a vector
-    out.vec <- c(D, D.prime, r); names(out.vec) <- c("D", "D.prime", "r")
-    return(out.vec)
-  }
+    # # Find the max
+    # qtl.marker.LD[which.max(qtl.marker.LD)] })
   
-  # Define a function to split a vector of genetic positions by a certain window
-  split.pos <- function(pos.vector, window) {
-    # Assign groups
-    f <- as.factor(sapply(X = pos.vector, FUN = function(i) findInterval(x = c(i, i + window), vec = pos.vector))[2,])
-    # Split
-    return(split(x = pos.vector, f = f))
-  }
-    
-  # Apply a function over the split loci list
-  pairwise.LD <- lapply(X = loci.pos.M.split, FUN = function(chr) {
-    # Find the loci that are separated in distance by no more than the sliding window length
-    loci.split <- split.pos(pos.vector = chr, window = sliding.window.M)
-    # Remove groups of less than 2
-    loci.split <- loci.split[sapply(X = loci.split, FUN = length) > 1]
-    # Apply LD function over the groups
-    do.call("cbind", sapply(X = loci.split, FUN = function(group) {
-      # Generate combinations
-      combn.mat <- data.frame(t(combn(x = names(group), 2)))
-      # Apply over combinations
-      combn.LD <- apply(X = combn.mat, MARGIN = 1, FUN = function(pair) {
-        LD(g1 = gamete.mat[,pair[1]], g2 = gamete.mat[,pair[2]]) })
-      # Add columns
-      colnames(combn.LD) <- apply(X = combn.mat, MARGIN = 1, FUN = paste, collapse = ".")
-      return(combn.LD)
-    })) })
+  # Return the results
+  return(t(poly.qtl.marker.LD))
   
-  names(pairwise.LD) <- 1:n.chr
+  # # Conver cM to M
+  # sliding.window.M <- sliding.window.cM / 100
+  # 
+  # # Deal with input
+  # if (!is.list(gametes)) {
+  #   gamete.mat <- as.matrix(gametes)
+  # } else {
+  #   gamete.mat <- as.matrix(do.call("rbind", gametes))
+  # }
   
-  # Return list
-  return(list(pairwise.LD = pairwise.LD, sliding.window.cM = sliding.window.cM))
+  # # Pull out genome info
+  # n.chr <- slot(genome, "num.chr")
+  # 
+  # # Pull out QTL and marker locations
+  # loci.pos.M <- slot(genome, "pos.snp")
+  # names(loci.pos.M) <- colnames(genos)
   
+  # # Split loci positions into chromosomes
+  # loci.pos.M.split <- split(x = loci.pos.M, cut(x = 1:length(loci.pos.M), breaks = n.chr))
+  # 
+  # # Define functions to calculate LD
+  # LD <- function(g1, g2) {
+  #   # Calculate frequency of 1 allele in the snp and qtl
+  #   p.A <- sum(g1 == 1) / length(g1)
+  #   p.a = 1 - p.A
+  #   p.B <- sum(g2 == 1) / length(g2)
+  #   p.b = 1 - p.B
+  #   p.AB <- sum(apply(X = cbind(g1, g2), MARGIN = 1, FUN = function(allele.pair) all(allele.pair == c(1,1)) )) / length(g1)
+  # 
+  #   # Calculate LD
+  #   # D
+  #   D = p.AB - (p.A * p.B)
+  #   
+  #   # D'
+  #   if (D == 0) {
+  #     # If D is 0, so is D.prime
+  #     D.prime = 0
+  #   } else {
+  #     if (D > 0) {
+  #       D.max = min( (p.A * p.b), (p.a * p.B) )
+  #     } else {
+  #       D.max = max( -(p.A * p.B), -(p.a * p.b) )
+  #     }
+  #     # Calculate D prime
+  #     D.prime = D / D.max
+  #   }
+  #   
+  #   # r
+  #   r = -D / sqrt( (p.A * p.a * p.B * p.b) )
+  #   
+  #   # Return a vector
+  #   out.vec <- c(D, D.prime, r); names(out.vec) <- c("D", "D.prime", "r")
+  #   return(out.vec)
+  # }
+  
+  # # Define a function to split a vector of genetic positions by a certain window
+  # split.pos <- function(pos.vector, window) {
+  #   # Assign groups
+  #   f <- as.factor(sapply(X = pos.vector, FUN = function(i) findInterval(x = c(i, i + window), vec = pos.vector))[2,])
+  #   # Split
+  #   return(split(x = pos.vector, f = f))
+  # }
+  #   
+  # # Apply a function over the split loci list
+  # pairwise.LD <- lapply(X = loci.pos.M.split, FUN = function(chr) {
+  #   # Find the loci that are separated in distance by no more than the sliding window length
+  #   loci.split <- split.pos(pos.vector = chr, window = sliding.window.M)
+  #   # Remove groups of less than 2
+  #   loci.split <- loci.split[sapply(X = loci.split, FUN = length) > 1]
+  #   # Apply LD function over the groups
+  #   do.call("cbind", sapply(X = loci.split, FUN = function(group) {
+  #     # Generate combinations
+  #     combn.mat <- data.frame(t(combn(x = names(group), 2)))
+  #     # Apply over combinations
+  #     combn.LD <- apply(X = combn.mat, MARGIN = 1, FUN = function(pair) {
+  #       LD(g1 = gamete.mat[,pair[1]], g2 = gamete.mat[,pair[2]]) })
+  #     # Add columns
+  #     colnames(combn.LD) <- apply(X = combn.mat, MARGIN = 1, FUN = paste, collapse = ".")
+  #     return(combn.LD)
+  #   })) })
+  # 
+  # names(pairwise.LD) <- 1:n.chr
+  # 
+  # # Return list
+  # return(list(pairwise.LD = pairwise.LD, sliding.window.cM = sliding.window.cM))
+  
+  
+} # Close the function
+
+
+# Define a function to determine the mean relationship between TP individuals
+## and selection candidates
+measure.relationship <- function(TP.genos, # An n x m matrix of marker genotypes for the TP
+                                 candidates.genos # A n x m matrix of marker genotypes for the selection candidates
+                                 ) {
+  
+  # Pull out the names from each matrix
+  TP.line.names <- row.names(TP.genos)
+  candidate.line.names <- row.names(candidates.genos)
+  
+  # Combine the matricies
+  all.genos <- rbind(TP.genos, candidates.genos)
+  
+  # Find the additive relationship matrix
+  G <- A.mat(all.genos, min.MAF = 0, max.missing = 1)
+  
+  # Subset the G matrix for TP (rows) and candidates (columns)
+  G.sub <- G[TP.line.names, candidate.line.names]
+  
+  # Calculate the mean relationship of the whole TP to every candidate
+  mu.rel.candidate <- colMeans(G.sub)
+  # Find the mean of the mean relationship. This is essentially the mean relationship
+  ## of the whole TP to all selection candidates
+  mu.rel <- mean(mu.rel.candidate)
+  
+  # Return the mean
+  return(mu.rel)
+
 } # Close the function
   
   
@@ -2275,6 +2338,9 @@ measure.LD <- function(genome, # Genome object
 #     }
 #   }
 # } # Close the model null else statement
+
+
+
   
   
   

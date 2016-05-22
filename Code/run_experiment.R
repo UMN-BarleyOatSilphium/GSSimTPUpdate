@@ -56,8 +56,8 @@ h2 = 0.5
 n.cycles = 15
 # Number of QTL underlying trait
 n.QTL = 100
-# Selection intensity
-GEBV.sel.intensity = 0.1
+# Selection intensity for the parents of the next generation
+parents.sel.intensity = 100
 # Number of phenotyping environments and reps
 n.env = 5
 n.rep = 1
@@ -199,15 +199,20 @@ for (change in tp.change) {
       
         # Measure summary statistics
         candidate.i.genos.allele.freq <- calculate.allele.freq(geno.mat = candidate.i.genos)
-        candidate.i.genos.pairwise.div <- SNP.pairwise.div(geno.mat = candidate.i.genos)
+        # candidate.i.genos.pairwise.div <- SNP.pairwise.div(geno.mat = candidate.i.genos)
         # Measure heterozygosity of the entries
         candidate.i.genos.het <- apply(X = candidate.i.genos, MARGIN = 1, FUN = function(geno) sum(geno == 0) / length(geno))
         # Measure LD
-        candidate.i.genos.LD <- measure.LD(genome = hv.genome, gametes = candidate.gametes.i, sliding.window.cM = 0.1)
+        candidate.i.qtl.marker.LD <- measure.LD(genome = hv.genome, genos = candidate.i.genos)
         
-        # Remove monomorphic markers before making predictions
-        # Determine monomorphic markers
-        poly.snps <- apply(X = candidate.i.marker.genos, MARGIN = 2, FUN = function(snp) length(unique(snp)) > 1)
+        # Only use polymorphic markers for predictions
+        # Determine polymorphic markers in the candidates
+        poly.snps.candidates <- apply(X = candidate.i.marker.genos, MARGIN = 2, FUN = function(snp) length(unique(snp)) > 1)
+        # Determine polymorphic markers in the training population
+        poly.snps.TP <- apply(X = TP.genos.i, MARGIN = 2, FUN = function(snp) length(unique(snp)) > 1)
+        # Determine the common polymorphic markers
+        poly.snps <- intersect(which(poly.snps.candidates), which(poly.snps.TP))
+        
         # Filter the TP and candidate marker matrices for those markers
         TP.genos.use <- TP.genos.i[,poly.snps]
         candidate.genos.use <- candidate.i.marker.genos[,poly.snps]
@@ -235,12 +240,15 @@ for (change in tp.change) {
                                                   observed.values = candidate.i.values$geno.values,
                                                   boot.reps = NULL)
         
+        # Find the mean addititve relationship of the TP to the selection candidates
+        mu.A.relationship <- measure.relationship(TP.genos = TP.genos.use, candidates.genos = candidate.genos.use)
+        
         ##### Step 4 - Select the Next Parents #####
         
         # Make selections on the GEBVs
         # Select the top 100 based on GEBVs for parents of the next cycle
         parent.selections.i <- select.population(pheno.mat = candidate.i.GEBV, 
-                                                 sel.intensity = 100, 
+                                                 sel.intensity = parents.sel.intensity, 
                                                  selection = "best")
         
         parent.lines <- parent.selections.i$lines.sel
@@ -368,7 +376,8 @@ for (change in tp.change) {
         simulation.results[[cycle.name]] <- list(geno.summary.stats = list(pairwise.div = candidate.i.genos.pairwise.div,
                                                                            allele.freq = candidate.i.genos.allele.freq,
                                                                            heterozygosity = candidate.i.genos.het,
-                                                                           pairwise.LD = candidate.i.genos.LD),
+                                                                           qtl.marker.LD = candidate.i.qtl.marker.LD,
+                                                                           mu.TP.candidate.rel = mu.A.relationship),
                                                  prediction.results = list(marker.effects = candidate.i.prediction$solve.out$u,
                                                                            parameters = candidate.i.prediction$parameters),
                                                  candidate.values = candidate.i.values,

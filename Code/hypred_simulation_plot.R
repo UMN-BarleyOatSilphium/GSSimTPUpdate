@@ -4,22 +4,19 @@
 library(plyr)
 
 # Set working directory
-setwd("C:/Users/Jeff/Google Drive/Barley Lab/Projects/Side Projects/Simulations/Barley_GS_Simulations/Results/")
-
+# Base experiment
+setwd("C:/Users/Jeff/Google Drive/Barley Lab/Projects/Side Projects/Simulations/BarleySimGS-TPUpdate/Results/Base Experiment/")
 
 # Load data
-# filename <- "simulation_results_q100_sel0.1_popmakeup-MN_tpformation-window_collective_300416.RData"
-# filename <- "simulation_results_q100_sel0.1_popmakeup-ND_tpformation-window_collective_300416.RData"
-# filename <- "simulation_results_q100_sel0.1_popmakeup-MNxND_tpformation-window_collective_part3.RData"
-# filename <- "simulation_results_q100_sel0.1_popmakeup-MN_tpformation-cumulative_collective_part3.RData"
-# filename <- "simulation_results_q100_sel0.1_popmakeup-ND_tpformation-cumulative_collective_part3.RData"
-# filename <- "simulation_results_q100_sel0.1_popmakeup-MNxND_tpformation-cumulative_collective_part3.RData"
-
-# Allele freq experiment
-setwd("C:/Users/Jeff/Google Drive/Barley Lab/Projects/Side Projects/Simulations/Barley_GS_Simulations/Results/Allele Freq Experiment/")
-
 all.files <- list.files()
 filename <- all.files[1]
+
+# # Allele freq experiment
+# setwd("C:/Users/Jeff/Google Drive/Barley Lab/Projects/Side Projects/Simulations/BarleySimGS-TPUpdate/Results/Allele Freq Experiment/")
+# 
+# # Load data
+# all.files <- list.files()
+# filename <- all.files[1]
 
 load(filename)
 
@@ -161,18 +158,90 @@ for (i in 1:length(gen.mu.list)) {
 
 
 
+##### Calculate response to selection
+# The predicted response to selection will be calculated as R = k_p * sqrt(V_a) * r_MG where:
+## R is response to selection 
+## k_p is the standardized selection coefficient (for 100 / 1200, k_p = 1.839)
+## sqrt(V_a) is the additive genetic standard deviation (V_g = V_a in our simulation)
+## r_MG is the correlation between predicted and observed genotypic values
+# The observed reseponse to selection will be calculated as R = mu_Ck+1 - mu_Ck where
+## S is the selection differential, calculated as mu_Ck.selected - mu_Ck where
+### mu_Ck+1 is the mean of all candidates at cycle k + 1
+### mu_Ck is the mean of all candidates at cycle k
+
+k_p = 1.839 # Set k_p
+
+resp.selection.list <- lapply(X = collective.abbreviated.results, function(tpc) {
+  # Make a k x r data.frame for each parameter where k is the number of cycle and r is the number of iterations
+  # Predicted response
+  V_g.df <- do.call("cbind", lapply(X = tpc$candidate.variance.components.list, FUN = function(set) 
+    sapply(set, function(rep) 
+      sapply(rep, function(cycle) cycle$true$V_g ))))
+  
+  r_MG.df <- do.call("cbind", lapply(X = tpc$validation.results.list, FUN = function(set) 
+    sapply(set, function(rep) 
+      sapply(rep, function(cycle) cycle$pred.r ))))
+  
+  # Calculate predicted response
+  R_exp.df = k_p * sqrt(V_g.df) * r_MG.df
+  # Trim the last row and rename rows
+  R_exp.df.i <- R_exp.df[-nrow(R_exp.df),]; row.names(R_exp.df.i) <- row.names(R_exp.df)[-1]
+  
+  # Observed response
+  mu.df <- do.call("cbind", lapply(X = tpc$candidate.genotypic.value.list, FUN = function(set) 
+    sapply(set, function(rep) 
+      sapply(rep, function(cycle) cycle ))))
+  
+  # Calculate the difference between adjacent rows (cycles)
+  R_obs.df = diff(mu.df)
+  
+  return(list(R_exp = R_exp.df.i, R_obs = R_obs.df)) })
+
+
+# Empty plot
+plot(0, 
+     type = "n",
+     xlim = c(0, 16),
+     xlab = "Cycle Number",
+     ylim = c(0, 4),
+     ylab = "Observed Response to Selection",
+     main = paste("Observed Response to Selection Across Cycles", paste("Population:", pop.makeup, ", TP formation:", tp.formation), sep = "\n")
+)
+
+## Plot observed response
+# Plotting shape factors
+plot.shapes.factor <- factor(names(resp.selection.list))
+
+# Add legend
+legend("topright", legend = names(resp.selection.list), pch = as.numeric(factor(names(resp.selection.list))))
+
+for (i in 1:length(resp.selection.list)) {
+  
+  # Find the mean and CI of the mean
+  R_obs.mu <- apply(X = resp.selection.list[[i]]$R_obs, MARGIN = 1, FUN = mean, na.rm = T)
+  # Determine 95% confidence interval based on t distribution
+  R_obs.mu.CI <- apply(X = resp.selection.list[[i]]$R_obs, MARGIN = 1, FUN = function(cycle) {
+    t.per <- qt(p = (1 - (0.05 / 2)), df = length(cycle) - 1)
+    t.per * ( sd(cycle) / sqrt(length(cycle)) )
+  })
+  
+  # Add points to the plot
+  x.jitter <- - (0.1 * scale(1:length(resp.selection.list), scale = F)[i])
+  points(x = 2:n.cycles + x.jitter, R_obs.mu, pch = as.numeric(plot.shapes.factor[i]))
+  
+  # Add standard deviation bars
+  segments(x0 = 2:n.cycles + x.jitter, y0 = (R_obs.mu - R_obs.mu.CI), x1 = 2:n.cycles + x.jitter, y1 = (R_obs.mu + R_obs.mu.CI))
+  
+}
+
+
+
 
 # Change in the prediction accuracy over cycles
 val.pred.list <- lapply(X = collective.abbreviated.results, function(tpc)
-  list(pred_r = 
-        do.call("cbind", lapply(X = tpc$validation.results.list, FUN = function(set) 
-          sapply(set, function(rep) 
-            sapply(rep, function(cycle) return(mean(cycle$pred.r) ))))),
-       pred_r_sd = 
-         do.call("cbind", lapply(X = tpc$validation.results.list, FUN = function(set) 
-           sapply(set, function(rep) 
-             sapply(rep, function(cycle) return(mean(cycle$pred.r.sd) )))))
-  ))
+  do.call("cbind", lapply(X = tpc$validation.results.list, FUN = function(set) 
+    sapply(set, function(rep) 
+      sapply(rep, function(cycle) return(mean(cycle$pred.r) ))))) )
 
 # Empty plot
 plot(0, 
@@ -194,9 +263,9 @@ legend("topright", legend = names(val.pred.list), pch = as.numeric(factor(names(
 for (i in 1:length(val.pred.list)) {
   
   # Find the mean and CI of the mean
-  pred_r.mu <- apply(X = val.pred.list[[i]]$pred_r, MARGIN = 1, FUN = mean, na.rm = T)
+  pred_r.mu <- apply(X = val.pred.list[[i]], MARGIN = 1, FUN = mean, na.rm = T)
   # Determine 95% confidence interval based on t distribution
-  pred_r.mu.CI <- apply(X = val.pred.list[[i]]$pred_r, MARGIN = 1, FUN = function(cycle) {
+  pred_r.mu.CI <- apply(X = val.pred.list[[i]], MARGIN = 1, FUN = function(cycle) {
     t.per <- qt(p = (1 - (0.05 / 2)), df = length(cycle) - 1)
     t.per * ( sd(cycle) / sqrt(length(cycle)) )
   })
@@ -296,8 +365,14 @@ for (i in 1:length(tp.size.list)) {
   
 }
 
+# Plot marker effects over cycles
+marker.effect.list <- lapply(collective.abbreviated.results, function(tpc)
+  
+
+
 
 # Plot site frequency spectra over the reps for each cycle
+library(plyr)
 # First parse the results to get the marker count at the designated maf breaks
 sfs.count.list <- lapply(collective.abbreviated.results, function(tpc)
   unlist(lapply(tpc$allele.freq.list, function(set)
@@ -349,31 +424,6 @@ for (i in 1:length(sfs.count.list)) {
 } # Close the treatment loop
   
 
-  
-  
-
-# Plotting shape factors
-plot.shapes.factor <- factor(names(tp.size.list))
-
-# Add legend
-legend("topright", legend = names(tp.size.list), pch = as.numeric(factor(names(tp.size.list))))
-
-for (i in 1:length(tp.size.list)) {
-  
-  # Find the mean and sd
-  n.tp.mu <- apply(X = tp.size.list[[i]], MARGIN = 1, FUN = mean, na.rm = T)
-  n.tp.mu.CI <- apply(X = tp.size.list[[i]], MARGIN = 1, FUN = function(cycle) {
-    t.per <- qt(p = (1 - (0.05 / 2)), df = length(cycle) - 1)
-    t.per * ( sd(cycle) / sqrt(length(cycle)) )
-  })
-  
-  # Add points to the plot
-  points(x = 1:n.cycles, n.tp.mu, pch = as.numeric(plot.shapes.factor[i]))
-  
-  # Add standard deviation bars
-  segments(x0 = 1:n.cycles, y0 = (n.tp.mu - n.tp.mu.CI), x1 = 1:n.cycles, y1 = (n.tp.mu + n.tp.mu.CI))
-  
-}
 
 
 # 
