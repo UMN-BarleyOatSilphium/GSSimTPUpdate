@@ -7,7 +7,7 @@
 # This update will test whether including the parents is sufficient for updating the TP and maintaining predictive ability
 
 # Are we using MSI?
-MSI = T
+MSI = F
 
 # Arguments
 args <- commandArgs(trailingOnly = T)
@@ -373,8 +373,7 @@ for (change in tp.change) {
         cycle.name <- paste("cycle", breeding.cycle, sep = "")
         
         # Gather data for analysis
-        simulation.results[[cycle.name]] <- list(geno.summary.stats = list(pairwise.div = candidate.i.genos.pairwise.div,
-                                                                           allele.freq = candidate.i.genos.allele.freq,
+        simulation.results[[cycle.name]] <- list(geno.summary.stats = list(allele.freq = candidate.i.genos.allele.freq,
                                                                            heterozygosity = candidate.i.genos.het,
                                                                            qtl.marker.LD = candidate.i.qtl.marker.LD,
                                                                            mu.TP.candidate.rel = mu.A.relationship),
