@@ -400,7 +400,7 @@ for (change in tp.change) {
   }, mc.cores = n.cores)
   
   # Save the tp.change data
-  filename = paste("Files/", "simulation_results_q", n.QTL, "_sel", GEBV.sel.intensity, "_popmakeup-", pop.makeup, "_tpchange-", change, "_tpformation-", tp.formation, "_", date, ".RData", sep = "")
+  filename = paste("Files/", "simulation_results_q", n.QTL, "_sel", parents.sel.intensity, "_popmakeup-", pop.makeup, "_tpchange-", change, "_tpformation-", tp.formation, "_", date, ".RData", sep = "")
   save(list = c("experiment.sub.results", "change"), file = filename)
   
   
