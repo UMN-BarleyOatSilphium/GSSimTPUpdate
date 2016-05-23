@@ -56,10 +56,16 @@ for (f in args[-1]) {
         return(cycle$geno.summary.stats$pairwise.div) })})})
   
   # Pairwise LD
-  pairwise.LD.list <- lapply(X = experiment.sub.results, FUN = function(set) {
+  qtl.marker.LD <- lapply(X = experiment.sub.results, FUN = function(set) {
     lapply(X = set, FUN = function(rep) {
       lapply(X = rep$sim.result, FUN = function(cycle) {
-        return(cycle$geno.summary.stats$pairwise.LD) })})})
+        return(cycle$geno.summary.stats$qtl.marker.LD) })})})
+  
+  # Relationship of TP to the candidates
+  relationship.list <- lapply(X = experiment.sub.results, FUN = function(set) {
+    lapply(X = set, FUN = function(rep) {
+      lapply(X = rep$sim.result, FUN = function(cycle) {
+        return(cycle$geno.summary.stats$mu.TP.candidate.rel) })})})
   
   # Heterzygosity 
   heterozygosity.list <- lapply(X = experiment.sub.results, FUN = function(set) {
