@@ -56,7 +56,7 @@ for (f in args[-1]) {
         return(cycle$geno.summary.stats$pairwise.div) })})})
   
   # Pairwise LD
-  qtl.marker.LD <- lapply(X = experiment.sub.results, FUN = function(set) {
+  qtl.marker.LD.list <- lapply(X = experiment.sub.results, FUN = function(set) {
     lapply(X = set, FUN = function(rep) {
       lapply(X = rep$sim.result, FUN = function(cycle) {
         return(cycle$geno.summary.stats$qtl.marker.LD) })})})
@@ -107,7 +107,8 @@ for (f in args[-1]) {
     selection.genotypic.value.list = selection.genotypic.value.list,
     allele.freq.list = allele.freq.list,
     pairwise.div.list = pairwise.div.list,
-    pairwise.LD.list = pairwise.LD.list,
+    qtl.marker.LD.list = qtl.marker.LD.list,
+    relationship.list = relationship.list,
     heterozygosity.list = heterozygosity.list,
     prediction.results.list = prediction.results.list,
     validation.results.list = validation.results.list,

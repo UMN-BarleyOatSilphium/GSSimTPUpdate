@@ -1,12 +1,5 @@
 #!/bin/bash
 
-#PBS -l walltime=24:00:00,mem=22gb,nodes=1:ppn=1
-#PBS -N hypred_simulations_parse_data
-#PBS -M neyha001@umn.edu
-#PBS -m abe
-#PBS -r n
-
-
 ## Code to run a parsing function on the simulation results
 # This code should output 6 "RData" files, 1 for each population:TP formation
 ## combination. There are 3 populations (MN, ND, MNxND) and 2 TP formations
@@ -22,6 +15,9 @@ cd /panfs/roc/groups/6/smithkp/neyhartj/Genomic_Selection/Simulations/BarleySimG
 exp=Base_experiment
 # Set the directory containing the files to parse
 parsedir=Files/$exp
+
+# Set window or cumulative to control flow
+justwindow=true
 
 # Control flow based on experiment
 if [ "$exp" = "Base_experiment" ]; then
@@ -45,8 +41,9 @@ if [ "$exp" = "Base_experiment" ]; then
   files=$(find $parsedir -maxdepth 1 -name "simulation_results*_popmakeup-MNxND_*tpformation-window*")
   
   Rscript Code/hypred_simulation_parse.R $(echo $filename $files)
-  
-  exit
+
+  # Exit if just the window sub-experiment is completed
+  if [ $justwindow ]; then exit; fi
   
   # MN and cumulative
   filename="simulation_results_q100_sel0.1_popmakeup-MN_tpformation-cumulative_collective_300416.RData"
