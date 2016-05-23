@@ -9,7 +9,7 @@ setwd("C:/Users/Jeff/Google Drive/Barley Lab/Projects/Side Projects/Simulations/
 
 # Load data
 all.files <- list.files()
-filename <- all.files[1]
+filename <- all.files[2]
 
 # # Allele freq experiment
 # setwd("C:/Users/Jeff/Google Drive/Barley Lab/Projects/Side Projects/Simulations/BarleySimGS-TPUpdate/Results/Allele Freq Experiment/")
@@ -30,7 +30,7 @@ n.reps = sum(unlist(lapply(X = collective.abbreviated.results[[1]][[1]], FUN = l
 V_g.list <- lapply(X = collective.abbreviated.results, function(tpc)
   do.call("cbind", lapply(X = tpc$candidate.variance.components.list, FUN = function(set) 
     sapply(set, function(rep) 
-      sapply(rep, function(cycle) return(cycle$true$V_g) )))))
+      sapply(rep, function(cycle) return(cycle$V_g) )))))
 
 # Empty plot
 plot(0, 
@@ -47,7 +47,7 @@ plot(0,
 plot.shapes.factor <- factor(names(V_g.list))
 
 # Add legend
-legend("topright", legend = names(V_g.list), pch = as.numeric(factor(names(V_g.list))))
+legend("topright", legend = names(V_g.list), pch = as.numeric(factor(names(V_g.list))), col = as.numeric(factor(names(V_g.list))))
 
 for (i in 1:length(V_g.list)) {
   
@@ -61,7 +61,7 @@ for (i in 1:length(V_g.list)) {
   
   # Add points to the plot
   x.jitter <- - (0.1 * scale(1:length(V_g.list), scale = F)[i])
-  points(x = (1:n.cycles + x.jitter), V_g.mu, pch = as.numeric(plot.shapes.factor[i]), type = "p")
+  points(x = (1:n.cycles + x.jitter), V_g.mu, pch = as.numeric(plot.shapes.factor[i]), type = "b", col = as.numeric(plot.shapes.factor[i]))
   # points(x = 1:n.cycles, scale = F)[i])), V_g.mu, pch = as.numeric(plot.shapes.factor[i]))
 
 
@@ -136,7 +136,7 @@ plot(0,
 plot.shapes.factor <- factor(names(gen.mu.list))
 
 # Add legend
-legend("bottomright", legend = names(gen.mu.list), pch = as.numeric(factor(names(gen.mu.list))))
+legend("bottomright", legend = names(gen.mu.list), pch = as.numeric(factor(names(gen.mu.list))), col = as.numeric(factor(names(gen.mu.list))))
 
 for (i in 1:length(gen.mu.list)) {
   
@@ -149,7 +149,7 @@ for (i in 1:length(gen.mu.list)) {
   
   # Add points to the plot
   x.jitter <- - (0.1 * scale(1:length(V_g.list), scale = F)[i])
-  points(x = 1:n.cycles + x.jitter, gen.mu, pch = as.numeric(plot.shapes.factor[i]))
+  points(x = 1:n.cycles + x.jitter, gen.mu, type = "b", pch = as.numeric(plot.shapes.factor[i]), col = as.numeric(plot.shapes.factor[i]))
   
   # Add standard deviation bars
   segments(x0 = 1:n.cycles + x.jitter, y0 = (gen.mu - gen.mu.CI), x1 = 1:n.cycles + x.jitter, y1 = (gen.mu + gen.mu.CI))
@@ -176,7 +176,7 @@ resp.selection.list <- lapply(X = collective.abbreviated.results, function(tpc) 
   # Predicted response
   V_g.df <- do.call("cbind", lapply(X = tpc$candidate.variance.components.list, FUN = function(set) 
     sapply(set, function(rep) 
-      sapply(rep, function(cycle) cycle$true$V_g ))))
+      sapply(rep, function(cycle) cycle$V_g ))))
   
   r_MG.df <- do.call("cbind", lapply(X = tpc$validation.results.list, FUN = function(set) 
     sapply(set, function(rep) 
@@ -250,15 +250,15 @@ plot(0,
      xlab = "Cycle Number",
      # ylim = range(pretty(range(V_g.list)))
      ylim = c(-0.1, 1),
-     ylab = "Mean Prediction Accuracy of True Genotypic Value (r)",
-     main = paste("Mean Prediction Accuracy of True Genotypic Value Across Cycles", paste("Population:", pop.makeup, ", TP formation:", tp.formation), sep = "\n")
+     ylab = "Prediction Accuracy of True Genotypic Value (r)",
+     main = paste("Prediction Accuracy of True Genotypic Value Across Cycles", paste("Population:", pop.makeup, ", TP formation:", tp.formation), sep = "\n")
 )
 
 # Plotting shape factors
 plot.shapes.factor <- factor(names(val.pred.list))
 
 # Add legend
-legend("topright", legend = names(val.pred.list), pch = as.numeric(factor(names(val.pred.list))))
+legend("topright", legend = names(val.pred.list), pch = as.numeric(factor(names(val.pred.list))), col = as.numeric(factor(names(val.pred.list))))
 
 for (i in 1:length(val.pred.list)) {
   
@@ -272,12 +272,15 @@ for (i in 1:length(val.pred.list)) {
   
   # Add points to the plot
   x.jitter <- - (0.1 * scale(1:length(V_g.list), scale = F)[i])
-  points(x = 1:n.cycles + x.jitter, pred_r.mu, pch = as.numeric(plot.shapes.factor[i]))
+  points(x = 1:n.cycles + x.jitter, pred_r.mu, type = "b", pch = as.numeric(plot.shapes.factor[i]), col = as.numeric(plot.shapes.factor[i]))
   
   # Add standard deviation bars
   segments(x0 = 1:n.cycles + x.jitter, y0 = (pred_r.mu - pred_r.mu.CI), x1 = 1:n.cycles + x.jitter, y1 = (pred_r.mu + pred_r.mu.CI))
   
 }
+
+
+
 
 
 ## Find the number of polymorphic markers used in each cycle
@@ -365,9 +368,6 @@ for (i in 1:length(tp.size.list)) {
   
 }
 
-# Plot marker effects over cycles
-marker.effect.list <- lapply(collective.abbreviated.results, function(tpc)
-  
 
 
 
@@ -422,6 +422,98 @@ for (i in 1:length(sfs.count.list)) {
   } # Close per-cycle loop
   
 } # Close the treatment loop
+
+
+
+
+# Change in QTL-marker LD over cycles
+# Each QTL's max LD
+qtl.marker.LD.list <- lapply(X = collective.abbreviated.results, function(tpc)
+  do.call("cbind", lapply(X = tpc$qtl.marker.LD.list, FUN = function(set) 
+    sapply(set, function(rep) 
+      sapply(rep, function(cycle) mean(apply(X = cycle, MARGIN = 1, FUN = max)) )))) )
+
+# Empty plot
+plot(0, 
+     type = "n",
+     xlim = c(0, n.cycles),
+     xlab = "Cycle Number",
+     # ylim = range(pretty(range(V_g.list)))
+     ylim = c(0.5, 0.8),
+     ylab = "LD of Each QTL with the Marker in Max LD (r)",
+     main = paste("LD of Each QTL with the Marker in Max LD", paste("Population:", pop.makeup, ", TP formation:", tp.formation), sep = "\n")
+)
+
+# Plotting shape factors
+plot.shapes.factor <- factor(names(qtl.marker.LD.list))
+
+# Add legend
+legend("topright", legend = names(qtl.marker.LD.list), pch = as.numeric(plot.shapes.factor), col = as.numeric(plot.shapes.factor))
+
+for (i in 1:length(val.pred.list)) {
+  
+  # Find the mean and CI of the mean
+  mu <- apply(X = qtl.marker.LD.list[[i]], MARGIN = 1, FUN = mean, na.rm = T)
+  # Determine 95% confidence interval based on t distribution
+  mu.CI <- apply(X = qtl.marker.LD.list[[i]], MARGIN = 1, FUN = function(cycle) {
+    t.per <- qt(p = (1 - (0.05 / 2)), df = length(cycle) - 1)
+    t.per * ( sd(cycle) / sqrt(length(cycle)) )
+  })
+  
+  # Add points to the plot
+  x.jitter <- - (0.1 * scale(1:length(qtl.marker.LD.list), scale = F)[i])
+  points(x = 1:n.cycles + x.jitter, mu, type = "b", pch = as.numeric(plot.shapes.factor[i]), col = as.numeric(plot.shapes.factor[i]))
+  
+  # Add standard deviation bars
+  segments(x0 = 1:n.cycles + x.jitter, y0 = (mu - mu.CI), x1 = 1:n.cycles + x.jitter, y1 = (mu + mu.CI))
+  
+}
+
+
+
+
+
+# Change in average relationship between TP and candidates
+relationship.list <- lapply(X = collective.abbreviated.results, function(tpc)
+  do.call("cbind", lapply(X = tpc$relationship.list, FUN = function(set) 
+    sapply(set, function(rep) 
+      sapply(rep, function(cycle) cycle )))) )
+
+# Empty plot
+plot(0, 
+     type = "n",
+     xlim = c(0, n.cycles),
+     xlab = "Cycle Number",
+     # ylim = range(pretty(range(V_g.list)))
+     ylim = c(-1, 0),
+     ylab = "Additive Relationship Between TP and Candidates (G)",
+     main = paste("Additive Relationship Between TP and Candidates", paste("Population:", pop.makeup, ", TP formation:", tp.formation), sep = "\n")
+)
+
+# Plotting shape factors
+plot.shapes.factor <- factor(names(relationship.list))
+
+# Add legend
+legend("bottomleft", legend = names(relationship.list), pch = as.numeric(plot.shapes.factor), col = as.numeric(plot.shapes.factor))
+
+for (i in 1:length(val.pred.list)) {
+  
+  # Find the mean and CI of the mean
+  mu <- apply(X = relationship.list[[i]], MARGIN = 1, FUN = mean, na.rm = T)
+  # Determine 95% confidence interval based on t distribution
+  mu.CI <- apply(X = relationship.list[[i]], MARGIN = 1, FUN = function(cycle) {
+    t.per <- qt(p = (1 - (0.05 / 2)), df = length(cycle) - 1)
+    t.per * ( sd(cycle) / sqrt(length(cycle)) )
+  })
+  
+  # Add points to the plot
+  x.jitter <- - (0.1 * scale(1:length(relationship.list), scale = F)[i])
+  points(x = 1:n.cycles + x.jitter, mu, type = "b", pch = as.numeric(plot.shapes.factor[i]), col = as.numeric(plot.shapes.factor[i]))
+  
+  # Add standard deviation bars
+  segments(x0 = 1:n.cycles + x.jitter, y0 = (mu - mu.CI), x1 = 1:n.cycles + x.jitter, y1 = (mu + mu.CI))
+  
+}
   
 
 
