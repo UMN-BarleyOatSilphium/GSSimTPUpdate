@@ -68,36 +68,33 @@ make.family <- function(genome, # hypred genome
                         pop.type = "random", # The type of population. By default it is random
                         cycle.number,
                         family.number,
+                        mutate = TRUE,
                         mutation.rate.snp, 
                         mutation.rate.qtl) {
   
-  # Determine the number of gametes
+  
+  
+  # Determine the number of gametes to produce
   n.gamete <- N * 2
   
-  F_1 <- lapply(X = 1:N, function(ind) {
+  F_1 <- do.call("rbind", lapply(X = 1:N, function(ind) {
     # Gamete 1
-    gamete1 <- hypredRecombine(genome,
-                               genomeA = parent1.genome[1,],
-                               genomeB = parent1.genome[2,],
-                               mutate = TRUE,
-                               mutation.rate.snp = mutation.rate.snp,
-                               mutation.rate.qtl = mutation.rate.qtl,
-                               block = FALSE)
+    gamete1 <- recombine(genome = genome,
+                         haploid.genomeA = parent1.genome[1,],
+                         haploid.genomeB = parent1.genome[2,],
+                         mutate = mutate,
+                         mutation.rate.snp = mutation.rate.snp,
+                         mutation.rate.qtl = mutation.rate.qtl)
     
     # Gamete 2
-    gamete2 <- hypredRecombine(genome,
-                               genomeA = parent2.genome[1,],
-                               genomeB = parent2.genome[2,],
-                               mutate = TRUE,
-                               mutation.rate.snp = mutation.rate.snp,
-                               mutation.rate.qtl = mutation.rate.qtl,
-                               block = FALSE)
+    gamete2 <- recombine(genome = genome,
+                         haploid.genomeA = parent2.genome[1,],
+                         haploid.genomeB = parent2.genome[2,],
+                         mutate = mutate,
+                         mutation.rate.snp = mutation.rate.snp,
+                         mutation.rate.qtl = mutation.rate.qtl)
     
-    return(rbind(gamete1, gamete2))
-  })
-  
-  # Collapse the list into a matrix
-  F_1 <- do.call("rbind", F_1)
+    return(rbind(gamete1, gamete2)) }) )
   
   # Iterate changes to the population over a number of generations
   # Rename the population
@@ -105,6 +102,7 @@ make.family <- function(genome, # hypred genome
   
   # If no advancement is requested, don't advance
   if (generations > 0) {
+    
     # Iterate over generations
     for (g in 1:generations) {
       
@@ -115,29 +113,15 @@ make.family <- function(genome, # hypred genome
         gamete.index2 <- i + 1
         
         # Simulate the gametes from the i-th individual
-        gamete1 <- 
-          hypredRecombine(genome,
-                          genomeA = pop.i[gamete.index1,],
-                          genomeB = pop.i[gamete.index2,],
-                          mutate = T,
-                          mutation.rate.snp = mutation.rate.snp,
-                          mutation.rate.qtl = mutation.rate.qtl,
-                          block = FALSE)
+        t(replicate(2, recombine(genome = genome,
+                                 haploid.genomeA = pop.i[gamete.index1,],
+                                 haploid.genomeB = pop.i[gamete.index2,],
+                                 mutate = mutate,
+                                 mutation.rate.snp = mutation.rate.snp,
+                                 mutation.rate.qtl = mutation.rate.qtl))) })
         
-        gamete2 <-
-          hypredRecombine(genome,
-                          genomeA = pop.i[gamete.index1,],
-                          genomeB = pop.i[gamete.index2,],
-                          mutate = T,
-                          mutation.rate.snp = mutation.rate.snp,
-                          mutation.rate.qtl = mutation.rate.qtl,
-                          block = FALSE)
-        
-        return( list(gamete1, gamete2) )
-      })
-      
       # Collapse the list into the correct matrix
-      pop.i <- do.call("rbind", lapply(X = recomb.pop, FUN = function(x) do.call("rbind", x)))
+      pop.i <- do.call("rbind", recomb.pop)
       
       # If randomly mating, permutate
       if (pop.type == "random") {
@@ -145,6 +129,7 @@ make.family <- function(genome, # hypred genome
       }
       
     } # Close the generation for loop
+    
   } # Close the if statement
   
   # Name the individuals
@@ -445,7 +430,7 @@ make.crossing.block <- function(parent1.lines, # Character vector of lines for t
 # Define a function to take gamete information and a crossing block and produce a list families
 # The function also requires the genome, the size of the families and the mutation rates
 make.population <- function(genome, 
-                            named.parental.gametes, 
+                            parental.haploids, 
                             crossing.block, 
                             N, 
                             cycle.number, 
@@ -456,8 +441,8 @@ make.population <- function(genome,
   
   # Make sure the crossing block is a matrix
   crossing.block <- as.matrix(crossing.block)
-  # Pull out the marker names
-  markers <- colnames(named.parental.gametes)
+  # Pull out the loci names
+  loci.names <- colnames(parental.haploids)
   
   # Apply a function over the crossing block
   # This function will return a list of the cross families
@@ -466,18 +451,14 @@ make.population <- function(genome,
     # Identify the cross
     cross <- crossing.block[i,]
     
-    # Identify the parental lines names
-    parent1 <- cross[1]
-    parent2 <- cross[2]
-    
     # Use grep to pull out the gametes
-    parent1.haplotypes <- named.parental.gametes[grep(pattern = parent1, x = row.names(named.parental.gametes)),]
-    parent2.haplotypes <- named.parental.gametes[grep(pattern = parent2, x = row.names(named.parental.gametes)),]
+    parent1.haploid <- parental.haploids[grep(pattern = cross[1], x = row.names(parental.haploids)),]
+    parent2.haploid <- parental.haploids[grep(pattern = cross[2], x = row.names(parental.haploids)),]
     
     # Make a population from each cross
     pop <- make.family(genome = genome, 
-                       parent1.genome = parent1.haplotypes, 
-                       parent2.genome = parent2.haplotypes, 
+                       parent1.genome = parent1.haploid, 
+                       parent2.genome = parent2.haploid, 
                        N = N, 
                        generations = generations, 
                        pop.type = pop.type,
@@ -487,7 +468,7 @@ make.population <- function(genome,
                        mutation.rate.qtl = mutation.rate.qtl)
     
     # Add marker names back in
-    colnames(pop) <- markers
+    colnames(pop) <- loci.names
     
     # Return the population genotypes in a list
     return(pop)
@@ -528,46 +509,76 @@ advance.population <- function(genome,
 } # Close the function
 
 # Define a function to return the genotypic value of a set of lines based on their QTL alleles and the effect of those alleles
-genotypic.value <- function(genome, gametes) {
+genotypic.value <- function(genome, 
+                            haploid.genos) {
   
-  # Pull out the index of the QTL
-  qtl.ind <- slot(genome, "pos.add.qtl")$ID
-  # Pull out the effects of the QTL
-  effects <- slot(genome, "add.and.dom.eff")
-  add.eff <- effects$add
-  dom.eff <- effects$dom
+  # Deal with inpute
+  if(!is.list(haploid.genos)) {
+    haploid.mat <- as.matrix(haploid.genos)
+  } else {
+    haploid.mat <- do.call("rbind", haploid.genos)
+  }
   
-  # If the dominance effects are NULL, set to a vector of 0's of length n.qtl
-  if (is.null(dom.eff)) { dom.eff <- rep(0, length(add.eff)) }
+  # Find the number of chromosomes
+  n.chr <- length(genome)
+  # Find the number of loci per chromosome
+  loci.per.chr <- sapply(X = genome, FUN = function(chromosome) length(slot(chromosome, "pos.snp")))
   
-  # Pull out the allele states for the QTL
-  qtl.alleles <- gametes[,qtl.ind]
+  # Split the haploid.mat into chromosomes
+  haploid.chr.split <- split(x = 1:ncol(haploid.mat), rep(1:n.chr, loci.per.chr))
+  haploid.list <- sapply(X = haploid.chr.split, FUN = function(chr) haploid.mat[,chr] )
   
-  # Split the gametes into pairs
-  gamete.split <- split(x = 1:nrow(qtl.alleles), f = cut(1:nrow(qtl.alleles), breaks = nrow(qtl.alleles)/2))
-  # lapply to calculate genotypic value
-  geno.values <- lapply(X = gamete.split, FUN = function(pair) {
-    # Pull out the allele states for an individual
-    line.gametes <- qtl.alleles[pair,]
-    # Sum and subtract 1 to get the multiplier for a
-    line.genos <- t(as.matrix(colSums(line.gametes) - 1))
+  # Apply a function over each chromosome in the genome
+  geno.value.per.chr <- sapply(X = 1:n.chr, FUN = function(i) {
     
-    # Mulitple by the qtl allele effect to get the value at each QTL
-    # Then add the domiance effect for hets
-    qtl.value <- line.genos * add.eff
-    qtl.value[line.genos == 0] <- dom.eff[line.genos == 0]
+    # Pull out the chromosome
+    chromosome <- genome[[i]]
+  
+    # Pull out the index of the QTL per chromosome
+    qtl.index <- slot(chromosome, "pos.add.qtl")$ID
+    # Pull out the effects of the QTL
+    effects <- slot(chromosome, "add.and.dom.eff")
+    add.eff <- effects$add
+    dom.eff <- effects$dom
+  
+    # If the dominance effects are NULL, set to a vector of 0's of length n.qtl
+    if (is.null(dom.eff)) { 
+      dom.eff <- rep(0, length(add.eff)) 
+    }
     
-    # Sum to get the genotypic value
-    sum(qtl.value)
+    # Pull out the allele states for the QTL
+    qtl.alleles <- haploid.list[[i]][,qtl.index]
+  
+    # Split the gametes into pairs
+    haploid.line.split <- split(1:nrow(qtl.alleles), rep(1:(nrow(qtl.alleles)/2), each = 2))
+    
+    # lapply to calculate genotypic value
+    geno.values <- lapply(X = haploid.line.split, FUN = function(pair) {
+      # Pull out the allele states for an individual
+      line.gametes <- qtl.alleles[pair,]
+      # Sum and subtract 1 to get the multiplier for a
+      line.genos <- t(as.matrix(colSums(line.gametes) - 1))
+      
+      # Mulitple by the qtl allele effect to get the value at each QTL
+      # Then add the domiance effect for hets
+      qtl.value <- line.genos * add.eff
+      qtl.value[line.genos == 0] <- dom.eff[line.genos == 0]
+      
+      # Sum to get the genotypic value
+      sum(qtl.value)
+    })
+    
+    # Collapse into a matrix
+    geno.values <- as.matrix(do.call("rbind", geno.values))
+    row.names(geno.values) <- NULL
+    return(geno.values)
   })
   
-  # Collapse into a matrix
-  geno.value <- as.matrix(do.call("rbind", geno.values)); row.names(geno.value) <- NULL
-  
-  # Return the matrix
+  # Sum each row of the matrix
+  geno.value <- as.matrix(rowSums(geno.value.per.chr))
   return(geno.value)
   
-}
+} # Close the function
   
   
   
@@ -576,7 +587,7 @@ genotypic.value <- function(genome, gametes) {
 # of the a values at each locus) or the phenoypic values (genetic values + error)
 # This function will require the genome, the matrix, heritability, and distribution of phenotypes
 evaluate.population <- function(genome, 
-                                gametes, 
+                                haploid.genos, 
                                 h2,
                                 just.geno.values = F, # Should the function only output the genotypic values?
                                 V_e.scale = 8, # By how much should the environmental variance be larger than the genotypic variance?
@@ -584,20 +595,20 @@ evaluate.population <- function(genome,
                                 n.rep = 2
 ) {
   
-  # Deal with inpute
-  if(!is.list(gametes)) {
-    gamete.mat <- as.matrix(gametes)
+  # Deal with input
+  if(!is.list(haploid.genos)) {
+    haploid.mat <- as.matrix(haploid.genos)
   } else {
-    gamete.mat <- do.call("rbind", gametes)
+    haploid.mat <- do.call("rbind", haploid.genos)
   }
   
   # Pull out the line names
-  line.names <- row.names(gamete.mat)
+  line.names <- row.names(haploid.mat)
   # Condense the names
   line.names <- unique(sub(pattern = "\\.[0-9]$", replacement = "", x = line.names))
   
   # First generate genotype values based on the genome and genotypes
-  g <- genotypic.value(genome = genome, gametes = gamete.mat)
+  g <- genotypic.value(genome = genome, haploid.genos = haploid.mat)
   row.names(g) <- line.names
   # Find the length (i.e. number of genotypes)
   n.geno = length(g)
@@ -769,62 +780,81 @@ subset.gametes <- function(gametes,
   return(gamete.subset)
 } # Close the function
 
-# Define a function to create a marker design matrix given a gamete matrix or a list of gamete matricies
-# This function essentially "genotypes" the family or population for markers
-genotype.markers <- function(gametes,
-                             genome,
-                             include.QTL = FALSE) {
+# Define a function to create a loci design matrix given a haploid matrix or a 
+## list of haploid matricies. This function essentially "genotypes" the family 
+##or population for loci
+genotype.loci <- function(haploid.genos,
+                          genome,
+                          include.QTL = FALSE) {
   
   # Deal with input
-  if (!is.list(gametes)) {
-    gamete.mat <- as.matrix(gametes)
+  if (!is.list(haploid.genos)) {
+    haploid.mat <- as.matrix(haploid.genos)
   } else {
-    gamete.mat <- as.matrix(do.call("rbind", gametes))
+    haploid.mat <- as.matrix(do.call("rbind", haploid.genos))
   }
   
-  # Pull out the position of the QTL
-  qtl.pos <- slot(genome, "pos.add.qtl")$ID
-  # Pull out column names
-  loci.names <- colnames(gamete.mat)
-  # Pull out marker names that are not QTL
-  markers <- loci.names[-qtl.pos]
-  # Pull out the qtl names
-  qtl <- loci.names[qtl.pos]
+  # Pull out number of chromosomes
+  n.chr <- length(genome)
+  # Pull out the number of loci per chromosome
+  loci.per.chr <- sapply(X = genome, FUN = function(chromosome) length(slot(chromosome, "pos.snp")))
+  # Pull out the position of the QTL on each chromosome
+  qtl.index.per.chr <- sapply(X = genome, FUN = function(chromosome) slot(chromosome, "pos.add.qtl")$ID)
+  
   # Pull out line names
-  line.names <- unique(sub(pattern = "\\.[0-9]$", replacement = "", x = row.names(gamete.mat)))
+  line.names <- unique(sub(pattern = "\\.[0-9]$", replacement = "", x = row.names(haploid.mat)))
+  
+  # Split the haploid.mat into chromosomes
+  haploid.chr.split <- split(x = 1:ncol(haploid.mat), rep(1:n.chr, loci.per.chr))
+  haploid.list <- sapply(X = haploid.chr.split, FUN = function(chr) haploid.mat[,chr] )
   
   if (!include.QTL) {
-  
-    # Code to genotypes
-    geno.mat <- hypredCode(genome,
-                           gamete.mat,
-                           DH = FALSE,
-                           type = "-101")
     
-    # Add line names to the rows
-    row.names(geno.mat) <- line.names
-    # Add marker names to the columns
-    colnames(geno.mat) <- markers
+    # Remove QTL from the haploid matrix
+    haploid.list.no.qtl <- sapply(X = 1:n.chr, FUN = function(i) haploid.list[[i]][,-qtl.index.per.chr[[i]]] )
+    # Reform the haploid matrix
+    haploid.mat.no.qtl <- do.call("cbind", haploid.list.no.qtl)
     
-  } else { # If the genotypes of the QTL are desired
-    
-    # Make a list of each pair of rows
-    gamete.split <- split(1:nrow(gamete.mat), cut(1:nrow(gamete.mat), breaks = nrow(gamete.mat)/2))
+    # Split the haploid matrix into pairs of rows
+    haploid.line.split <- split(1:nrow(haploid.mat.no.qtl), rep(1:(nrow(haploid.mat.no.qtl)/2), each = 2))
     
     # Apply a function to generate -1, 0, 1 genotype values for each pair of rows
-    geno.list <- lapply(X = gamete.split, FUN = function(pair) {
+    geno.list <- lapply(X = haploid.line.split, FUN = function(pair) {
       # Subset the gamete matrix
-      line.gametes <- gamete.mat[pair,]
+      line.haploids <- haploid.mat.no.qtl[pair,]
       # Find the number of 1 alleles
-      line.alleles <- colSums(line.gametes)
+      line.alleles <- colSums(line.haploids)
       # Subtract one to get the coded genotypes
       line.alleles - 1
     })
     
     # Collapse
     geno.mat <- do.call("rbind", geno.list)
-    # Rename rows and columns
-    dimnames(geno.mat) <- list(line.names, loci.names)
+    
+    # Add line names to the rows
+    row.names(geno.mat) <- line.names
+    
+  } else { # If the genotypes of the QTL are desired
+    
+    # Split the haploid matrix into pairs of rows
+    haploid.line.split <- split(1:nrow(haploid.mat), rep(1:(nrow(haploid.mat)/2), each = 2))
+    
+    # Apply a function to generate -1, 0, 1 genotype values for each pair of rows
+    geno.list <- lapply(X = haploid.line.split, FUN = function(pair) {
+      # Subset the gamete matrix
+      line.haploids <- haploid.mat[pair,]
+      # Find the number of 1 alleles
+      line.alleles <- colSums(line.haploids)
+      # Subtract one to get the coded genotypes
+      line.alleles - 1
+    })
+    
+    # Collapse
+    geno.mat <- do.call("rbind", geno.list)
+    
+    # Add line names to the rows
+    row.names(geno.mat) <- line.names
+    
   }
   
   # Return the matrix
@@ -1071,114 +1101,136 @@ make.genome <- function(n.chr, # An integer specifying the number of chromosomes
 # Define a function to define the trait architecture
 trait.architecture <- function(genome,
                                n.QTL, # Number of desired QTL. If n.QTL / n.chr is non-integer, some QTL are given an effect of 0
-                               qtl.ids = NULL, # The index of additive QTL (all QTL). If NULL, indicies are randomly sampled
-                               qtl.dom.ids = NULL, # The index of QTL with dominance. If NULL, no QTL show dominance
-                               qtl.per.ids = NULL, # The index of perfect loci (i.e. the SNP is the QTL). If NULL, there are no perfect markers
+                               qtl.index = NULL, # A list of QTL indices per chromosome. If NULL, indicies are randomly sampled
+                               qtl.dom.index = NULL, # The index of QTL with dominance. If NULL, no QTL show dominance
+                               qtl.perf.index = NULL, # The index of perfect loci (i.e. the SNP is the QTL). If NULL, there are no perfect markers
                                qtl.add.eff = "normal", # The additive effects of QTL. Can be "normal", "geometric", or a vector of same length as qtl.ids
-                               qtl.dom.eff = NULL, # The dominance effects of QTL. Can be "NULL" (no dominance) or a vector of same length as qtl.dom.ids
-                               keep.all.snps = FALSE # If TRUE, extra loci will be added to the genome that do not correspond with current loci positions
+                               qtl.dom.eff = NULL # The dominance effects of QTL. Can be "NULL" (no dominance) or a vector of same length as qtl.dom.ids
                                ) {
   
   # Deal with input
-  # Assign QTL ids
-  n.chr <- slot(genome, "num.chr")
+  # Find the number of chromosomes
+  n.chr <- length(genome)
   
-  QTL.per.chr <- n.QTL / n.chr
-  # If the quotient is not an integer, round up
-  if (!is.integer(QTL.per.chr)) {
-    QTL.per.chr <- ceiling(QTL.per.chr)
-  }
-  # Find the number of total QTL
-  n.tot.QTL = QTL.per.chr * n.chr
+  # QTL.per.chr <- n.QTL / n.chr
+  # # If the quotient is not an integer, round up
+  # if (!is.integer(QTL.per.chr)) {
+  #   QTL.per.chr <- ceiling(QTL.per.chr)
+  # }
+  # # Find the number of total QTL
+  # n.tot.QTL = QTL.per.chr * n.chr
   
   # If the qtl.ids are NULL, randomly sample the loci
-  if (is.null(qtl.ids)) {
+  if (is.null(qtl.index)) {
     
-    # If all SNPs are meant to be retained, sample a uniform distribution to add QTL ids
-    if (keep.all.snps) { 
-      # Create a data.frame of chromosome, length, and loci position
-      loci.df <- data.frame(chr = rep(1:n.chr, each = length(slot(genome, "pos.snp")) / n.chr),
-                            len.chr = rep(slot(genome, "len.chr"), each = length(slot(genome, "pos.snp")) / n.chr),
-                            pos = slot(genome, "pos.snp"))
-      
-      # Apply a function over the index of each chromosome 
-      new.loci.info <- lapply(X = unique(loci.df$chr), FUN = function(chr) {
-        # Find the length of the chromsome
-        chr.len <- unique(loci.df$len.chr[loci.df$chr == chr])
-        # Sample a uniform distribution for the qtl positions
-        qtl.pos <- sort(runif(n = QTL.per.chr, min = 0, max = chr.len))
-        # Pull out the loci positions for the chromosome
-        loci.pos <- loci.df$pos[loci.df$chr == chr]
-        # If any loci overlap, resample
-        while(any(loci.pos %in% qtl.pos)) { qtl.pos <- sort(runif(n = QTL.per.chr, min = 0, max = chr.len)) }
-        
-        # Combine the qtl.pos and loci.pos
-        all.pos <- sort(c(loci.pos, qtl.pos))
-        tot.loci <- length(all.pos)
-        # Increase the index of the snp and qtl by adding tot.loc * (chr - 1) to each value
-        # Find the index of qtl and snps in the large vector
-        qtl.ind <- which(all.pos %in% qtl.pos) + (tot.loci * (chr - 1))
-        
-        # Return all of the positions and the indicies of the qtl and snps
-        list(all.pos = all.pos, qtl.ind = qtl.ind)
-      })
-      
-      # Add the new map to the genome
-      # Vector of positions
-      all.pos <- as.vector(sapply(new.loci.info, function(chr) return(chr$all.pos)))
-      # Create a new genome
-      genome <- make.genome( n.chr = n.chr, 
-                             chr.len = unique(loci.df$len.chr), 
-                             n.chr.snps = length(all.pos) / n.chr,
-                             genetic.map = all.pos )
-      
-      # Extract the indicies for the qtl
-      qtl.ids <- as.vector(sapply(new.loci.info, function(chr) return(chr$qtl.ind)))
-      # And for the snps
-      
-    } else { # Otherwise just sample the present loci
+    # Create a list to determine the number of qtl for each chromosome. This will
+    ## essentially make the distribution of qtl even across the chromosome indices
+    qtl.per.chr <- sapply(X = split(x = 1:n.QTL, f = cut(1:n.QTL, breaks = n.chr)), FUN = length)
     
-      loci.ind <- slot(genome, "pos.snp")
-      ind.per.chr <- split(x = 1:length(loci.ind), f = cut(x = 1:length(loci.ind), breaks = n.chr))
-      qtl.ids <- as.numeric(do.call("c", lapply(X = ind.per.chr, FUN = function(chr) sort(sample(chr, QTL.per.chr)))))
+    # Create an empty list
+    qtl.index.per.chr <- list()
+    
+    # Loop over the chromosomes in the genome
+    for (p in 1:n.chr) {
+      
+      # Pull out the number of QTL designated for the chromosome
+      n.qtl.p <- qtl.per.chr[p]
+      
+      # Pull out the number of loci on the chromsome and create an index
+      loci.index.p <- seq(1, slot(genome[[p]], "num.snp.chr"))
+      
+      # Sample the index and add to the list
+      qtl.index.per.chr[[p]] <- sort(sample(x = loci.index.p, size = n.qtl.p))
     }
+    
+    # If the list is specified, check it
+  } else {
+    
+    if (length(qtl.index) != n.chr) stop("The length of the qtl.index list is not the same as the number of chromosomes.")
+    # Rename it
+    qtl.index.per.chr <- qtl.index
+    # Figure out the QTL per chromosomes
+    qtl.per.chr <- sapply(X = qtl.index.per.chr, FUN = length)
+  }
+  
+  # QTL dominance IDs
+  if (is.null(qtl.dom.index)) {
+    # Create a list of NULLs
+    qtl.dom.index.per.chr <- sapply(X = 1:n.chr, FUN = function(i) NULL)
+    
+  } else { # Otherwise check the list
+    if (length(qtl.dom.index) != n.chr) stop("The length of the qtl.dom.index list is not the same as the number of chromsomes.")
+    
+    # Rename it
+    qtl.dom.index.per.chr <- qtl.dom.index
+  }
+  
+  # Perfect QTL IDs
+  if (is.null(qtl.perf.index)) {
+    # Create a list of NULLs
+    qtl.perf.index.per.chr <- sapply(X = 1:n.chr, FUN = function(i) NULL)
+    
+  } else { # Otherwise check the list
+    if (length(qtl.perf.index) != n.chr) stop("The length of the qtl.perf.index list is not the same as the number of chromosomes.")
+    
+    # Rename it
+    qtl.perf.index.per.chr <- qtl.perf.index
   }
   
   # Assign qtl effects
   if (is.character(qtl.add.eff)) {
+    
     # Draw from standard normal
     if (qtl.add.eff == "normal") {
-      qtl.add.eff <- abs(rnorm(n = n.tot.QTL, mean = 0, sd = 1))
+      qtl.add.eff <- abs(rnorm(n = n.QTL, mean = 0, sd = 1))
       # Randomly assign negative values to the qtl effects - this corresponds to the value of the 1 allele
-      qtl.add.eff <- qtl.add.eff * sample(c(1,-1), n.tot.QTL, replace = T)
+      qtl.add.eff <- qtl.add.eff * sample(c(1,-1), n.QTL, replace = T)
       
     } else { # Draw from geometric series
       
       if (qtl.add.eff == "geometric") {
-        a = (n.tot.QTL - 1) / (n.tot.QTL + 1)
-        qtl.add.eff <- sample(a^(1:n.tot.QTL))
+        a = (n.QTL - 1) / (n.QTL + 1)
+        qtl.add.eff <- sample(a^(1:n.QTL))
         # Randomly assign negative values to the qtl effects - this corresponds to the value of the 1 allele
-        qtl.add.eff <- qtl.add.eff * sample(c(1,-1), n.tot.QTL, replace = T)
+        qtl.add.eff <- qtl.add.eff * sample(c(1,-1), n.QTL, replace = T)
+        
+        # Break up the effects into chromosomes with the same number of elements
+        ## as QTL on those chromosomes
+        qtl.add.eff.per.chr <- split(qtl.add.eff, rep(1:n.chr, qtl.per.chr))
         
       } else {
-        
-        # Otherwise, make sure the length of the additive effects is the same as the number of QTL
-        if (length(qtl.add.eff) != n.QTL) stop("The length of the QTL effects is not the same as the number of QTL")
+        # Otherwise, make sure the length of the additive effects is the same as the number of chr
+        if (length(qtl.add.eff) != n.chr) stop("The length of the QTL effects is not the same as the number of chromosomes")
       }}}
   
-  # If the n.tot.QTL is greater than the n.QTL, randomly assign the remainder to have effect size 0
-  if (n.tot.QTL > n.QTL) {
-    n.null.QTL <- n.tot.QTL - n.QTL
-    qtl.add.eff[sample(1:length(qtl.add.eff), n.null.QTL)] <- 0
+  # Dominance effects
+  if (is.null(qtl.dom.eff)) {
+    # Create a list of NULLs
+    qtl.dom.eff.per.chr <- sapply(X = 1:n.chr, FUN = function(i) NULL)
+    
+  } else { # Otherwise check it
+    if (length(qtl.dom.eff) != n.chr) stop("The length of the qtl.dom.eff list is not the same as the number of chromosomes.")
+    
+    # Make sure each element in the qtl.dom.eff list is the same as the qtl.dom.index.per.chr list
+    dom.elements.same <- sapply(X = 1:n.chr, FUN = function(i) length(qtl.dom.eff[[i]]) == length(qtl.dom.index.per.chr[[i]]) )
+    
+    if (!all(dom.elements.same)) stop("One or more of the elements in the qtl.dom.eff list are not the same length as the corresponding qtl.dom.index list.")
   }
+
+
   
-  # Add everything to the genome
-  genome <- hypredNewQTL(genome,
-                         new.id.add = qtl.ids,
-                         new.id.dom = qtl.dom.ids,
-                         new.id.per.mar = qtl.per.ids,
-                         new.eff.add = qtl.add.eff,
-                         new.eff.dom = qtl.dom.eff )
+  # Apply a function over each chromosome in the genome
+  genome <- sapply(X = 1:n.chr, FUN = function(i) {
+    
+    # Add to the ith position in the genome list a revised chromosome genome with
+    ## the qtl positions and effects
+    genome[[i]] <- hypredNewQTL(genome[[i]],
+                                new.id.add = qtl.index.per.chr[[i]],
+                                new.id.dom = qtl.dom.index.per.chr[[i]],
+                                new.id.per.mar = qtl.perf.index.per.chr[[i]],
+                                new.eff.add = qtl.add.eff.per.chr[[i]],
+                                new.eff.dom = qtl.dom.eff.per.chr[[i]] )
+  })
   
   # Return the new genome
   return(genome)
@@ -1186,325 +1238,44 @@ trait.architecture <- function(genome,
 } # Close the function
 
 
-# Define a function to complete a cycle of genomic selection
-# The steps in a cycle will be:
-## 1. Create a crossing block from the parents and use the crossing block to create a population
-## 2. Inbreed the population and genotype them at a certain generation
-## 3. Use genomic prediction to estimate breeding values, and select on those breeding values
-## 4. Inbreed some more
-## 5. Phenotype the selections and make further selections
-# 
-# complete.cycle <- function(genome,
-#                            h2, # Heritability of the trait
-#                            female.parents, # A character vector of the female and male parents (this will usually be the same)
-#                            male.parents,
-#                            parent.gamete.matrix, # a 2n x m matrix of gametes, the parents contained therein (this will usually be the TP gamete matrix)
-#                            n.crosses,
-#                            family.size,
-#                            cycle.number,
-#                            TP.genos,
-#                            TP.phenos,
-#                            genotyping.S.gen = 2, # Generation at which to genotype the progeny, where the S generation is the F + 1th generation
-#                            GEBV.sel.intensity, # The selection intensity to apply to the progeny
-#                            GEBV.sel.type = "best", # The type of selection to impose. Can be "best", "worst", "random"
-#                            phenotyping.S.gen = 4, # Generation at which to phenotype the progeny
-#                            n.env, # Number of "environments" or "replicates" in which to obtain phenotypic deviations
-#                            mutation.rate.snp,
-#                            mutation.rate.qtl,
-#                            filter.when.genotyping = FALSE, # Should genotype data be filtered at each cycle? Markers will be filtered on 0.02 min MAF
-#                            validation = FALSE, # Should predictions be validated (i.e. accuracy measured) using the correlation of GEBVs to phenotypes?
-#                            geno.summary.stats = FALSE
-# ) {
-#   
-#   # Collect argument information
-#   arguments <- match.call()
-#   
-#   # Define some parameters
-#   genotyping.adv.gens = genotyping.S.gen
-#   phenotyping.adv.gens = phenotyping.S.gen - genotyping.S.gen
-#   
-#   ##### Step 1 - Crossing
-#   # Make a crossing block
-#   crossing.block.i <- make.crossing.block(parent1.lines = female.parents, 
-#                                           parent2.lines = male.parents, 
-#                                           n.crosses = n.crosses, 
-#                                           reciprocal = F)
-#   
-#   ##### Step 2 - Make the crosses and inbreed to genotyping
-#   system.time(genotyping.population.i <- make.population(genome = genome, 
-#                                              named.parental.gametes = parent.gamete.matrix,
-#                                              crossing.block = crossing.block.i,
-#                                              N = family.size,
-#                                              cycle.number = cycle.number,
-#                                              generations = 2,
-#                                              pop.type = "inbred",
-#                                              mutation.rate.snp = mutation.rate.snp,
-#                                              mutation.rate.qtl = mutation.rate.qtl))
-#   
-#   # Genotype the population
-#   candidate.i.genos <- genotype.markers(gametes = genotyping.population.i, 
-#                                         genome = genome, 
-#                                         DH = F)
-#   
-#   # Retrive the genotypic values
-#   candidate.genotypic.values.i <- measure.values(genome = genome,
-#                                                  gametes = genotyping.population.i,
-#                                                  just.geno.values = T,
-#                                                  h2 = h2)
-#   
-#   candidate.var.components <- candidate.genotypic.values.i$var.components
-#   candidate.genotypic.values.i <- candidate.genotypic.values.i$geno.values
-#   
-#   # Should genotypes be filtered here??
-#   
-#   
-#   # Measure summary statistics
-#   if (geno.summary.stats) {
-#     candidate.i.genos.allele.freq <- calculate.allele.freq(geno.mat = candidate.i.genos)
-#     candidate.i.genos.pairwise.div <- SNP.pairwise.div(geno.mat = candidate.i.genos)
-#     # Measure heterozygosity of the entries
-#     candidate.i.genos.het <- apply(X = candidate.i.genos, MARGIN = 1, FUN = function(geno) sum(geno == 0) / length(geno))
-#   } else {
-#     candidate.i.genos.allele.freq <- NA
-#     candidate.i.genos.pairwise.div <- NA
-#     candidate.i.genos.het <- NA
-#   }
-#   
-#   
-#   ##### Step 3 - Genomic prediction
-#   candidate.i.prediction <- make.predictions(pheno.train = TP.phenos, 
-#                                              geno.train = TP.genos, 
-#                                              geno.pred = candidate.i.genos, 
-#                                              model = "GBLUP")
-#   
-#   # Retrieve GEBVs
-#   candidate.i.GEBV <- candidate.i.prediction$GEBV
-#   
-#   # Make selections on the GEBVs
-#   selection.i <- select.population(pheno.mat = candidate.i.GEBV, 
-#                                    sel.intensity = GEBV.sel.intensity, 
-#                                    selection = GEBV.sel.type)
-#   # Pull out the line names
-#   selection.names <- selection.i$lines.sel
-#   
-#   ##### Step 4 - Advance the selection candidates
-#   # Subset the selections
-#   selection.gametes.i <- subset.gametes(gametes = genotyping.population.i, 
-#                                         line.names = selection.names)
-#   
-#   # Advance the selected lines through further inbreeding
-#   phenotyping.population.i <- advance.family(genome = genome,
-#                                              pop.mat = selection.gametes.i,
-#                                              pop.type = "inbred",
-#                                              generations = phenotyping.adv.gens,
-#                                              cycle.number = cycle.number,
-#                                              starting.generation = (genotyping.S.gen + 1),
-#                                              mutation.rate.snp = mutation.rate.snp,
-#                                              mutation.rate.qtl = mutation.rate.qtl)
-#   
-#   
-#   ##### Step 5 - Phenotype the selections
-#   # Phenotype the selections
-#   selection.values.i <- measure.values(genome = genome, 
-#                                        gametes = phenotyping.population.i, 
-#                                        h2 = h2,
-#                                        n.env = n.env)
-#   
-#   
-#   # Validate the GEBV selections, if desired
-#   if (validation) {
-#     
-#     # Run validation by correlating the GEBVs with the true genotype value at the F3
-#     # First do this for all 1200 candidate lines
-#     true.genotypic.validation.i <- validate.predictions(predicted.GEBVs = candidate.i.GEBV,
-#                                                          observed.values = candidate.genotypic.values.i,
-#                                                          boot.reps = 5000)
-#     
-#     # Make a list
-#     validation.i <- true.genotypic.validation.i
-#     
-#   } else {
-#     validation.i <- NA
-#   }
-#   
-#   # Create the output list
-#   output.list <- list(
-#     arguments = arguments,
-#     crossing.info = list(crossing.block = crossing.block.i, n.crosses = n.crosses, family.size = family.size),
-#     inbreeding.and.genotyping.info = list(candidate.genotypes = candidate.i.genos, filtered = filter.when.genotyping, 
-#                                           summary.stats = list(allele.freq = candidate.i.genos.allele.freq, 
-#                                                                pairwise.div = candidate.i.genos.pairwise.div,
-#                                                                heterozygosity = candidate.i.genos.het)),
-#     genomic.selection.info = list(prediction.info = candidate.i.prediction, 
-#                                   GEBV.selection.info = selection.i,
-#                                   candidate.geno.values = candidate.genotypic.values.i,
-#                                   candidate.var.components = candidate.var.components,
-#                                   selection.gametes = selection.gametes.i),
-#     phenotyping.info = list(selection.values = selection.values.i, validation.results = validation.i)
-#   )
-#   
-#   # Output the list
-#   return(output.list)
-#   
-# } # Close the function
 
-
-# # Define a function to convert breeding names to cross names
-# breeding.to.cross.names <- function(breeding.names) {
-#   
-#   # Deal with input
-#   breeding.names <- as.character(breeding.names)
-#   
-#   # Find the lengths of the names
-#   name.length <- nchar(breeding.names)
-#   
-#   # Length of cross name (this should be constant)
-#   cross.names.length = 8
-#   
-#   # Convert
-#   cross.names <- substring(text = breeding.names,
-#                            first = (name.length - cross.names.length + 1),
-#                            last = name.length)
-#   
-#   return(cross.names)
-# } # Close the function
-# # 
-
-
-# # Define a function to update the training population
-# # The function will initially be able to update the TP based on either randomly choosing a TP or
-# ## by combining all information to a new TP
-# update.training.population <- function(cycle.results = NULL, # The list of results from completing a cycle
-#                                        current.TP.genos, # The genotype matrix of the TP used for the previous cycle
-#                                        current.TP.phenos, # The phenotype matrix of the TP used for the previous cycle
-#                                        n.additions, # The size of the TP update
-#                                        update.method, # How should the TP be updated? either "random" or "cumulative"
-#                                        TP.size, # For use with the "random" update method: what size should the TP be?
-#                                        selection.method # How should the TP additions be selected (i.e. "random", "best", "worst", etc)
-#                                        ) {
-#   
-#   if (!update.method %in% c("random", "cumulative")) stop()
-#   
-#   # Proceed with the following if cycle.results is not NULL. Otherwise, continue with updating the TP
-#   ## This option exists so the TP can be updated before the first cycle
-#   if(!is.null(cycle.results)) {
-#     
-#     # Error check
-#     if (!selection.method %in% c("random", "best", "worst", "best+random", "best+worst", "worst+random", "no.change")) stop()
-#     
-#     # If the selection method is "no.change", return the current TP
-#     if (selection.method == "no.change") {
-#       return(list(updated.TP.genos = current.TP.genos, updated.TP.phenos = current.TP.phenos))
-#       
-#     } else { # Otherwise continue
-#     
-#       # Pull out the values of the selected lines
-#       selection.values <- cycle.results$phenotyping.info$selection.values
-#       # Pull out the phenotypic values
-#       selection.pheno.values <- selection.values$pheno.values
-#       # Convert the more inbred line names to those assigned when genotyping
-#       # We can take advantage of identical order to make this easy
-#       selection.early.line.names <- cycle.results$genomic.selection.info$GEBV.selection.info$lines.sel
-#       # Replace the names in the pheno values matrix
-#       row.names(selection.pheno.values) <- selection.early.line.names
-#       
-#       # Make phenotypic selections based on the provided selection.method
-#       phenotypic.selections <- select.population(pheno.mat = selection.pheno.values, 
-#                                                  sel.intensity = n.additions, 
-#                                                  selection = selection.method)
-#       
-#       # The 50 selected lines are now those that will be added to the TP
-#       # We need to gather phenotypic information and genotypic information to supply to the TP
-#       # First gather the lines names
-#       additional.TP.lines <- phenotypic.selections$lines.sel
-#       # Next subset the genotype matrix
-#       additional.TP.genos <- cycle.results$inbreeding.and.genotyping.info$candidate.genotypes[additional.TP.lines,]
-#       # Next extract the phenotype matrix
-#       additional.TP.phenos <- phenotypic.selections$value.sel
-#       
-#       # If the selection method is "best+random", "best+worst", or "worst+random", update differently
-#       # In this case, there would be 120 lines in the phenotypic selections
-#       if (grepl(pattern = "\\+", x = selection.method)) {
-#         
-#         # If "best+random", half the of the n.additions will be the best, and half will be random
-#         if (selection.method == "best+random") {
-#           n.best = round(n.additions / 2)
-#           n.random = n.additions - n.best
-#           # Take the top lines based on phenotype
-#           best.phenos.index <- order(additional.TP.phenos, decreasing = T)[1:n.best]
-#           best.phenos <- additional.TP.phenos[best.phenos.index,]
-#           # Take a random set of phenos
-#           random.phenos <- sample(additional.TP.phenos[-best.phenos.index,], size = n.random)
-#           # Combine
-#           additional.TP.lines <- sort(c(names(best.phenos), names(random.phenos)))
-#           additional.TP.phenos <- as.matrix(c(best.phenos, random.phenos)[additional.TP.lines])
-#           # Re-subset the geno matrix
-#           additional.TP.genos <- additional.TP.genos[additional.TP.lines,]
-#         }
-#         # If "worst+random", half of the n.additions will be the worst, and half will be random
-#         if (selection.method == "worst+random") {
-#           n.worst = round(n.additions / 2)
-#           n.random = n.additions - n.worst
-#           # Take the top lines based on phenotype
-#           worst.phenos.index <- order(additional.TP.phenos, decreasing = F)[1:n.worst]
-#           worst.phenos <- additional.TP.phenos[worst.phenos.index,]
-#           # Take a random set of phenos
-#           random.phenos <- sample(additional.TP.phenos[-worst.phenos.index,], size = n.random)
-#           # Combine
-#           additional.TP.lines <- sort(c(names(worst.phenos), names(random.phenos)))
-#           additional.TP.phenos <- as.matrix(c(worst.phenos, random.phenos)[additional.TP.lines])
-#           # Re-subset the geno matrix
-#           additional.TP.genos <- additional.TP.genos[additional.TP.lines,]
-#         }
-#         # If "best+worst", half of the n.additions will be the best, and half will be the worst.
-#         # If n.additions is odd, there will be one more best than worst
-#         if (selection.method == "best+worst") {
-#           n.best = round(n.additions / 2)
-#           n.worst = n.additions - n.best
-#           # Take the top lines based on phenotype
-#           best.phenos.index <- order(additional.TP.phenos, decreasing = T)[1:n.best]
-#           best.phenos <- additional.TP.phenos[best.phenos.index,]
-#           # Take the bottom lines based on phenotype
-#           worst.phenos.index <- order(additional.TP.phenos, decreasing = F)[1:n.worst]
-#           worst.phenos <- additional.TP.phenos[worst.phenos.index,]
-#           # Combine
-#           additional.TP.lines <- sort(c(names(best.phenos), names(worst.phenos)))
-#           additional.TP.phenos <- as.matrix(c(best.phenos, worst.phenos)[additional.TP.lines])
-#           # Re-subset the geno matrix
-#           additional.TP.genos <- additional.TP.genos[additional.TP.lines,]
-#         }
-#         
-#       } # Close the "+" grep if statement
-#     
-#       # Now combine the previous TP genos and phenos with the new data
-#       combined.TP.genos <- rbind(current.TP.genos, additional.TP.genos)
-#       combined.TP.phenos <- rbind(current.TP.phenos, additional.TP.phenos)
-#     } # Close the "no.change" else statement
-#       
-#   } else { # If cycle.results is NULL, just use the current TP
-#     combined.TP.genos <- current.TP.genos
-#     combined.TP.phenos <- current.TP.phenos
-#   }
-#       
-#   # If the update type is "random", randomly select TP lines with size equal to the TP size
-#   if (update.method == "random") {
-#     combined.TP.lines <- sort(sample(row.names(combined.TP.phenos), size = TP.size))
-#     combined.TP.genos <- combined.TP.genos[combined.TP.lines,]
-#     combined.TP.phenos <- combined.TP.phenos[combined.TP.lines,]
-#   
-#   } else { # If the update method is cumulative, just re-order the matricies based on line names
-#     combined.TP.lines <- sort(row.names(combined.TP.phenos))
-#     combined.TP.genos <- combined.TP.genos[combined.TP.lines,]
-#     combined.TP.phenos <- combined.TP.phenos[combined.TP.lines,]
-#   }
-#   
-#   # Create a output list
-#   output.list <- list(updated.TP.genos = as.matrix(combined.TP.genos),
-#                       updated.TP.phenos = as.matrix(combined.TP.phenos))
-#   
-#   return(output.list)
-# } # Close the function
-
+# Define a function to simulate recombination. This function will use the
+## hypredRecombine function as a base, but will apply that function over
+## the chromosomes in the genome list
+recombine <- function(genome,
+                      haploid.genomeA,
+                      haploid.genomeB,
+                      mutate = TRUE,
+                      mutation.rate.snp,
+                      mutation.rate.qtl,
+                      block = FALSE
+){
+  
+  # Pull out the number of chromosomes
+  n.chr <- length(genome)
+  # Pull out the number of loci per chromsosome
+  loci.per.chr <- sapply(X = genome, FUN = function(chromosome) length(slot(chromosome, "pos.snp")))
+  
+  # Split each haploid genome into chromosomes
+  haploid.genomeA.split <- split(haploid.genomeA, rep(1:n.chr, loci.per.chr))
+  haploid.genomeB.split <- split(haploid.genomeB, rep(1:n.chr, loci.per.chr))
+  
+  # Apply a function over each chromosome
+  gamete.list <- sapply(X = 1:n.chr, FUN = function(i) {
+    
+    hypredRecombine(genome[[i]],
+                    genomeA = haploid.genomeA.split[[i]],
+                    genomeB = haploid.genomeB.split[[i]],
+                    mutate = mutate,
+                    mutation.rate.snp = mutation.rate.snp,
+                    mutation.rate.qtl = mutation.rate.qtl,
+                    block = block) })
+  
+  # Concatenate the gamete
+  return(do.call("c", gamete.list))
+  
+} # Close the function
+  
 
 # Define a function to optimize the training set based on the
 ## CDmean maximization algorithm. This code is taken from Rincent et al 2012
@@ -2072,15 +1843,25 @@ measure.LD <- function(genome, # Genome object
                        genos # n x m matrix of genotype data with QTL
                        ) {
   
-  # Pull out the position of the QTL
-  pos.qtl <- slot(genome, "pos.add.qtl")$ID; names(pos.qtl) <- colnames(genos)[pos.qtl]
+  # Pull out the number of snps per chromosome
+  loci.per.chr <- c(0, sapply(genome, function(chromosome) length(slot(chromosome, "pos.snp"))))
+  
+  # Make empty lists
+  pos.qtl <- list()
+
+  # Find the index of the qtl in the combined matrix  
+  for (i in 1:length(genome)) {
+    
+    # QTL index for the ith chromosome
+    qtl.index.i <- slot(genome[[i]], "pos.add.qtl")$ID
+    # Adjust for the previous chromosomes and add to the vector
+    pos.qtl[[i]] <- sum(loci.per.chr[1:i]) + qtl.index.i
+  }
+    
+  # Collapse to vector
+  pos.qtl <- do.call("c", pos.qtl)
   # Figure the positions of the SNPs
   pos.snps <- setdiff(1:ncol(genos), pos.qtl)
-  
-  # Pull out the effects of qtl
-  qtl.eff <- slot(genome, "add.and.dom.eff")$add
-  # Remove the qtl with effect size 0
-  pos.qtl <- pos.qtl[qtl.eff != 0]
   
   # Determine the index of the polymorphic qtl
   poly.qtl.index <- pos.qtl[apply(X = genos[,pos.qtl], MARGIN = 2, FUN = function(locus) length(unique(locus)) > 1)]
@@ -2097,12 +1878,11 @@ measure.LD <- function(genome, # Genome object
     apply(X = genos[,poly.snp.index], MARGIN = 2, FUN = function(snp)
       # Correlate
       cor(qtl, snp) ) })
-    
-    # # Find the max
-    # qtl.marker.LD[which.max(qtl.marker.LD)] })
   
   # Return the results
   return(t(poly.qtl.marker.LD))
+  
+} # Close the function
   
   # # Conver cM to M
   # sliding.window.M <- sliding.window.cM / 100
@@ -2190,8 +1970,7 @@ measure.LD <- function(genome, # Genome object
   # # Return list
   # return(list(pairwise.LD = pairwise.LD, sliding.window.cM = sliding.window.cM))
   
-  
-} # Close the function
+
 
 
 # Define a function to determine the mean relationship between TP individuals
