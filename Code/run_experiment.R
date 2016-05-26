@@ -45,8 +45,8 @@ load(file = "Files/Barley_CAP_simuation_starting_material.RData")
 source("Code/hypred_simulation_FUNCTIONS.R")
 
 # Set the CAP gametes and selected markers
-CAP.gametes <- CAP.gametes.0.03
-sampled.markers <- sampled.markers.0.03
+CAP.haploids <- CAP.haploids.0.03
+CAP.markers <- CAP.markers.0.03
 
 
 # Other simulation parameters
@@ -56,10 +56,11 @@ h2 = 0.5
 n.cycles = 15
 # Number of QTL underlying trait
 n.QTL = 100
-# Selection intensity for the parents of the next generation
+# Selection intensity for the parents of the next generation. Expressed as the number
+## of lines to select as parents
 parents.sel.intensity = 100
 # Number of phenotyping environments and reps
-n.env = 5
+n.env = 3
 n.rep = 1
 
 # Barley population genetics data
@@ -70,30 +71,54 @@ tp.change = c("best", "worst", "random", "no.change", "PEVmean", "CDmean")
 # The number of lines to add the TP after each cycle
 tp.update.increment = 150
 # Size of the TP to maintain - this is the same as the starting TP
-tp.size <- nrow(CAP.gametes) / 2
+tp.size <- nrow(CAP.haploids) / 2
 
 # Parent selection and crossing parameters
 n.crosses = 40
 ind.per.cross = 30
+cycle.candidate.size = n.crosses * ind.per.cross
+
+# Standardized selection intensity
+std.sel.intensity = parents.sel.intensity / cycle.candidate.size
 
 # Computation parameters
-n.iterations = 200
+n.iterations = 100
 
 date <- format(Sys.time(), "%d%m%y-%H%M%S")
+
+# Save the metadata to a list
+metadata <- list(h2 = h2,
+                 n.cycles = n.cycles,
+                 n.QTL = 100,
+                 parents.sel.intensity = parents.sel.intensity,
+                 n.env = n.env, 
+                 n.rep = n.rep,
+                 mutation.rate.qtl = mutation.rate.qtl,
+                 mutation.rate.snp = mutation.rate.snp,
+                 tp.update.increment = tp.update.increment,
+                 tp.size = tp.size,
+                 n.crosses = n.crosses,
+                 ind.per.cross = ind.per.cross,
+                 std.sel.intensity = std.sel.intensity,
+                 n.iterations = n.iterations,
+                 date = date)
 
 
 #### Define genome characteristics ####
 # Find the snps per chromsome
-n.chr.snps = nrow(sampled.markers) / length(unique(sampled.markers$chrom))
+n.chr.snps <- tapply(X = CAP.markers$rs, INDEX = CAP.markers$chrom, length)
 
 # Find the chromsome lengths
-chr.len <- as.numeric(tapply(X = sampled.markers$pos, INDEX = sampled.markers$chrom, FUN = max))
+chr.len <- as.numeric(tapply(X = CAP.markers$pos, INDEX = CAP.markers$chrom, FUN = max))
+
+# Create a list of loci positions
+genetic.map.list <- tapply(X = CAP.markers$pos, INDEX = CAP.markers$chrom, FUN = function(chr) list(chr))
 
 # Make the initial genome
-hv.genome <- make.genome( n.chr = 7, 
+hv.genome <- make.genome( n.chr = length(chr.len), 
                           chr.len = chr.len, 
                           n.chr.snps = n.chr.snps,
-                          genetic.map = sampled.markers$pos)
+                          genetic.map = genetic.map.list)
 
 
 
@@ -119,20 +144,15 @@ for (change in tp.change) {
       #### Define trait parameters ####
       hv.genome <- trait.architecture(genome = hv.genome,
                                       n.QTL = n.QTL, 
-                                      qtl.ids = NULL, 
-                                      qtl.dom.ids = NULL, 
-                                      qtl.per.ids = NULL, 
+                                      qtl.index = NULL, 
+                                      qtl.dom.index = NULL, 
+                                      qtl.perf.index = NULL, 
                                       qtl.add.eff = "geometric", 
-                                      qtl.dom.eff = NULL,
-                                      keep.all.snps = FALSE)
+                                      qtl.dom.eff = NULL)
       
-      # Since more loci have been added to the genome, we need to add columns to the gamete matricies to make up for this
-      # TP.gametes <- augment.gamete.mat(genome = hv.genome, 
-      #                                  gamete.mat = CAP.gametes)
-      
-      TP.gametes <- CAP.gametes
+      TP.haploids <- CAP.haploids
       # Convert the gametes to genotypes
-      TP.genos <- genotype.markers(gametes = TP.gametes, genome = hv.genome)
+      TP.genos <- genotype.loci(haploid.genos = TP.haploids, genome = hv.genome)
       
       ## Select the TP lines for use as parents
       # First separate MN and ND lines
@@ -141,7 +161,12 @@ for (change in tp.change) {
       MN.lines <- setdiff(x = line.names, y = c(ND.lines))
       
       # Phenotype the training population
-      TP.values <- evaluate.population(genome = hv.genome, gametes = TP.gametes, h2 = h2, n.env = n.env, n.rep = n.rep)
+      TP.values <- evaluate.population(genome = hv.genome, 
+                                       haploid.genos = TP.haploids, 
+                                       h2 = h2, 
+                                       n.env = n.env, 
+                                       n.rep = n.rep)
+      
       TP.phenos <- TP.values$mean.pheno.values
       
       # Next select the top 80 MN and top 80 ND
@@ -157,7 +182,7 @@ for (change in tp.change) {
       
       # Set the parent gamete data input
       parent.lines.list <- pop.makeup.list[[pop.makeup]]
-      parent.gametes <- TP.gametes
+      parent.haploids <- TP.haploids
       
       # Set dummy variables for the phenos and genos
       TP.phenos.i <- TP.phenos
@@ -179,8 +204,8 @@ for (change in tp.change) {
                                                 use.parents.once = T)
         
         ##### Step 2 - Make the crosses and inbreed to genotyping
-        system.time(candidate.gametes.i <- make.population(genome = hv.genome, 
-                                                           named.parental.gametes = parent.gametes,
+        system.time(candidate.haploid.i <- make.population(genome = hv.genome, 
+                                                           parental.haploids = parent.haploids,
                                                            crossing.block = crossing.block.i,
                                                            N = ind.per.cross,
                                                            cycle.number = breeding.cycle,
@@ -189,13 +214,15 @@ for (change in tp.change) {
                                                            mutation.rate.snp = mutation.rate.snp,
                                                            mutation.rate.qtl = mutation.rate.qtl))
         
-        # Find the genotypes of the markers and the QTL
-        candidate.i.genos <- genotype.markers(gametes = candidate.gametes.i, 
-                                              genome = hv.genome, 
-                                              include.QTL = T)
+        # Find the genotypes of the markers and QTL
+        candidate.i.genos <- genotype.loci(haploid.genos = candidate.haploid.i, 
+                                           genome = hv.genome, 
+                                           include.QTL = T)
+        # Just the marker genotypes
+        candidate.i.marker.genos <- genotype.loci(haploid.genos = candidate.haploid.i, 
+                                                  genome = hv.genome, 
+                                                  include.QTL = F)
         
-        # Remove the QTL genotypes
-        candidate.i.marker.genos <- candidate.i.genos[,-slot(hv.genome, "pos.add.qtl")$ID]
       
         # Measure summary statistics
         candidate.i.genos.allele.freq <- calculate.allele.freq(geno.mat = candidate.i.genos)
@@ -228,11 +255,11 @@ for (change in tp.change) {
         
         # Measure the phenotype and true genotypic values of all selection candidates
         candidate.i.values <- evaluate.population( genome = hv.genome,
-                                              gametes = candidate.gametes.i,
-                                              h2 = h2,
-                                              n.env = n.env,
-                                              n.rep = n.rep,
-                                              V_e.scale = 8 )
+                                                   haploid.genos = candidate.haploid.i,
+                                                   h2 = h2,
+                                                   n.env = n.env,
+                                                   n.rep = n.rep,
+                                                   V_e.scale = 8 )
         
         # Validate the predictions
         # Find the correlation between the GEBVs and the true genotypic value
@@ -254,7 +281,7 @@ for (change in tp.change) {
         parent.lines <- parent.selections.i$lines.sel
         parent.lines.list <- list(p1 = parent.lines, p2 = parent.lines)
         # The parents are selected and crossed at the F3 stage, so subset the gametes from the F3
-        parent.gametes <- subset.gametes(gametes = candidate.gametes.i,
+        parent.haploids <- subset.gametes(gametes = candidate.haploid.i,
                                          line.names = parent.lines)
         
         parent.values <- subset.values(values.list = candidate.i.values, lines.to.subset = parent.lines)
@@ -323,7 +350,7 @@ for (change in tp.change) {
           # TP additions
           TP.addition.lines <- TP.addition.list$TP.addition.lines
           # Subset the gametes for these lines
-          TP.addition.gametes <- subset.gametes(gametes = candidate.gametes.i,
+          TP.addition.haploids <- subset.gametes(gametes = candidate.haploid.i,
                                                 line.names = TP.addition.lines)
           
           # Subset the geno matrix for these lines

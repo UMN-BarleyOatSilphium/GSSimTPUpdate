@@ -5,7 +5,7 @@
 # Date: April 13, 2016
 
 # Set the working directory
-setwd("C:/Users/Jeff/Google Drive/Barley Lab/Projects/Side Projects/Simulations/Barley_GS_Simulations")
+setwd("C:/Users/Jeff/Google Drive/Barley Lab/Projects/Side Projects/Simulations/BarleySimGS-TPUpdate/")
 
 # Define a function to take a matrix and compare all columns and return an index of the identical columns
 identical.columns <- function(input.matrix) {
@@ -153,75 +153,86 @@ for (min.maf in c(0.03, 0.10)) {
   non.redundant.markers$pos <- non.redundant.markers$pos / 1000 / 100
   # Remove the "UNK" factor from the chrom levels
   non.redundant.markers$chrom <- as.numeric(non.redundant.markers$chrom)
-  
-  # Find the minimum number of markers per chromsome
-  min(table(non.redundant.markers$chrom))
-  
-  ### Sampling an even number of markers per chromosome
-  # Set the max number of markers per chromosome
-  # max.marker = min(table(non.redundant.markers$chrom))
-  # or set it manually
-  max.marker = min(100, min(table(non.redundant.markers$chrom)))
-  
-  # Use an algorithm to find the set of markers per chromosome that minimizes the range of 
-  ## Morgan distances between adjacent markers
-  sampled.markers.per.chrom <- tapply(X = non.redundant.markers$rs, INDEX = non.redundant.markers$chrom, FUN = function(chrom.rs) {
-    # Take a random sample and save it
-    rs.sample.start <- sort(sample(chrom.rs, size = max.marker))
-    rs.sample.save <- rs.sample.start
-    
-    # Find the position of the sampled markers
-    pos.sample <- non.redundant.markers$pos[non.redundant.markers$rs %in% rs.sample.save]
-    
-    # Find the range of adjacent marker distances
-    # This involves finding the adjacent position differrences, then finding the difference between the range
-    pos.range.save <- diff(range(diff(pos.sample)))
-    
-    # While loop
-    iter = 0
-    while (iter <= 500) {
-      iter = iter + 1
-      # Take a random sample
-      rs.sample.start <- sort(sample(chrom.rs, size = max.marker))
-      
-      pos.sample <- non.redundant.markers$pos[non.redundant.markers$rs %in% rs.sample.start]
-      pos.range.start <- diff(range(diff(pos.sample)))
-      
-      # If statement to reject the sample if the range is not less than the previous
-      if (pos.range.start < pos.range.save) {
-        pos.range.save <- pos.range.start
-        rs.sample.save <- rs.sample.start
-      }
-    }
-    
-    # Return the sample
-    return(as.character(rs.sample.save))
-  })
-  
-  # Concatenate
-  sampled.markers.per.chrom <- as.character(do.call("c", sampled.markers.per.chrom))
-  
-  # Pull out the sampled markers
-  sampled.markers <- non.redundant.markers[non.redundant.markers$rs %in% sampled.markers.per.chrom,]
+  # Remove row.names
+  row.names(non.redundant.markers) <- NULL
   
   
-  # Subset the genotype matrix for the same markers
-  CAP.M.final <- CAP.M.impute[,as.character(sampled.markers$rs)]
+  #### Deprecated #####
+  ## The following code is no longer used since we don't need to have the same number
+  ## of loci per chromosome
   
+  # # Find the minimum number of markers per chromsome
+  # min(table(non.redundant.markers$chrom))
+  # 
+  # ### Sampling an even number of markers per chromosome
+  # # Set the max number of markers per chromosome
+  # # max.marker = min(table(non.redundant.markers$chrom))
+  # # or set it manually
+  # max.marker = min(100, min(table(non.redundant.markers$chrom)))
+  # 
+  # # Use an algorithm to find the set of markers per chromosome that minimizes the range of 
+  # ## Morgan distances between adjacent markers
+  # sampled.markers.per.chrom <- tapply(X = non.redundant.markers$rs, INDEX = non.redundant.markers$chrom, FUN = function(chrom.rs) {
+  #   # Take a random sample and save it
+  #   rs.sample.start <- sort(sample(chrom.rs, size = max.marker))
+  #   rs.sample.save <- rs.sample.start
+  #   
+  #   # Find the position of the sampled markers
+  #   pos.sample <- non.redundant.markers$pos[non.redundant.markers$rs %in% rs.sample.save]
+  #   
+  #   # Find the range of adjacent marker distances
+  #   # This involves finding the adjacent position differrences, then finding the difference between the range
+  #   pos.range.save <- diff(range(diff(pos.sample)))
+  #   
+  #   # While loop
+  #   iter = 0
+  #   while (iter <= 500) {
+  #     iter = iter + 1
+  #     # Take a random sample
+  #     rs.sample.start <- sort(sample(chrom.rs, size = max.marker))
+  #     
+  #     pos.sample <- non.redundant.markers$pos[non.redundant.markers$rs %in% rs.sample.start]
+  #     pos.range.start <- diff(range(diff(pos.sample)))
+  #     
+  #     # If statement to reject the sample if the range is not less than the previous
+  #     if (pos.range.start < pos.range.save) {
+  #       pos.range.save <- pos.range.start
+  #       rs.sample.save <- rs.sample.start
+  #     }
+  #   }
+  #   
+  #   # Return the sample
+  #   return(as.character(rs.sample.save))
+  # })
+  # 
+  # # Concatenate
+  # sampled.markers.per.chrom <- as.character(do.call("c", sampled.markers.per.chrom))
+  # 
+  # # Pull out the sampled markers
+  # sampled.markers <- non.redundant.markers[non.redundant.markers$rs %in% sampled.markers.per.chrom,]
+  # 
+  # 
+  # # Subset the genotype matrix for the same markers
+  # CAP.M.final <- CAP.M.impute[,as.character(sampled.markers$rs)]
   
+  CAP.M.final <- CAP.M.impute
   # Since all genotypes are completely homozygous, it is easy to create the gamete matrix
-  CAP.gametes <- rbind(CAP.M.final, CAP.M.final)
+  CAP.haploids <- rbind(CAP.M.final, CAP.M.final)
   # Change all -1 to zeros
-  CAP.gametes[CAP.gametes == -1] <- 0
+  CAP.haploids[CAP.haploids == -1] <- 0
   # Rename the genotypes
-  row.names(CAP.gametes) <- paste(rep(row.names(CAP.M.final), 2), rep(1:2, each = nrow(CAP.M.final)), sep = ".")
+  row.names(CAP.haploids) <- paste(rep(row.names(CAP.M.final), 2), rep(1:2, each = nrow(CAP.M.final)), sep = ".")
   # Sort on row.names
-  CAP.gametes <- CAP.gametes[order(row.names(CAP.gametes)),]
+  CAP.haploids <- CAP.haploids[order(row.names(CAP.haploids)),]
   
-  assign(x = paste("CAP.gametes.", min.maf, sep = ""), value = CAP.gametes)
-  assign(x = paste("sampled.markers.", min.maf, sep = ""), value = sampled.markers)
+  # The marker info comes from the non-redundant markers
+  CAP.markers <- non.redundant.markers
+  
+  assign(x = paste("CAP.haploids.", min.maf, sep = ""), value = CAP.haploids)
+  assign(x = paste("CAP.markers.", min.maf, sep = ""), value = CAP.markers)
 }
 
+
 # Save the data
-save.list <- c(apropos(what = "^CAP.gametes.[0-9]"), apropos(what = "^sampled.markers.[0-9]"))
+save.list <- c(apropos(what = "^CAP.haploids.[0-9]"), apropos(what = "^CAP.markers.[0-9]"))
 save(list = save.list, file = "Files/Barley_CAP_simuation_starting_material.RData")
