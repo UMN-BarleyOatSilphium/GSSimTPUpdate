@@ -75,6 +75,10 @@ tp.size <- nrow(CAP.gametes) / 2
 # Parent selection and crossing parameters
 n.crosses = 40
 ind.per.cross = 30
+cycle.candidate.size = n.crosses * ind.per.cross
+
+# Standardized selection intensity
+std.sel.intensity = parents.sel.intensity / cycle.candidate.size
 
 # Computation parameters
 n.iterations = 200

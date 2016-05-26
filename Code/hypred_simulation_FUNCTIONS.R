@@ -1041,20 +1041,31 @@ calculate.allele.freq <- function(geno.mat = NULL,
 # }
 
 # Define a function for creating a genome
-make.genome <- function(n.chr,
-                        chr.len,
-                        n.chr.snps,
-                        genetic.map
+## This function is updated to allow for chromosomes to have unequal numbers of 
+## loci / markers
+make.genome <- function(n.chr, # An integer specifying the number of chromosomes
+                        chr.len, # A numeric vector specifiying length of each chromosome.
+                        n.chr.snps, # A numeric vector specifying the number of loci on each chromosome
+                        genetic.map # A list of genetic map positions for loci on each chromosome
 ) {
   
-  # Create the genome
-  genome <- hypredGenome(num.chr = n.chr, len.chr = chr.len, num.snp.chr = n.chr.snps)
+  # Apply a function over the number of chromosomes
+  genome.list <- lapply(X = 1:n.chr, FUN = function(i)
+    # Create a new base genome
+    hypredGenome(num.chr = 1, len.chr = chr.len[i], num.snp.chr = n.chr.snps[i]) )
   
-  # Assign the genetic map
-  genome <- hypredNewMap(genome, new.map = genetic.map)
+  # Rename the genomes
+  names(genome.list) <- paste("chr", 1:n.chr, sep = "")
+  
+  # Apply a function over the genome list to add a new genetic map
+  genome.list <- lapply(X = 1:n.chr, FUN = function(i) {
+    # Extract the genome
+    genome <- genome.list[[i]]
+    # Add the new map to the genome
+    hypredNewMap(genome, new.map = genetic.map[[i]]) })
   
   # Return the genome
-  return(genome)
+  return(genome.list)
 } # Close the function
 
 # Define a function to define the trait architecture
