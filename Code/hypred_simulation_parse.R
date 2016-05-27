@@ -49,12 +49,6 @@ for (f in args[-1]) {
       lapply(X = rep$sim.result, FUN = function(cycle) {
         return(cycle$geno.summary.stats$allele.freq) })})})
   
-  # Pairwise diversity
-  pairwise.div.list <- lapply(X = experiment.sub.results, FUN = function(set) {
-    lapply(X = set, FUN = function(rep) {
-      lapply(X = rep$sim.result, FUN = function(cycle) {
-        return(cycle$geno.summary.stats$pairwise.div) })})})
-  
   # Pairwise LD
   qtl.marker.LD.list <- lapply(X = experiment.sub.results, FUN = function(set) 
     lapply(X = set, FUN = function(rep) 
@@ -112,7 +106,6 @@ for (f in args[-1]) {
     selection.variance.components.list = selection.variance.components.list,
     selection.genotypic.value.list = selection.genotypic.value.list,
     allele.freq.list = allele.freq.list,
-    pairwise.div.list = pairwise.div.list,
     qtl.marker.LD.list = qtl.marker.LD.list,
     relationship.list = relationship.list,
     heterozygosity.list = heterozygosity.list,
