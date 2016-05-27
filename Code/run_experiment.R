@@ -7,7 +7,7 @@
 # This update will test whether including the parents is sufficient for updating the TP and maintaining predictive ability
 
 # Are we using MSI?
-MSI = T
+MSI = F
 
 # Arguments
 args <- commandArgs(trailingOnly = T)
@@ -191,8 +191,10 @@ for (change in tp.change) {
       
       # Create an initial data list
       simulation.results <- list()
+      
       # Loop over the number of cycles
       for (breeding.cycle in 1:n.cycles) {
+      # for (breeding.cycle in 1:5) {
         
         ##### Start the Cycle Executions #####
 
@@ -291,12 +293,6 @@ for (change in tp.change) {
         # Skip this step if not called
         if (change != "no.change") {
           
-          # If the change is just the parents, just add the parent candidates
-          if (change == "parents") {
-            
-            TP.addition.list <- list(TP.addition.lines = parent.selections.i$lines.sel)
-          }
-          
           # If the TP change is best, worst, or random
           if (change %in% c("best", "worst", "random")) {
             
@@ -370,24 +366,25 @@ for (change in tp.change) {
           # If the TP formation calls for a sliding window, use only the ~750 most recent training individuals
           if (tp.formation == "window") {
             
-            # If the breeding cycle * tp addition size is less than 750, select the last 750, then randomly sample the TP
+            # If the breeding cycle * tp addition size is less than the starting tp size, 
+            ## include the most recent 150 additions, then randomly sample from the
+            ## remaining TP
             if ((breeding.cycle * tp.update.increment) < tp.size) {
               
-              tp.keep.index <- tail(1:nrow(TP.genos.i), (breeding.cycle * tp.update.increment))
-              tp.random.index <- sort(sample(setdiff(1:nrow(TP.genos.i), tp.keep.index), (tp.size - length(tp.keep.index))))
-              tp.all.index <- sort(c(tp.keep.index, tp.random.index))
+              # Find the index of the most recent additions
+              tp.recent.index <- tail(1:nrow(TP.genos.i), (breeding.cycle * tp.update.increment))
+              # Randomly select among the remaining index to maintain the tp.size
+              tp.random.index <- sort( sample(setdiff(1:nrow(TP.genos.i), tp.recent.index), size = (tp.size - length(tp.recent.index)) ) )
+              # Combine
+              tp.keep.index <- sort(c(tp.recent.index, tp.random.index))
               
+            } else { # Otherwise just take the last tp.size individuals added to the TP
+              tp.keep.index <- tail(1:nrow(TP.genos.i), tp.size)
+              
+            }
               # Set the TP.pheno and TP.genos
-              TP.phenos.i <- as.matrix(TP.phenos.i[tp.all.index,])
-              TP.genos.i <- as.matrix(TP.genos.i[tp.all.index,])
-              
-            } else { # Otherwise just take the tail
-              
-              tp.keep.index <- tail(1:nrow(TP.genos.i), (breeding.cycle * tp.update.increment))
-              
               TP.phenos.i <- as.matrix(TP.phenos.i[tp.keep.index,])
               TP.genos.i <- as.matrix(TP.genos.i[tp.keep.index,])
-            }
           }
           
         } else {

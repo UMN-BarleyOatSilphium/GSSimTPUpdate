@@ -9,7 +9,7 @@ setwd("C:/Users/Jeff/Google Drive/Barley Lab/Projects/Side Projects/Simulations/
 
 # Load data
 all.files <- list.files()
-filename <- all.files[2]
+filename <- all.files[1]
 
 # # Allele freq experiment
 # setwd("C:/Users/Jeff/Google Drive/Barley Lab/Projects/Side Projects/Simulations/BarleySimGS-TPUpdate/Results/Allele Freq Experiment/")
@@ -26,92 +26,86 @@ tp.formation = strsplit(x = substring(text = filename, first = regexpr(pattern =
 n.cycles = length(collective.abbreviated.results[[1]][[1]][[1]][[1]])
 n.reps = sum(unlist(lapply(X = collective.abbreviated.results[[1]][[1]], FUN = length)))
 
+tp.change.factors <- as.factor(names(collective.abbreviated.results))
+
+# Define a function to plot
+sim.plot <- function(data.list, 
+                     xlim = c(1, n.cycles), 
+                     xlab = "Cycle Number", 
+                     ylim = NULL, 
+                     ylab, 
+                     main,
+                     legend.pos,
+                     just.data = FALSE # If true, return the estimates of the mean and CI and stop the function.
+){
+  
+  # Extract the names from the data.list for use as a factor
+  list.names <- names(data.list)
+  list.names.factor <- factor(list.names)
+  list.names.numeric <- as.numeric(list.names.factor)
+  
+  # Apply a function over the data.list to calculate the mean and a confidence
+  ## interval at every cycle
+  data.parameters <- lapply(X = data.list, FUN = function(data) {
+    
+    # Find the mean across iterations
+    mu <- apply(X = data, MARGIN = 1, FUN = mean)
+    
+    # Calculate a confidence interval based on a t-distribution
+    CI <- apply(X = data, MARGIN = 1, FUN = function(cycle) {
+      t.per <- qt(p = (1 - (0.05 / 2)), df = length(cycle) - 1)
+      t.per * ( sd(cycle) / sqrt(length(cycle)) ) }) 
+    
+    list(mu = mu, CI = CI) })
+  
+  # If just the data is requested, return it
+  if (just.data) {
+    return(data.parameters)
+  }
+  
+  
+  # If ylim is null, use a pretty range to determine it
+  if (is.null(ylim)) {
+    ylim <- range(pretty(range(sapply(data.parameters, function(sublist) sublist$mu))))
+  }
+  
+  # Create the empty plot first
+  plot(0, type = "n", xlim = xlim, xlab = xlab, ylim = ylim, ylab = ylab, main = main)
+  
+  # Add the legend
+  legend(legend.pos, legend = list.names.factor, pch = list.names.numeric, col = list.names.numeric)
+  
+  # Iterate over the data.parameters list
+  for (i in 1:length(data.parameters)) {
+    
+    # Add points to the plot
+    # Create jitter
+    x.jitter <- - (0.1 * scale(1:length(data.parameters), scale = F)[i])
+    points(x = (seq(xlim[1], xlim[2]) + x.jitter), data.parameters[[i]]$mu, pch = list.names.numeric[i], type = "b", col = list.names.numeric[i])
+
+    # Add CI bars
+    segments(x0 = (seq(xlim[1], xlim[2]) + x.jitter), 
+             y0 = (data.parameters[[i]]$mu - data.parameters[[i]]$CI), 
+             x1 = (seq(xlim[1], xlim[2]) + x.jitter), 
+             y1 = (data.parameters[[i]]$mu + data.parameters[[i]]$CI))
+  } # Close the for loop
+  
+} # Close the function
+    
+
+
 # Change in genetic variance over cycles  
 V_g.list <- lapply(X = collective.abbreviated.results, function(tpc)
   do.call("cbind", lapply(X = tpc$candidate.variance.components.list, FUN = function(set) 
     sapply(set, function(rep) 
       sapply(rep, function(cycle) return(cycle$V_g) )))))
 
-# Empty plot
-plot(0, 
-     type = "n",
-     xlim = c(0, n.cycles),
-     xlab = "Cycle Number",
-     # ylim = range(pretty(range(V_g.list)))
-     ylim = c(0,10),
-     ylab = "Mean V_g",
-     main = paste("Mean Genetic Variance Across Cycles", paste("Population:", pop.makeup, ", TP formation:", tp.formation), sep = "\n")
-)
-
-# Plotting shape factors
-plot.shapes.factor <- factor(names(V_g.list))
-
-# Add legend
-legend("topright", legend = names(V_g.list), pch = as.numeric(factor(names(V_g.list))), col = as.numeric(factor(names(V_g.list))))
-
-for (i in 1:length(V_g.list)) {
+# Plot
+sim.plot(data.list = V_g.list, 
+         ylab = "Genetic Variance", 
+         main = paste("Genetic Variance Across Cycles", paste("Population:", pop.makeup, ", TP formation:", tp.formation), sep = "\n"), 
+         legend.pos = "bottomleft")
   
-  # Find the mean and sd
-  V_g.mu <- apply(X = V_g.list[[i]], MARGIN = 1, FUN = mean, na.rm = T)
-  # Determine 95% confidence interval based on t distribution
-  V_g.CI <- apply(X = V_g.list[[i]], MARGIN = 1, FUN = function(cycle) {
-    t.per <- qt(p = (1 - (0.05 / 2)), df = length(cycle) - 1)
-    t.per * ( sd(cycle) / sqrt(length(cycle)) )
-  })
-  
-  # Add points to the plot
-  x.jitter <- - (0.1 * scale(1:length(V_g.list), scale = F)[i])
-  points(x = (1:n.cycles + x.jitter), V_g.mu, pch = as.numeric(plot.shapes.factor[i]), type = "b", col = as.numeric(plot.shapes.factor[i]))
-  # points(x = 1:n.cycles, scale = F)[i])), V_g.mu, pch = as.numeric(plot.shapes.factor[i]))
-
-
-  # Add standard deviation bars
-  segments(x0 = (1:n.cycles + x.jitter), y0 = (V_g.mu - V_g.CI), x1 = (1:n.cycles + x.jitter), y1 = (V_g.mu + V_g.CI))
-  
-}
-  
-
-
-# Change in pairwise diversity over cycles
-div.list <- lapply(X = collective.abbreviated.results, function(tpc)
-  do.call("cbind", lapply(X = tpc$pairwise.div.list, FUN = function(set) 
-    sapply(set, function(rep) 
-      sapply(rep, function(cycle) return(mean(cycle) ))))))
-
-# Empty plot
-plot(0, 
-     type = "n",
-     xlim = c(0, n.cycles),
-     xlab = "Cycle Number",
-     # ylim = range(pretty(range(V_g.list)))
-     ylim = c(0, 0.3),
-     ylab = "Mean Average Pairwise Diversity",
-     main = paste("Mean Average Pairwise Diversity Across Cycles", paste("Population:", pop.makeup, ", TP formation:", tp.formation), sep = "\n")
-)
-
-# Plotting shape factors
-plot.shapes.factor <- factor(names(div.list))
-
-# Add legend
-legend("bottomleft", legend = names(div.list), pch = as.numeric(factor(names(div.list))))
-
-for (i in 1:length(div.list)) {
-  
-  # Find the mean and sd
-  div.mu <- apply(X = div.list[[i]], MARGIN = 1, FUN = mean, na.rm = T)
-  # Determine 95% confidence interval based on t distribution
-  div.mu.CI <- apply(X = div.list[[i]], MARGIN = 1, FUN = function(cycle) {
-    t.per <- qt(p = (1 - (0.05 / 2)), df = length(cycle) - 1)
-    t.per * ( sd(cycle) / sqrt(length(cycle)) )
-  })
-  
-  # Add points to the plot
-  points(x = 1:n.cycles, div.mu, pch = as.numeric(plot.shapes.factor[i]))
-  
-  # Add standard deviation bars
-  segments(x0 = 1:n.cycles, y0 = (div.mu - div.mu.CI), x1 = 1:n.cycles, y1 = (div.mu + div.mu.CI))
-  
-}
 
 
 
@@ -119,42 +113,16 @@ for (i in 1:length(div.list)) {
 gen.mu.list <- lapply(X = collective.abbreviated.results, function(tpc)
   do.call("cbind", lapply(X = tpc$candidate.genotypic.value.list, FUN = function(set) 
     sapply(set, function(rep) 
-      sapply(rep, function(cycle) return(mean(cycle) ))))))
+      sapply(rep, function(cycle) cycle )))))
 
-# Empty plot
-plot(0, 
-     type = "n",
-     xlim = c(0, n.cycles),
-     xlab = "Cycle Number",
-     # ylim = range(pretty(range(V_g.list)))
-     ylim = c(-5, 30),
-     ylab = "Mean Average Genotypic Value",
-     main = paste("Mean Average Genotypic Values Across Cycles", paste("Population:", pop.makeup, ", TP formation:", tp.formation), sep = "\n")
-)
 
-# Plotting shape factors
-plot.shapes.factor <- factor(names(gen.mu.list))
+# Plot
+sim.plot(data.list = gen.mu.list, 
+         ylab = "Genotypic Value", 
+         main = paste("Genotypic Value Across Cycles", paste("Population:", pop.makeup, ", TP formation:", tp.formation), sep = "\n"), 
+         legend.pos = "topleft")
 
-# Add legend
-legend("bottomright", legend = names(gen.mu.list), pch = as.numeric(factor(names(gen.mu.list))), col = as.numeric(factor(names(gen.mu.list))))
 
-for (i in 1:length(gen.mu.list)) {
-  
-  # Find the mean and sd
-  gen.mu <- apply(X = gen.mu.list[[i]], MARGIN = 1, FUN = mean, na.rm = T)
-  gen.mu.CI <- apply(X = gen.mu.list[[i]], MARGIN = 1, FUN = function(cycle) {
-    t.per <- qt(p = (1 - (0.05 / 2)), df = length(cycle) - 1)
-    t.per * ( sd(cycle) / sqrt(length(cycle)) )
-  })
-  
-  # Add points to the plot
-  x.jitter <- - (0.1 * scale(1:length(V_g.list), scale = F)[i])
-  points(x = 1:n.cycles + x.jitter, gen.mu, type = "b", pch = as.numeric(plot.shapes.factor[i]), col = as.numeric(plot.shapes.factor[i]))
-  
-  # Add standard deviation bars
-  segments(x0 = 1:n.cycles + x.jitter, y0 = (gen.mu - gen.mu.CI), x1 = 1:n.cycles + x.jitter, y1 = (gen.mu + gen.mu.CI))
-  
-}
 
 
 
@@ -171,7 +139,8 @@ for (i in 1:length(gen.mu.list)) {
 
 k_p = 1.839 # Set k_p
 
-resp.selection.list <- lapply(X = collective.abbreviated.results, function(tpc) {
+# Predicted response
+pred.R.list <- lapply(X = collective.abbreviated.results, function(tpc) {
   # Make a k x r data.frame for each parameter where k is the number of cycle and r is the number of iterations
   # Predicted response
   V_g.df <- do.call("cbind", lapply(X = tpc$candidate.variance.components.list, FUN = function(set) 
@@ -187,6 +156,9 @@ resp.selection.list <- lapply(X = collective.abbreviated.results, function(tpc) 
   # Trim the last row and rename rows
   R_exp.df.i <- R_exp.df[-nrow(R_exp.df),]; row.names(R_exp.df.i) <- row.names(R_exp.df)[-1]
   
+  return(R_exp.df.i) })
+
+obs.R.list <- lapply(X = collective.abbreviated.results, function(tpc) {
   # Observed response
   mu.df <- do.call("cbind", lapply(X = tpc$candidate.genotypic.value.list, FUN = function(set) 
     sapply(set, function(rep) 
@@ -195,44 +167,14 @@ resp.selection.list <- lapply(X = collective.abbreviated.results, function(tpc) 
   # Calculate the difference between adjacent rows (cycles)
   R_obs.df = diff(mu.df)
   
-  return(list(R_exp = R_exp.df.i, R_obs = R_obs.df)) })
+  return(R_obs.df) })
 
-
-# Empty plot
-plot(0, 
-     type = "n",
-     xlim = c(0, 16),
-     xlab = "Cycle Number",
-     ylim = c(0, 4),
-     ylab = "Observed Response to Selection",
-     main = paste("Observed Response to Selection Across Cycles", paste("Population:", pop.makeup, ", TP formation:", tp.formation), sep = "\n")
-)
-
-## Plot observed response
-# Plotting shape factors
-plot.shapes.factor <- factor(names(resp.selection.list))
-
-# Add legend
-legend("topright", legend = names(resp.selection.list), pch = as.numeric(factor(names(resp.selection.list))))
-
-for (i in 1:length(resp.selection.list)) {
-  
-  # Find the mean and CI of the mean
-  R_obs.mu <- apply(X = resp.selection.list[[i]]$R_obs, MARGIN = 1, FUN = mean, na.rm = T)
-  # Determine 95% confidence interval based on t distribution
-  R_obs.mu.CI <- apply(X = resp.selection.list[[i]]$R_obs, MARGIN = 1, FUN = function(cycle) {
-    t.per <- qt(p = (1 - (0.05 / 2)), df = length(cycle) - 1)
-    t.per * ( sd(cycle) / sqrt(length(cycle)) )
-  })
-  
-  # Add points to the plot
-  x.jitter <- - (0.1 * scale(1:length(resp.selection.list), scale = F)[i])
-  points(x = 2:n.cycles + x.jitter, R_obs.mu, pch = as.numeric(plot.shapes.factor[i]))
-  
-  # Add standard deviation bars
-  segments(x0 = 2:n.cycles + x.jitter, y0 = (R_obs.mu - R_obs.mu.CI), x1 = 2:n.cycles + x.jitter, y1 = (R_obs.mu + R_obs.mu.CI))
-  
-}
+# Plot
+sim.plot(data.list = obs.R.list,
+         xlim = c(2, n.cycles),
+         ylab = "Response to Selection", 
+         main = paste("Observed Response to Selection Across Cycles", paste("Population:", pop.makeup, ", TP formation:", tp.formation), sep = "\n"), 
+         legend.pos = "bottomleft")
 
 
 
@@ -241,43 +183,13 @@ for (i in 1:length(resp.selection.list)) {
 val.pred.list <- lapply(X = collective.abbreviated.results, function(tpc)
   do.call("cbind", lapply(X = tpc$validation.results.list, FUN = function(set) 
     sapply(set, function(rep) 
-      sapply(rep, function(cycle) return(mean(cycle$pred.r) ))))) )
+      sapply(rep, function(cycle) cycle$pred.r ) ))))
 
-# Empty plot
-plot(0, 
-     type = "n",
-     xlim = c(0, n.cycles),
-     xlab = "Cycle Number",
-     # ylim = range(pretty(range(V_g.list)))
-     ylim = c(-0.1, 1),
-     ylab = "Prediction Accuracy of True Genotypic Value (r)",
-     main = paste("Prediction Accuracy of True Genotypic Value Across Cycles", paste("Population:", pop.makeup, ", TP formation:", tp.formation), sep = "\n")
-)
-
-# Plotting shape factors
-plot.shapes.factor <- factor(names(val.pred.list))
-
-# Add legend
-legend("topright", legend = names(val.pred.list), pch = as.numeric(factor(names(val.pred.list))), col = as.numeric(factor(names(val.pred.list))))
-
-for (i in 1:length(val.pred.list)) {
-  
-  # Find the mean and CI of the mean
-  pred_r.mu <- apply(X = val.pred.list[[i]], MARGIN = 1, FUN = mean, na.rm = T)
-  # Determine 95% confidence interval based on t distribution
-  pred_r.mu.CI <- apply(X = val.pred.list[[i]], MARGIN = 1, FUN = function(cycle) {
-    t.per <- qt(p = (1 - (0.05 / 2)), df = length(cycle) - 1)
-    t.per * ( sd(cycle) / sqrt(length(cycle)) )
-  })
-  
-  # Add points to the plot
-  x.jitter <- - (0.1 * scale(1:length(V_g.list), scale = F)[i])
-  points(x = 1:n.cycles + x.jitter, pred_r.mu, type = "b", pch = as.numeric(plot.shapes.factor[i]), col = as.numeric(plot.shapes.factor[i]))
-  
-  # Add standard deviation bars
-  segments(x0 = 1:n.cycles + x.jitter, y0 = (pred_r.mu - pred_r.mu.CI), x1 = 1:n.cycles + x.jitter, y1 = (pred_r.mu + pred_r.mu.CI))
-  
-}
+# Plot
+sim.plot(data.list = val.pred.list,
+         ylab = "Realized Prediction Accuracy", 
+         main = paste("Realized Prediction Accuracy Across Cycles", paste("Population:", pop.makeup, ", TP formation:", tp.formation), sep = "\n"), 
+         legend.pos = "bottomleft")
 
 
 
@@ -291,40 +203,11 @@ poly.marker.list <- lapply(X = collective.abbreviated.results, FUN = function(tp
         1 - (sum(cycle %in% c(0,1)) / length(cycle))
       }) ))))
 
-
-# Empty plot
-plot(0, 
-     type = "n",
-     xlim = c(0, n.cycles),
-     xlab = "Cycle Number",
-     # ylim = range(pretty(range(V_g.list)))
-     ylim = c(0, 1),
-     ylab = "Proportion of Markers That are Polymorphic",
-     main = paste("Proportion of Markers That are Polymorphic", paste("Population:", pop.makeup, ", TP formation:", tp.formation), sep = "\n")
-)
-
-# Plotting shape factors
-plot.shapes.factor <- factor(names(poly.marker.list))
-
-# Add legend
-legend("topright", legend = names(poly.marker.list), pch = as.numeric(factor(names(poly.marker.list))))
-
-for (i in 1:length(poly.marker.list)) {
-  
-  # Find the mean and sd
-  marker.mu <- apply(X = poly.marker.list[[i]], MARGIN = 1, FUN = mean, na.rm = T)
-  marker.mu.CI <- apply(X = poly.marker.list[[i]], MARGIN = 1, FUN = function(cycle) {
-    t.per <- qt(p = (1 - (0.05 / 2)), df = length(cycle) - 1)
-    t.per * ( sd(cycle) / sqrt(length(cycle)) )
-  })
-  
-  # Add points to the plot
-  points(x = 1:n.cycles, marker.mu, pch = as.numeric(plot.shapes.factor[i]))
-  
-  # Add standard deviation bars
-  segments(x0 = 1:n.cycles, y0 = (marker.mu - marker.mu.CI), x1 = 1:n.cycles, y1 = (marker.mu + marker.mu.CI))
-  
-}
+# Plot
+sim.plot(data.list = poly.marker.list,
+         ylab = "Proportion of Markers that Are Polymorphic", 
+         main = paste("Polymorphic Marker Proportion Across Cycles", paste("Population:", pop.makeup, ", TP formation:", tp.formation), sep = "\n"), 
+         legend.pos = "bottomleft")
 
 
 # Size of training population
@@ -334,40 +217,11 @@ tp.size.list <- lapply(X = collective.abbreviated.results, FUN = function(tpc)
       sapply(rep, FUN = function(cycle) 
         return(cycle$parameters$n.TP))))) )
 
-# Empty plot
-plot(0, 
-     type = "n",
-     xlim = c(0, n.cycles),
-     xlab = "Cycle Number",
-     # ylim = range(pretty(range(V_g.list)))
-     ylim = range(pretty(range(0, max(unlist(tp.size.list))))),
-     ylab = "Training Population Size Used in Prediction",
-     main = paste("Training Population Size", paste("Population:", pop.makeup, ", TP formation:", tp.formation), sep = "\n")
-)
-
-# Plotting shape factors
-plot.shapes.factor <- factor(names(tp.size.list))
-
-# Add legend
-legend("topright", legend = names(tp.size.list), pch = as.numeric(factor(names(tp.size.list))))
-
-for (i in 1:length(tp.size.list)) {
-  
-  # Find the mean and sd
-  n.tp.mu <- apply(X = tp.size.list[[i]], MARGIN = 1, FUN = mean, na.rm = T)
-  n.tp.mu.CI <- apply(X = tp.size.list[[i]], MARGIN = 1, FUN = function(cycle) {
-    t.per <- qt(p = (1 - (0.05 / 2)), df = length(cycle) - 1)
-    t.per * ( sd(cycle) / sqrt(length(cycle)) )
-  })
-  
-  # Add points to the plot
-  points(x = 1:n.cycles, n.tp.mu, pch = as.numeric(plot.shapes.factor[i]))
-  
-  # Add standard deviation bars
-  segments(x0 = 1:n.cycles, y0 = (n.tp.mu - n.tp.mu.CI), x1 = 1:n.cycles, y1 = (n.tp.mu + n.tp.mu.CI))
-  
-}
-
+# Plot
+sim.plot(data.list = tp.size.list,
+         ylab = "Training Population Size", 
+         main = paste("Training Population Size Across Cycles", paste("Population:", pop.makeup, ", TP formation:", tp.formation), sep = "\n"), 
+         legend.pos = "topleft")
 
 
 
@@ -428,48 +282,27 @@ for (i in 1:length(sfs.count.list)) {
 
 # Change in QTL-marker LD over cycles
 # Each QTL's max LD
-qtl.marker.LD.list <- lapply(X = collective.abbreviated.results, function(tpc)
+qtl.marker.max.LD.list <- lapply(X = collective.abbreviated.results, function(tpc)
   do.call("cbind", lapply(X = tpc$qtl.marker.LD.list, FUN = function(set) 
     sapply(set, function(rep) 
-      sapply(rep, function(cycle) mean(apply(X = cycle, MARGIN = 1, FUN = max)) )))) )
+      sapply(rep, function(cycle) cycle$mean.max.LD ) ))))
 
-# Empty plot
-plot(0, 
-     type = "n",
-     xlim = c(0, n.cycles),
-     xlab = "Cycle Number",
-     # ylim = range(pretty(range(V_g.list)))
-     ylim = c(0.5, 0.8),
-     ylab = "LD of Each QTL with the Marker in Max LD (r)",
-     main = paste("LD of Each QTL with the Marker in Max LD", paste("Population:", pop.makeup, ", TP formation:", tp.formation), sep = "\n")
-)
+# Plot
+sim.plot(data.list = qtl.marker.max.LD.list,
+         ylab = "Linkage Disequilibrium (r)", 
+         main = paste("Mean LD of Polymorphic QTL with Marker in Highest LD", paste("Population:", pop.makeup, ", TP formation:", tp.formation), sep = "\n"), 
+         legend.pos = "bottomleft")
 
-# Plotting shape factors
-plot.shapes.factor <- factor(names(qtl.marker.LD.list))
+# Mean LD across all QTL-marker pairs
+qtl.marker.mean.LD.list <- lapply(X = collective.abbreviated.results, function(tpc)
+  do.call("cbind", lapply(X = tpc$qtl.marker.LD.list, FUN = function(set) 
+    sapply(set, function(rep) 
+      sapply(rep, function(cycle) cycle$mean.LD ) ))))
 
-# Add legend
-legend("topright", legend = names(qtl.marker.LD.list), pch = as.numeric(plot.shapes.factor), col = as.numeric(plot.shapes.factor))
-
-for (i in 1:length(val.pred.list)) {
-  
-  # Find the mean and CI of the mean
-  mu <- apply(X = qtl.marker.LD.list[[i]], MARGIN = 1, FUN = mean, na.rm = T)
-  # Determine 95% confidence interval based on t distribution
-  mu.CI <- apply(X = qtl.marker.LD.list[[i]], MARGIN = 1, FUN = function(cycle) {
-    t.per <- qt(p = (1 - (0.05 / 2)), df = length(cycle) - 1)
-    t.per * ( sd(cycle) / sqrt(length(cycle)) )
-  })
-  
-  # Add points to the plot
-  x.jitter <- - (0.1 * scale(1:length(qtl.marker.LD.list), scale = F)[i])
-  points(x = 1:n.cycles + x.jitter, mu, type = "b", pch = as.numeric(plot.shapes.factor[i]), col = as.numeric(plot.shapes.factor[i]))
-  
-  # Add standard deviation bars
-  segments(x0 = 1:n.cycles + x.jitter, y0 = (mu - mu.CI), x1 = 1:n.cycles + x.jitter, y1 = (mu + mu.CI))
-  
-}
-
-
+sim.plot(data.list = qtl.marker.mean.LD.list,
+         ylab = "Linkage Disequilibrium (r)", 
+         main = paste("Mean LD of Polymorphic QTL with Marker in Highest LD", paste("Population:", pop.makeup, ", TP formation:", tp.formation), sep = "\n"), 
+         legend.pos = "bottomleft")
 
 
 
@@ -479,41 +312,11 @@ relationship.list <- lapply(X = collective.abbreviated.results, function(tpc)
     sapply(set, function(rep) 
       sapply(rep, function(cycle) cycle )))) )
 
-# Empty plot
-plot(0, 
-     type = "n",
-     xlim = c(0, n.cycles),
-     xlab = "Cycle Number",
-     # ylim = range(pretty(range(V_g.list)))
-     ylim = c(-1, 0),
-     ylab = "Additive Relationship Between TP and Candidates (G)",
-     main = paste("Additive Relationship Between TP and Candidates", paste("Population:", pop.makeup, ", TP formation:", tp.formation), sep = "\n")
-)
-
-# Plotting shape factors
-plot.shapes.factor <- factor(names(relationship.list))
-
-# Add legend
-legend("bottomleft", legend = names(relationship.list), pch = as.numeric(plot.shapes.factor), col = as.numeric(plot.shapes.factor))
-
-for (i in 1:length(val.pred.list)) {
-  
-  # Find the mean and CI of the mean
-  mu <- apply(X = relationship.list[[i]], MARGIN = 1, FUN = mean, na.rm = T)
-  # Determine 95% confidence interval based on t distribution
-  mu.CI <- apply(X = relationship.list[[i]], MARGIN = 1, FUN = function(cycle) {
-    t.per <- qt(p = (1 - (0.05 / 2)), df = length(cycle) - 1)
-    t.per * ( sd(cycle) / sqrt(length(cycle)) )
-  })
-  
-  # Add points to the plot
-  x.jitter <- - (0.1 * scale(1:length(relationship.list), scale = F)[i])
-  points(x = 1:n.cycles + x.jitter, mu, type = "b", pch = as.numeric(plot.shapes.factor[i]), col = as.numeric(plot.shapes.factor[i]))
-  
-  # Add standard deviation bars
-  segments(x0 = 1:n.cycles + x.jitter, y0 = (mu - mu.CI), x1 = 1:n.cycles + x.jitter, y1 = (mu + mu.CI))
-  
-}
+# Plot
+sim.plot(data.list = relationship.list,
+         ylab = "Additive Genetic Relationship", 
+         main = paste("Mean Scaled Additive Relationship Between Training Set and Candidates", paste("Population:", pop.makeup, ", TP formation:", tp.formation), sep = "\n"), 
+         legend.pos = "bottomleft")
   
 
 

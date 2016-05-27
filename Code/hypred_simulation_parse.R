@@ -20,10 +20,10 @@ for (f in args[-1]) {
   n.cycles <- length(experiment.sub.results[[1]][[1]]$sim.results)
   
   # Variance components
-  candidate.variance.components.list <- lapply(X = experiment.sub.results, FUN = function(set) {
-    lapply(X = set, FUN = function(rep) {
-      lapply(X = rep$sim.result, FUN = function(cycle) {
-        return(cycle$candidate.values$var.components) })})})
+  candidate.variance.components.list <- lapply(X = experiment.sub.results, FUN = function(set) 
+    lapply(X = set, FUN = function(rep) 
+      lapply(X = rep$sim.result, FUN = function(cycle) 
+        return(cycle$candidate.values$var.components) )))
   
   # Genotypic value of candidates
   candidate.genotypic.value.list <- lapply(X = experiment.sub.results, FUN = function(set) {
