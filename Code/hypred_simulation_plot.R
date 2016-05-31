@@ -9,7 +9,7 @@ setwd("C:/Users/Jeff/Google Drive/Barley Lab/Projects/Side Projects/Simulations/
 
 # Load data
 all.files <- list.files()
-filename <- all.files[1]
+filename <- all.files[3]
 
 # # Allele freq experiment
 # setwd("C:/Users/Jeff/Google Drive/Barley Lab/Projects/Side Projects/Simulations/BarleySimGS-TPUpdate/Results/Allele Freq Experiment/")
@@ -66,7 +66,7 @@ sim.plot <- function(data.list,
   
   # If ylim is null, use a pretty range to determine it
   if (is.null(ylim)) {
-    ylim <- range(pretty(range(sapply(data.parameters, function(sublist) sublist$mu))))
+    ylim <- range(pretty(range(sapply(data.parameters, function(sublist) sublist$mu), na.rm = T)))
   }
   
   # Create the empty plot first
