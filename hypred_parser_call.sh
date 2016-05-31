@@ -31,19 +31,22 @@ if [ "$exp" = "Base_experiment" ]; then
   Rscript Code/hypred_simulation_parse.R $(echo $filename $files)
   
   # ND and random
-  filename="simulation_results_q100_sel0.1_popmakeup-ND_tpformation-window_collective_300416.RData"
-  files=$(find $parsedir -maxdepth 1 -name "simulation_results*_popmakeup-ND_*tpformation-window*")
+  #filename="simulation_results_q100_sel0.1_popmakeup-ND_tpformation-window_collective_300416.RData"
+  #files=$(find $parsedir -maxdepth 1 -name "simulation_results*_popmakeup-ND_*tpformation-window*")
   
-  Rscript Code/hypred_simulation_parse.R $(echo $filename $files)
+  #Rscript Code/hypred_simulation_parse.R $(echo $filename $files)
   
   # MNxND and random
-  filename="simulation_results_q100_sel0.1_popmakeup-MNxND_tpformation-window_collective_300416.RData"
-  files=$(find $parsedir -maxdepth 1 -name "simulation_results*_popmakeup-MNxND_*tpformation-window*")
+  #filename="simulation_results_q100_sel0.1_popmakeup-MNxND_tpformation-window_collective_300416.RData"
+  #files=$(find $parsedir -maxdepth 1 -name "simulation_results*_popmakeup-MNxND_*tpformation-window*")
   
-  Rscript Code/hypred_simulation_parse.R $(echo $filename $files)
+  #Rscript Code/hypred_simulation_parse.R $(echo $filename $files)
 
   # Exit if just the window sub-experiment is completed
-  if [ $justwindow ]; then exit; fi
+  if [ "$justwindow" = true ]; then
+
+	echo "Running the parse script on the window results. Exiting..." && exit
+  else
   
   # MN and cumulative
   filename="simulation_results_q100_sel0.1_popmakeup-MN_tpformation-cumulative_collective_300416.RData"
@@ -62,6 +65,8 @@ if [ "$exp" = "Base_experiment" ]; then
   files=$(find $parsedir -maxdepth 1 -name "simulation_results*_popmakeup-MNxND_*tpformation-cumulative*")
   
   Rscript Code/hypred_simulation_parse.R $(echo $filename $files)
+
+  fi
   
 else 
   
