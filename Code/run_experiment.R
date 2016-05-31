@@ -7,7 +7,7 @@
 # This update will test whether including the parents is sufficient for updating the TP and maintaining predictive ability
 
 # Are we using MSI?
-MSI = F
+MSI = T
 
 # Arguments
 args <- commandArgs(trailingOnly = T)
