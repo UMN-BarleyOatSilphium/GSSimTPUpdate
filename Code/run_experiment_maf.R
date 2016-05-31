@@ -65,7 +65,7 @@ tp.change = "no.change"
 # The number of lines to add the TP after each cycle
 tp.update.increment = 150
 # Size of the TP to maintain - this is the same as the starting TP
-tp.size <- nrow(CAP.haploids) / 2
+tp.size <- nrow(CAP.haploids.0.03) / 2
 
 # Parent selection and crossing parameters
 n.crosses = 40
@@ -107,23 +107,27 @@ metadata <- list(h2 = h2,
 
 maf.filt.results.list <- list()
 
-for (min.maf in gsub(pattern = "CAP.gametes.", apropos("CAP.gametes"), replacement = "")) {
+for (min.maf in gsub(pattern = "CAP.haploids.", apropos("CAP.haploids"), replacement = "")) {
   
-  assign(value = get(apropos(paste("CAP.gametes", min.maf, sep = "."))), x = "CAP.gametes")
-  assign(value = get(apropos(paste("sampled.markers", min.maf, sep = "."))), x = "sampled.markers")
+  assign(value = get(apropos(paste("CAP.haploids", min.maf, sep = "."))), x = "CAP.haploids")
+  assign(value = get(apropos(paste("CAP.markers", min.maf, sep = "."))), x = "CAP.markers")
   
 
+  #### Define genome characteristics ####
   # Find the snps per chromsome
-  n.chr.snps = nrow(sampled.markers) / length(unique(sampled.markers$chrom))
+  n.chr.snps <- tapply(X = CAP.markers$rs, INDEX = CAP.markers$chrom, length)
   
   # Find the chromsome lengths
-  chr.len <- as.numeric(tapply(X = sampled.markers$pos, INDEX = sampled.markers$chrom, FUN = max))
+  chr.len <- as.numeric(tapply(X = CAP.markers$pos, INDEX = CAP.markers$chrom, FUN = max))
+  
+  # Create a list of loci positions
+  genetic.map.list <- tapply(X = CAP.markers$pos, INDEX = CAP.markers$chrom, FUN = function(chr) list(chr))
   
   # Make the initial genome
-  hv.genome <- make.genome( n.chr = 7, 
+  hv.genome <- make.genome( n.chr = length(chr.len), 
                             chr.len = chr.len, 
                             n.chr.snps = n.chr.snps,
-                            genetic.map = sampled.markers$pos)
+                            genetic.map = genetic.map.list)
   
   
   
@@ -430,8 +434,8 @@ for (min.maf in gsub(pattern = "CAP.gametes.", apropos("CAP.gametes"), replaceme
     
   } # Close the tp.change for loop
   
-  filename = paste("Files/", "simulation_results_q", n.QTL, "_sel", GEBV.sel.intensity, "_popmakeup-", pop.makeup, "_tpchange-", change, "_tpformation-", tp.formation, "_maf-", min.maf, "_", date, ".RData", sep = "")
-  save(list = c("experiment.sub.results", "change", "min.maf"), file = filename)
+  filename = paste("Files/", "simulation_results_q", n.QTL, "_sel", parents.sel.intensity, "_popmakeup-", pop.makeup, "_tpchange-", change, "_tpformation-", tp.formation, "_maf-", min.maf, "_", date, ".RData", sep = "")
+  save(list = c("experiment.sub.results", "change", "min.maf", "metadata"), file = filename)
   
 } # Close the maf.filter loop
 
