@@ -241,7 +241,16 @@ for (min.maf in gsub(pattern = "CAP.haploids.", apropos("CAP.haploids"), replace
           # Measure heterozygosity of the entries
           candidate.i.genos.het <- apply(X = candidate.i.genos, MARGIN = 1, FUN = function(geno) sum(geno == 0) / length(geno))
           # Measure LD
-          candidate.i.qtl.marker.LD <- measure.LD(genome = hv.genome, genos = candidate.i.genos)
+          candidate.i.qtl.marker.LD <- measure.LD(genome = hv.genome, genos = candidate.i.genos, Morgan.window = 0.5)
+          # Per QTL, find the LD of the marker with which the QTL has the highest LD
+          candidate.i.mean.max.LD <- mean(unlist(sapply(X = candidate.i.qtl.marker.LD, FUN = function(chr) 
+            sapply(X = chr, FUN = function(qtl) ifelse(test = all(is.na(qtl)), yes = max(qtl), no = max(qtl, na.rm = T))) )), na.rm = T)
+          candidate.i.mean.window.LD <- mean(unlist(sapply(X = candidate.i.qtl.marker.LD, FUN = function(chr) sapply(X = chr, FUN = mean, na.rm = T))), na.rm = T)
+  
+          # Create a list to save
+          qtl.marker.LD <- list(candidate.i.qtl.marker.LD = candidate.i.qtl.marker.LD, 
+                                mean.max = candidate.i.mean.max.LD,
+                                mean.window = candidate.i.mean.window.LD)
           
           # Only use polymorphic markers for predictions
           # Determine polymorphic markers in the candidates
@@ -408,7 +417,7 @@ for (min.maf in gsub(pattern = "CAP.haploids.", apropos("CAP.haploids"), replace
           # Gather data for analysis
           simulation.results[[cycle.name]] <- list(geno.summary.stats = list(allele.freq = candidate.i.genos.allele.freq,
                                                                              heterozygosity = candidate.i.genos.het,
-                                                                             qtl.marker.LD = candidate.i.qtl.marker.LD,
+                                                                             qtl.marker.LD = qtl.marker.LD,
                                                                              mu.TP.candidate.rel = mu.A.relationship),
                                                    prediction.results = list(marker.effects = candidate.i.prediction$solve.out$u,
                                                                              parameters = candidate.i.prediction$parameters),
@@ -433,6 +442,9 @@ for (min.maf in gsub(pattern = "CAP.haploids.", apropos("CAP.haploids"), replace
     
     
   } # Close the tp.change for loop
+  
+  # Rename the "change" variable
+  change <- paste(change, min.maf, sep = "_")
   
   filename = paste("Files/", "simulation_results_q", n.QTL, "_sel", parents.sel.intensity, "_popmakeup-", pop.makeup, "_tpchange-", change, "_tpformation-", tp.formation, "_maf-", min.maf, "_", date, ".RData", sep = "")
   save(list = c("experiment.sub.results", "change", "min.maf", "metadata"), file = filename)

@@ -4,19 +4,19 @@
 library(plyr)
 
 # Set working directory
-# Base experiment
-setwd("C:/Users/Jeff/Google Drive/Barley Lab/Projects/Side Projects/Simulations/BarleySimGS-TPUpdate/Results/Base Experiment/")
-
-# Load data
-all.files <- list.files()
-filename <- all.files[3]
-
-# # Allele freq experiment
-# setwd("C:/Users/Jeff/Google Drive/Barley Lab/Projects/Side Projects/Simulations/BarleySimGS-TPUpdate/Results/Allele Freq Experiment/")
+# # Base experiment
+# setwd("C:/Users/Jeff/Google Drive/Barley Lab/Projects/Side Projects/Simulations/BarleySimGS-TPUpdate/Results/Base Experiment/")
 # 
 # # Load data
 # all.files <- list.files()
-# filename <- all.files[1]
+# filename <- all.files[3]
+
+# Allele freq experiment
+setwd("C:/Users/Jeff/Google Drive/Barley Lab/Projects/Side Projects/Simulations/BarleySimGS-TPUpdate/Results/Allele Freq Experiment/")
+
+# Load data
+all.files <- list.files()
+filename <- all.files[1]
 
 load(filename)
 
@@ -318,51 +318,3 @@ sim.plot(data.list = relationship.list,
          main = paste("Mean Scaled Additive Relationship Between Training Set and Candidates", paste("Population:", pop.makeup, ", TP formation:", tp.formation), sep = "\n"), 
          legend.pos = "bottomleft")
   
-
-
-
-# 
-# # Look at the proportion of QTL that are fixed for one allele or the other at eahc
-# ## cycle
-# ## Find the number of polymorphic markers used in each cycle
-# poly.marker.list <- lapply(X = collective.abbreviated.results, FUN = function(tpc) 
-#   do.call("cbind", sapply(tpc$allele.freq.list, FUN = function(set) 
-#     sapply(set, function(rep) 
-#       sapply(rep, FUN = function(cycle) {
-#         1 - (sum(cycle %in% c(0,1)) / length(cycle))
-#       }) ))))
-# 
-# 
-# # Empty plot
-# plot(0, 
-#      type = "n",
-#      xlim = c(0, n.cycles),
-#      xlab = "Cycle Number",
-#      # ylim = range(pretty(range(V_g.list)))
-#      ylim = c(0, 1),
-#      ylab = "Proportion of Markers That are Polymorphic",
-#      main = paste("Proportion of Markers That are Polymorphic", paste("Population:", pop.makeup, ", TP formation:", tp.formation), sep = "\n")
-# )
-# 
-# # Plotting shape factors
-# plot.shapes.factor <- factor(names(poly.marker.list))
-# 
-# # Add legend
-# legend("topright", legend = names(poly.marker.list), pch = as.numeric(factor(names(poly.marker.list))))
-# 
-# for (i in 1:length(poly.marker.list)) {
-#   
-#   # Find the mean and sd
-#   marker.mu <- apply(X = poly.marker.list[[i]], MARGIN = 1, FUN = mean, na.rm = T)
-#   marker.mu.CI <- apply(X = poly.marker.list[[i]], MARGIN = 1, FUN = function(cycle) {
-#     t.per <- qt(p = (1 - (0.05 / 2)), df = length(cycle) - 1)
-#     t.per * ( sd(cycle) / sqrt(length(cycle)) )
-#   })
-#   
-#   # Add points to the plot
-#   points(x = 1:n.cycles, marker.mu, pch = as.numeric(plot.shapes.factor[i]))
-#   
-#   # Add standard deviation bars
-#   segments(x0 = 1:n.cycles, y0 = (marker.mu - marker.mu.CI), x1 = 1:n.cycles, y1 = (marker.mu + marker.mu.CI))
-#   
-# }
