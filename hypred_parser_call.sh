@@ -12,7 +12,7 @@ module load R
 cd /panfs/roc/groups/6/smithkp/neyhartj/Genomic_Selection/Simulations/BarleySimGS-TPUpdate
 
 # Set the experiment
-exp=Base_experiment
+exp=MAF_experiment
 # Set the directory containing the files to parse
 parsedir=Files/$exp
 
