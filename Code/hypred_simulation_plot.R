@@ -4,19 +4,19 @@
 library(plyr)
 
 # Set working directory
-# # Base experiment
-# setwd("C:/Users/Jeff/Google Drive/Barley Lab/Projects/Side Projects/Simulations/BarleySimGS-TPUpdate/Results/Base Experiment/")
-# 
-# # Load data
-# all.files <- list.files()
-# filename <- all.files[3]
-
-# Allele freq experiment
-setwd("C:/Users/Jeff/Google Drive/Barley Lab/Projects/Side Projects/Simulations/BarleySimGS-TPUpdate/Results/Allele Freq Experiment/")
+# Base experiment
+setwd("C:/Users/Jeff/Google Drive/Barley Lab/Projects/Side Projects/Simulations/BarleySimGS-TPUpdate/Results/Base Experiment/")
 
 # Load data
 all.files <- list.files()
-filename <- all.files[1]
+filename <- all.files[3]
+
+# # Allele freq experiment
+# setwd("C:/Users/Jeff/Google Drive/Barley Lab/Projects/Side Projects/Simulations/BarleySimGS-TPUpdate/Results/Allele Freq Experiment/")
+# 
+# # Load data
+# all.files <- list.files()
+# filename <- all.files[1]
 
 load(filename)
 
@@ -27,6 +27,11 @@ n.cycles = length(collective.abbreviated.results[[1]][[1]][[1]][[1]])
 n.reps = sum(unlist(lapply(X = collective.abbreviated.results[[1]][[1]], FUN = length)))
 
 tp.change.factors <- as.factor(names(collective.abbreviated.results))
+
+
+
+
+
 
 # Define a function to plot
 sim.plot <- function(data.list, 
@@ -103,7 +108,7 @@ V_g.list <- lapply(X = collective.abbreviated.results, function(tpc)
 # Plot
 sim.plot(data.list = V_g.list, 
          ylab = "Genetic Variance", 
-         main = paste("Genetic Variance Across Cycles", paste("Population:", pop.makeup, ", TP formation:", tp.formation), sep = "\n"), 
+         main = paste("Genetic Variance", paste("Population:", pop.makeup, ", TP formation:", tp.formation), sep = "\n"), 
          legend.pos = "bottomleft")
   
 
@@ -119,7 +124,7 @@ gen.mu.list <- lapply(X = collective.abbreviated.results, function(tpc)
 # Plot
 sim.plot(data.list = gen.mu.list, 
          ylab = "Genotypic Value", 
-         main = paste("Genotypic Value Across Cycles", paste("Population:", pop.makeup, ", TP formation:", tp.formation), sep = "\n"), 
+         main = paste("Genotypic Value", paste("Population:", pop.makeup, ", TP formation:", tp.formation), sep = "\n"), 
          legend.pos = "topleft")
 
 
@@ -173,7 +178,7 @@ obs.R.list <- lapply(X = collective.abbreviated.results, function(tpc) {
 sim.plot(data.list = obs.R.list,
          xlim = c(2, n.cycles),
          ylab = "Response to Selection", 
-         main = paste("Observed Response to Selection Across Cycles", paste("Population:", pop.makeup, ", TP formation:", tp.formation), sep = "\n"), 
+         main = paste("Observed Response to Selection", paste("Population:", pop.makeup, ", TP formation:", tp.formation), sep = "\n"), 
          legend.pos = "bottomleft")
 
 
@@ -188,7 +193,7 @@ val.pred.list <- lapply(X = collective.abbreviated.results, function(tpc)
 # Plot
 sim.plot(data.list = val.pred.list,
          ylab = "Realized Prediction Accuracy", 
-         main = paste("Realized Prediction Accuracy Across Cycles", paste("Population:", pop.makeup, ", TP formation:", tp.formation), sep = "\n"), 
+         main = paste("Realized Prediction Accuracy", paste("Population:", pop.makeup, ", TP formation:", tp.formation), sep = "\n"), 
          legend.pos = "bottomleft")
 
 
@@ -206,7 +211,7 @@ poly.marker.list <- lapply(X = collective.abbreviated.results, FUN = function(tp
 # Plot
 sim.plot(data.list = poly.marker.list,
          ylab = "Proportion of Markers that Are Polymorphic", 
-         main = paste("Polymorphic Marker Proportion Across Cycles", paste("Population:", pop.makeup, ", TP formation:", tp.formation), sep = "\n"), 
+         main = paste("Polymorphic Marker Proportion", paste("Population:", pop.makeup, ", TP formation:", tp.formation), sep = "\n"), 
          legend.pos = "bottomleft")
 
 
@@ -285,7 +290,7 @@ for (i in 1:length(sfs.count.list)) {
 qtl.marker.max.LD.list <- lapply(X = collective.abbreviated.results, function(tpc)
   do.call("cbind", lapply(X = tpc$qtl.marker.LD.list, FUN = function(set) 
     sapply(set, function(rep) 
-      sapply(rep, function(cycle) cycle$mean.max.LD ) ))))
+      sapply(rep, function(cycle) cycle$mean.max ) ))))
 
 # Plot
 sim.plot(data.list = qtl.marker.max.LD.list,
@@ -293,15 +298,15 @@ sim.plot(data.list = qtl.marker.max.LD.list,
          main = paste("Mean LD of Polymorphic QTL with Marker in Highest LD", paste("Population:", pop.makeup, ", TP formation:", tp.formation), sep = "\n"), 
          legend.pos = "bottomleft")
 
-# Mean LD across all QTL-marker pairs
+# Mean LD within 50 cM window
 qtl.marker.mean.LD.list <- lapply(X = collective.abbreviated.results, function(tpc)
   do.call("cbind", lapply(X = tpc$qtl.marker.LD.list, FUN = function(set) 
     sapply(set, function(rep) 
-      sapply(rep, function(cycle) cycle$mean.LD ) ))))
+      sapply(rep, function(cycle) cycle$mean.window ) ))))
 
 sim.plot(data.list = qtl.marker.mean.LD.list,
-         ylab = "Linkage Disequilibrium (r)", 
-         main = paste("Mean LD of Polymorphic QTL with Marker in Highest LD", paste("Population:", pop.makeup, ", TP formation:", tp.formation), sep = "\n"), 
+         ylab = "Linkage Disequilibrium (r)",
+         main = paste("LD of Polymorphic QTL with Markers Within 50 cM", paste("Population:", pop.makeup, ", TP formation:", tp.formation), sep = "\n"), 
          legend.pos = "bottomleft")
 
 
@@ -315,6 +320,6 @@ relationship.list <- lapply(X = collective.abbreviated.results, function(tpc)
 # Plot
 sim.plot(data.list = relationship.list,
          ylab = "Additive Genetic Relationship", 
-         main = paste("Mean Scaled Additive Relationship Between Training Set and Candidates", paste("Population:", pop.makeup, ", TP formation:", tp.formation), sep = "\n"), 
+         main = paste("Scaled Additive Relationship Between Training Set and Candidates", paste("Population:", pop.makeup, ", TP formation:", tp.formation), sep = "\n"), 
          legend.pos = "bottomleft")
   

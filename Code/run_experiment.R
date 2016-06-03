@@ -336,7 +336,7 @@ for (change in tp.change) {
             # If an error is found, just try again
             # Use a counter to make sure this doesn't implode
             counter = 0
-            while (all(class(optimized.TP.additions) == "try-error", counter < 50) ) {
+            while (all(class(optimized.TP.additions) == "try-error", counter < 100) ) {
               optimized.TP.additions <- try(TP.optimization(genos = candidate.genos.use,
                                                             phenotyped.lines = phenotyped.lines,
                                                             unphenotyped.lines = unphenotyped.lines,
