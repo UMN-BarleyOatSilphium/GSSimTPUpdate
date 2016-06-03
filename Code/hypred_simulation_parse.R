@@ -53,12 +53,8 @@ for (f in args[-1]) {
   qtl.marker.LD.list <- lapply(X = experiment.sub.results, FUN = function(set) 
     lapply(X = set, FUN = function(rep) 
       lapply(X = rep$sim.result, FUN = function(cycle)
-        list(
-          # Measure the average LD between each QTL and the marker in which it is in
-          ## highest LD
-          mean.max.LD = mean(apply(X = cycle$geno.summary.stats$qtl.marker.LD, MARGIN = 1, FUN = max)),
-          # Measure the average LD between all QTL-marker pairs
-          mean.LD = mean(cycle$geno.summary.stats$qtl.marker.LD) ))))
+        list(mean.window = cycle$geno.summary.stats$qtl.marker.LD$mean.window,
+             mean.max = cycle$geno.summary.stats$qtl.marker.LD$mean.max ))))
   
   
   # Relationship of TP to the candidates
