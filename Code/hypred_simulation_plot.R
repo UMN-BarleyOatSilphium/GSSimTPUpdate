@@ -4,19 +4,19 @@
 library(plyr)
 
 # Set working directory
-# Base experiment
-setwd("C:/Users/Jeff/Google Drive/Barley Lab/Projects/Side Projects/Simulations/BarleySimGS-TPUpdate/Results/Base Experiment/")
-
-# Load data
-all.files <- list.files()
-filename <- all.files[3]
-
-# # Allele freq experiment
-# setwd("C:/Users/Jeff/Google Drive/Barley Lab/Projects/Side Projects/Simulations/BarleySimGS-TPUpdate/Results/Allele Freq Experiment/")
+# # Base experiment
+# setwd("C:/Users/Jeff/Google Drive/Barley Lab/Projects/Side Projects/Simulations/BarleySimGS-TPUpdate/Results/Base Experiment/")
 # 
 # # Load data
 # all.files <- list.files()
-# filename <- all.files[1]
+# filename <- all.files[5]
+
+# # Allele freq experiment
+setwd("C:/Users/Jeff/Google Drive/Barley Lab/Projects/Side Projects/Simulations/BarleySimGS-TPUpdate/Results/Allele Freq Experiment/")
+
+# Load data
+all.files <- list.files()
+filename <- all.files[1]
 
 load(filename)
 
@@ -195,6 +195,8 @@ sim.plot(data.list = val.pred.list,
          ylab = "Realized Prediction Accuracy", 
          main = paste("Realized Prediction Accuracy", paste("Population:", pop.makeup, ", TP formation:", tp.formation), sep = "\n"), 
          legend.pos = "bottomleft")
+
+
 
 
 

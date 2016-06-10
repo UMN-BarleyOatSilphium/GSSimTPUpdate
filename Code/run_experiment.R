@@ -17,9 +17,11 @@ args <- commandArgs(trailingOnly = T)
 if (all(is.na(args))) {
   pop.makeup <- "MN"
   tp.formation <- "cumulative"
+  parents.sel.intensity = 100
 } else {
   pop.makeup <- args[1]
   tp.formation <- args[2]
+  parents.sel.intensity <- args[3]
 }
 
 # Load the packages
@@ -56,9 +58,6 @@ h2 = 0.5
 n.cycles = 15
 # Number of QTL underlying trait
 n.QTL = 100
-# Selection intensity for the parents of the next generation. Expressed as the number
-## of lines to select as parents
-parents.sel.intensity = 100
 # Number of phenotyping environments and reps
 n.env = 3
 n.rep = 1
@@ -74,7 +73,7 @@ tp.update.increment = 150
 tp.size <- nrow(CAP.haploids) / 2
 
 # Parent selection and crossing parameters
-n.crosses = 40
+n.crosses = 50
 ind.per.cross = 30
 cycle.candidate.size = n.crosses * ind.per.cross
 
@@ -150,9 +149,9 @@ for (change in tp.change) {
                                       qtl.add.eff = "geometric", 
                                       qtl.dom.eff = NULL)
       
-      TP.haploids <- CAP.haploids
+      TP.haploids.i <- CAP.haploids
       # Convert the gametes to genotypes
-      TP.genos <- genotype.loci(haploid.genos = TP.haploids, genome = hv.genome)
+      TP.genos <- genotype.loci(haploid.genos = TP.haploids.i, genome = hv.genome)
       
       ## Select the TP lines for use as parents
       # First separate MN and ND lines
@@ -162,7 +161,7 @@ for (change in tp.change) {
       
       # Phenotype the training population
       TP.values <- evaluate.population(genome = hv.genome, 
-                                       haploid.genos = TP.haploids, 
+                                       haploid.genos = TP.haploids.i, 
                                        h2 = h2, 
                                        n.env = n.env, 
                                        n.rep = n.rep)
@@ -170,24 +169,23 @@ for (change in tp.change) {
       TP.phenos <- TP.values$mean.pheno.values
       
       # Next select the top 80 MN and top 80 ND
-      top.MN.lines <- names(sort(TP.phenos[MN.lines,], decreasing = T)[1:80])
-      top.ND.lines <- names(sort(TP.phenos[ND.lines,], decreasing = T)[1:80])
+      top.MN.lines <- names(sort(TP.phenos[MN.lines,], decreasing = T)[1:parents.sel.intensity])
+      top.ND.lines <- names(sort(TP.phenos[ND.lines,], decreasing = T)[1:parents.sel.intensity])
       
       # Create a list to store the line names
       pop.makeup.list <- list(
         MN = list(p1 = top.MN.lines, p2 = top.MN.lines),
         ND = list(p1 = top.ND.lines, p2 = top.ND.lines),
-        MNxND = list(p1 = top.MN.lines[1:40], p2 = top.ND.lines[1:40])
+        MNxND = list(p1 = top.MN.lines[1:(parents.sel.intensity / 2)], p2 = top.ND.lines[1:(parents.sel.intensity / 2)])
       )
       
       # Set the parent gamete data input
       parent.lines.list <- pop.makeup.list[[pop.makeup]]
-      parent.haploids <- TP.haploids
+      parent.haploids <- TP.haploids.i
       
       # Set dummy variables for the phenos and genos
       TP.phenos.i <- TP.phenos
       TP.genos.i <- TP.genos
-
       
       # Create an initial data list
       simulation.results <- list()
@@ -235,14 +233,42 @@ for (change in tp.change) {
         # Measure LD
         candidate.i.qtl.marker.LD <- measure.LD(genome = hv.genome, genos = candidate.i.genos, Morgan.window = 0.5)
         # Per QTL, find the LD of the marker with which the QTL has the highest LD
-        candidate.i.mean.max.LD <- mean(unlist(sapply(X = candidate.i.qtl.marker.LD, FUN = function(chr) 
-          sapply(X = chr, FUN = function(qtl) ifelse(test = all(is.na(qtl)), yes = max(qtl), no = max(qtl, na.rm = T))) )), na.rm = T)
-        candidate.i.mean.window.LD <- mean(unlist(sapply(X = candidate.i.qtl.marker.LD, FUN = function(chr) sapply(X = chr, FUN = mean, na.rm = T))), na.rm = T)
-
+        candidate.i.mean.max.LD <- mean(unlist(
+          sapply(X = candidate.i.qtl.marker.LD, FUN = function(chr) 
+            sapply(X = chr, FUN = function(r) 
+              ifelse(test = all(is.na(r)), yes = max((r^2)), no = max((r^2), na.rm = T))) )
+          ), na.rm = T)
+        
+        candidate.i.mean.window.LD <- mean(unlist(
+          sapply(X = candidate.i.qtl.marker.LD, FUN = function(chr) 
+            sapply(X = chr, FUN = function(r) 
+              mean(r^2, na.rm = T)))
+        ), na.rm = T)
+        
+        # Measure LD on the TP
+        TP.i.qtl.marker.LD <- measure.LD(genome = hv.genome, genos = TP.haploids.i, Morgan.window = 0.5)
+        
+        # Apply over chromosomes and combine the data
+        TP.candidate.LD <- do.call("rbind", sapply(X = 1:length(TP.i.qtl.marker.LD), FUN = function(i) {
+          # Find the common polymorphic QTL
+          common.poly.qtl <- intersect(names(TP.i.qtl.marker.LD[[i]]), names(candidate.i.qtl.marker.LD[[i]]))
+          # Apply over the common QTL and combine the data
+          do.call("rbind", sapply(X = common.poly.qtl, FUN = function(poly.qtl) {
+            # Find the common polymorphic markers
+            common.poly.markers <- intersect(names(TP.i.qtl.marker.LD[[i]][[poly.qtl]]), names(candidate.i.qtl.marker.LD[[i]][[poly.qtl]]))
+            # Return r for those markers
+            cbind( TP.i.qtl.marker.LD[[i]][[poly.qtl]][common.poly.markers], candidate.i.qtl.marker.LD[[i]][[poly.qtl]][common.poly.markers])
+          })) }))
+        
+        # Find the correlation of r across all correlations
+        TP.candidate.persistance.of.phase <- cor(TP.candidate.LD, use = "complete.obs")[1,2]
+        
         # Create a list to save
-        qtl.marker.LD <- list(candidate.i.qtl.marker.LD = candidate.i.qtl.marker.LD, 
+        qtl.marker.LD <- list(candidate.i.qtl.marker.LD = candidate.i.qtl.marker.LD,
+                              TP.i.qtl.marker.LD = TP.i.qtl.marker.LD,
                               mean.max = candidate.i.mean.max.LD,
-                              mean.window = candidate.i.mean.window.LD)
+                              mean.window = candidate.i.mean.window.LD,
+                              persistance.of.phase = TP.candidate.persistance.of.phase)
         
         
         # Only use polymorphic markers for predictions
@@ -372,6 +398,7 @@ for (change in tp.change) {
           # Combine the new data to the TP
           TP.phenos.i <- rbind(TP.phenos.i, TP.addtion.phenos)
           TP.genos.i <- rbind(TP.genos.i, TP.addtion.genos)
+          TP.haploids.i <- rbind(TP.haploids.i, TP.addition.haploids)
           
           
           # If the TP formation calls for a sliding window, use only the ~750 most recent training individuals
@@ -396,6 +423,7 @@ for (change in tp.change) {
               # Set the TP.pheno and TP.genos
               TP.phenos.i <- as.matrix(TP.phenos.i[tp.keep.index,])
               TP.genos.i <- as.matrix(TP.genos.i[tp.keep.index,])
+              TP.haploids.i <- subset.gametes(gametes = TP.haploids.i, line.names = row.names(TP.genos.i))
           }
           
         } else {
