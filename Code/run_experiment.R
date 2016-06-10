@@ -22,8 +22,8 @@ if (all(is.na(args))) {
 } else {
   pop.makeup <- args[1]
   tp.formation <- args[2]
-  parents.sel.intensity <- args[3]
-  n.crosses = args[4]
+  parents.sel.intensity <- as.numeric(args[3])
+  n.crosses = as.numeric(args[4])
 }
 
 # Load the packages
