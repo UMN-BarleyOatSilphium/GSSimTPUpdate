@@ -30,17 +30,20 @@ module load R
 
 ## Run the regular simulation
 
-#Rscript Code/run_experiment.R MN cumulative
-#Rscript Code/run_experiment.R ND cumulative
-#Rscript Code/run_experiment.R MNxND cumulative
+Rscript Code/run_experiment.R MN cumulative 100
+#Rscript Code/run_experiment.R ND cumulative 100
+#Rscript Code/run_experiment.R MNxND cumulative 100
 
-#Rscript Code/run_experiment.R MN window
-#Rscript Code/run_experiment.R ND window
-#Rscript Code/run_experiment.R MNxND window
+#Rscript Code/run_experiment.R MN window 100
+#Rscript Code/run_experiment.R ND window 100
+#Rscript Code/run_experiment.R MNxND window 100
+
+## Run using a smaller selection intensity
+
 
 
 ## Run the allele frequency experiment
 
 #Rscript Code/run_experiment_maf.R MN window
 #Rscript Code/run_experiment_maf.R ND window
-Rscript Code/run_experiment_maf.R MNxND window
+#Rscript Code/run_experiment_maf.R MNxND window
