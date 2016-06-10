@@ -17,9 +17,11 @@ args <- commandArgs(trailingOnly = T)
 if (all(is.na(args))) {
   pop.makeup <- "MN"
   tp.formation <- "cumulative"
+  parents.sel.intensity = 100
 } else {
   pop.makeup <- args[1]
   tp.formation <- args[2]
+  parents.sel.intensity <- args[3]
 }
 
 # Load the packages
@@ -56,9 +58,6 @@ h2 = 0.5
 n.cycles = 15
 # Number of QTL underlying trait
 n.QTL = 100
-# Selection intensity for the parents of the next generation. Expressed as the number
-## of lines to select as parents
-parents.sel.intensity = 100
 # Number of phenotyping environments and reps
 n.env = 3
 n.rep = 1
