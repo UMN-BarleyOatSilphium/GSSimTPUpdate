@@ -11,35 +11,25 @@ cd /home/smithkp/neyhartj/Genomic_Selection/Simulations/BarleySimGS-TPUpdate
 
 module load R
 
-#Rscript hypred_barley_simulations.R MN cumulative
-#Rscript hypred_barley_simulations.R ND cumulative
-#Rscript hypred_barley_simulations.R MNxND cumulative
-
-#Rscript hypred_barley_simulations.R MN random
-#Rscript hypred_barley_simulations.R ND random
-#Rscript hypred_barley_simulations.R MNxND rando
-
-#Rscript hypred_barley_simulations_part2_032816.R MN cumulative
-#Rscript hypred_barley_simulations_part2_032816.R ND cumulative
-#Rscript hypred_barley_simulations_part2_032816.R MNxND cumulative
-
-#Rscript hypred_barley_simulations_part2_032816.R MN window
-#Rscript hypred_barley_simulations_part2_032816.R ND window
-#Rscript hypred_barley_simulations_part2_032816.R MNxND window
-
 
 ## Run the regular simulation
 
-Rscript Code/run_experiment.R MN cumulative 100
-#Rscript Code/run_experiment.R ND cumulative 100
-#Rscript Code/run_experiment.R MNxND cumulative 100
+Rscript Code/run_experiment.R MN cumulative 100 50
+#Rscript Code/run_experiment.R ND cumulative 100 50
+#Rscript Code/run_experiment.R MNxND cumulative 100 50
 
-#Rscript Code/run_experiment.R MN window 100
-#Rscript Code/run_experiment.R ND window 100
-#Rscript Code/run_experiment.R MNxND window 100
+#Rscript Code/run_experiment.R MN window 100 50
+#Rscript Code/run_experiment.R ND window 100 50
+#Rscript Code/run_experiment.R MNxND window 100 50
 
 ## Run using a smaller selection intensity
+#Rscript Code/run_experiment.R MN cumulative 40 20
+#Rscript Code/run_experiment.R ND cumulative 40 20
+#Rscript Code/run_experiment.R MNxND cumulative 40 20
 
+#Rscript Code/run_experiment.R MN window 40 20
+#Rscript Code/run_experiment.R ND window 40 20
+#Rscript Code/run_experiment.R MNxND window 40 20
 
 
 ## Run the allele frequency experiment

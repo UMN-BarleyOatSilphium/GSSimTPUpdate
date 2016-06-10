@@ -18,10 +18,12 @@ if (all(is.na(args))) {
   pop.makeup <- "MN"
   tp.formation <- "cumulative"
   parents.sel.intensity = 100
+  n.crosses = 50
 } else {
   pop.makeup <- args[1]
   tp.formation <- args[2]
   parents.sel.intensity <- args[3]
+  n.crosses = args[4]
 }
 
 # Load the packages
@@ -73,7 +75,6 @@ tp.update.increment = 150
 tp.size <- nrow(CAP.haploids) / 2
 
 # Parent selection and crossing parameters
-n.crosses = 50
 ind.per.cross = 30
 cycle.candidate.size = n.crosses * ind.per.cross
 
