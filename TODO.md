@@ -10,8 +10,10 @@
     2. Plot the site frequency spectra of markers at each cycle for each of the two MAF filtering strategies~~
 5. Try to diagnose why updating the training population in some way is better than not doing anything at all. This represents the greatest difference among results, so it would be worth investigating.
 6. Try to calculate expected marker effects. Presumably this would be a function of the QTL effect and LD between the QTL and the marker. If successful, find the differences between the observed and expected.
-7. Measure LD as the correlation of r between the TP and the selection candidates.
+7. ~~Measure LD as the correlation of r between the TP and the selection candidates.~~
 8. Re-run using two selection intensities: one regular and the other more stringent.
+9. Import dataset without filtering loci (except for monomorphic loci), assign
+QTL, then filter markers on MAF.
 
 
 ## Suggestions from Genomewide Selection Group

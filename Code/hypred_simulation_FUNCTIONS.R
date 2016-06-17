@@ -1279,16 +1279,16 @@ recombine <- function(genome,
 
 # Define a function to optimize the training set based on the
 ## CDmean maximization algorithm. This code is taken from Rincent et al 2012
-TP.optimization <- function(genos, # genotype matrix of all candidate individuals
-                            phenotyped.lines, # Character of line name to be considered "phenotyped"
-                            unphenotyped.lines, # Character of line name to be considered "unphenotyped"
-                            n.TP, # The size of the desired TP
-                            V_e, # V_e for calculating lambda
-                            V_a, # V_a for calculating lambda
-                            optimization = c("PEVmean", "CDmean"),
-                            max.iter = 800,
-                            use.subset = FALSE # Logical indicating whether a subset of the whole should be used for measuring the contrats. This saves time but may be innacurate
-                            ) {
+TP.optimization.algorithms <- function(A, # relationship matrix of all candidate individuals
+                                       phenotyped.lines, # Character of line name to be considered "phenotyped"
+                                       unphenotyped.lines, # Character of line name to be considered "unphenotyped"
+                                       n.TP, # The size of the desired TP
+                                       V_e, # V_e for calculating lambda
+                                       V_a, # V_a for calculating lambda
+                                       optimization.method = c("PEVmean", "CDmean"),
+                                       max.iter = 800,
+                                       use.subset = FALSE # Logical indicating whether a subset of the whole should be used for measuring the contrats. This saves time but may be innacurate
+) {
   
   # Define a function to create a matrix of contrasts between the individuals not
   ## in the training population (the candidates) and the mean of the
@@ -1312,17 +1312,14 @@ TP.optimization <- function(genos, # genotype matrix of all candidate individual
     
     return(contrast.mat)
   }
-
-  # Calculate the relationship matrix
-  # The first set of lines is the phenotyped and the second set is the unphenotyped
-  A <- A.mat(genos, 0, 1)
   
   # Find the index of the phenotyped and unphenotyped lines in the A matrix
   phenotyped.index <- which(row.names(A) %in% phenotyped.lines)
   unphenotyped.index <- which(row.names(A) %in% unphenotyped.lines)
   
   # Set the total
-  # If using a subset, the total is size of the training set + the number of unphenotyped lines
+  # If using a subset, the total is size of the training set + the number of 
+  ## unphenotyped lines
   if (use.subset) {
     n.total = n.TP + length(unphenotyped.index)
   } else {
@@ -1336,7 +1333,7 @@ TP.optimization <- function(genos, # genotype matrix of all candidate individual
   ## Begin the algorithm
   # The algorithm is the same for both PEVmean and CDmean (exchange), so we have two paths
   ## depending on which is desired
-  if (optimization == "PEVmean") {
+  if (optimization.method == "PEVmean") {
     
     # Set the CDmean to NA
     CDmean.save = NA
@@ -1387,8 +1384,8 @@ TP.optimization <- function(genos, # genotype matrix of all candidate individual
       c.mat <- make.contrast(unphenotyped.index = unphenotyped.index.A1, n.total = n.total) # This matrix will also remain constant
       
       # Calculate the inital PEVmean of the set
-      inv.C_22 = solve( (t(Z) %*% M %*% Z) + (lambda * A1.inv) )
-      numerator = ( t(c.mat) %*% inv.C_22 %*% c.mat )
+      C_22 = solve( (t(Z) %*% M %*% Z) + (lambda * A1.inv) )
+      numerator = ( t(c.mat) %*% C_22 %*% c.mat )
       denominator = ( t(c.mat) %*% c.mat )
       PEV.mat = numerator / denominator
       
@@ -1433,8 +1430,8 @@ TP.optimization <- function(genos, # genotype matrix of all candidate individual
           A1.inv <- solve(A1)
         }
         
-        inv.C_22 = solve( (t(Z) %*% M %*% Z) + (lambda * A1.inv) )
-        numerator = ( t(c.mat) %*% inv.C_22 %*% c.mat )
+        C_22 = solve( (t(Z) %*% M %*% Z) + (lambda * A1.inv) )
+        numerator = ( t(c.mat) %*% C_22 %*% c.mat )
         denominator = ( t(c.mat) %*% c.mat )
         PEV.mat = numerator / denominator
         
@@ -1491,8 +1488,8 @@ TP.optimization <- function(genos, # genotype matrix of all candidate individual
       c.mat <- make.contrast(unphenotyped.index = unphenotyped.index, n.total = n.total)
 
       # Calculate the inital PEVmean of the set
-      inv.C_22 = solve( (t(Z) %*% M %*% Z) + (lambda * A1.inv) )
-      numerator = ( t(c.mat) %*% inv.C_22 %*% c.mat )
+      C_22 = solve( (t(Z) %*% M %*% Z) + (lambda * A1.inv) )
+      numerator = ( t(c.mat) %*% C_22 %*% c.mat )
       denominator = ( t(c.mat) %*% c.mat )
       PEV.mat = numerator / denominator
       
@@ -1527,8 +1524,8 @@ TP.optimization <- function(genos, # genotype matrix of all candidate individual
 
         # Calculate the inital PEVmean of the set
         # No need to remake the contrast matrix because the unphenotyped lines remain unchanged
-        inv.C_22 = solve( (t(Z) %*% M %*% Z) + (lambda * A1.inv) )
-        numerator = ( t(c.mat) %*% inv.C_22 %*% c.mat )
+        C_22 = solve( (t(Z) %*% M %*% Z) + (lambda * A1.inv) )
+        numerator = ( t(c.mat) %*% C_22 %*% c.mat )
         denominator = ( t(c.mat) %*% c.mat )
         PEV.mat = numerator / denominator
         
@@ -1551,7 +1548,7 @@ TP.optimization <- function(genos, # genotype matrix of all candidate individual
   } # Close the PEVmean optimization if statement
   
   # New if statement for CDmean
-  if(optimization == "CDmean") {
+  if(optimization.method == "CDmean") {
     
     # Set the PEVmean to NA
     PEVmean.save = NA
@@ -1602,8 +1599,8 @@ TP.optimization <- function(genos, # genotype matrix of all candidate individual
       c.mat <- make.contrast(unphenotyped.index = unphenotyped.index.A1, n.total = n.total) # This matrix will also remain constant
       
       # Calculate the inital CDmean of the set
-      inv.C_22 = solve( (t(Z) %*% M %*% Z) + (lambda * A1.inv) )
-      numerator = ( t(c.mat) %*% (A1 - (lambda * inv.C_22)) %*% c.mat )
+      C_22 = solve( (t(Z) %*% M %*% Z) + (lambda * A1.inv) )
+      numerator = ( t(c.mat) %*% (A1 - (lambda * C_22)) %*% c.mat )
       denominator = t(c.mat) %*% A1 %*% c.mat
       CD.mat = numerator / denominator
       
@@ -1648,8 +1645,8 @@ TP.optimization <- function(genos, # genotype matrix of all candidate individual
           A1.inv <- solve(A1)
         }
         
-        inv.C_22 = solve( (t(Z) %*% M %*% Z) + (lambda * A1.inv) )
-        numerator = ( t(c.mat) %*% (A1 - (lambda * inv.C_22)) %*% c.mat )
+        C_22 = solve( (t(Z) %*% M %*% Z) + (lambda * A1.inv) )
+        numerator = ( t(c.mat) %*% (A1 - (lambda * C_22)) %*% c.mat )
         denominator = t(c.mat) %*% A1 %*% c.mat
         CD.mat = numerator / denominator
         
@@ -1707,8 +1704,8 @@ TP.optimization <- function(genos, # genotype matrix of all candidate individual
       c.mat <- make.contrast(unphenotyped.index = unphenotyped.index, n.total = n.total)
       
       # Calculate the inital PEVmean of the set
-      inv.C_22 = solve( (t(Z) %*% M %*% Z) + (lambda * A1.inv) )
-      numerator = ( t(c.mat) %*% (A1 - (lambda * inv.C_22)) %*% c.mat )
+      C_22 = solve( (t(Z) %*% M %*% Z) + (lambda * A1.inv) )
+      numerator = ( t(c.mat) %*% (A1 - (lambda * C_22)) %*% c.mat )
       denominator = t(c.mat) %*% A1 %*% c.mat
       CD.mat = numerator / denominator
       
@@ -1743,8 +1740,8 @@ TP.optimization <- function(genos, # genotype matrix of all candidate individual
         
         # Calculate the inital PEVmean of the set
         # No need to remake the contrast matrix because the unphenotyped lines remain unchanged
-        inv.C_22 = solve( (t(Z) %*% M %*% Z) + (lambda * A1.inv) )
-        numerator = ( t(c.mat) %*% (A1 - (lambda * inv.C_22)) %*% c.mat )
+        C_22 = solve( (t(Z) %*% M %*% Z) + (lambda * A1.inv) )
+        numerator = ( t(c.mat) %*% (A1 - (lambda * C_22)) %*% c.mat )
         denominator = t(c.mat) %*% A1 %*% c.mat
         CD.mat = numerator / denominator
         
