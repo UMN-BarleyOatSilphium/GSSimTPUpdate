@@ -174,12 +174,22 @@ for (change in tp.change) {
       ND.lines <- grep(pattern = "^ND", x = line.names, value = T)
       MN.lines <- setdiff(x = line.names, y = c(ND.lines))
       
+      ## Set the inital variances for the heritability
+      # True genetic variance
+      TP.V_g <- var(genotypic.value(genome = hv.genome, haploid.genos = TP.haploids.i))
+      # Environmental variance (scale * 8 as in Bernardo 2015)
+      V_E <- TP.V_g * 8
+      # Residual variance
+      V_e <- n.rep * n.env * ((TP.V_g / h2) - TP.V_g)
+      
+      
       # Phenotype the training population
-      TP.values <- evaluate.population(genome = hv.genome, 
-                                       haploid.genos = TP.haploids.i, 
-                                       h2 = h2, 
-                                       n.env = n.env, 
-                                       n.rep = n.rep)
+      TP.values <- evaluate.population2(genome = hv.genome,
+                                        haploid.genos = TP.haploids.i,
+                                        V_E = V_E,
+                                        V_e = V_e,
+                                        n.env = n.env,
+                                        n.rep = n.rep)
       
       TP.phenos <- TP.values$mean.pheno.values
       
@@ -308,17 +318,17 @@ for (change in tp.change) {
         A = tcrossprod(Z) / c
         
         # Estimate marker effects
-        marker.effects.i <- mixed.solve(y = TP.phenos.i, Z = TP.genos.use, method = "REML")$u
+        marker.effects.solve <- mixed.solve(y = TP.phenos.i, Z = TP.genos.use, method = "REML")
         # Calculate GEBVs
-        candidate.i.GEBV <- candidate.genos.use %*% marker.effects.i
+        candidate.i.GEBV <- candidate.genos.use %*% marker.effects.solve$u
         
         # Measure the phenotype and true genotypic values of all selection candidates
-        candidate.i.values <- evaluate.population( genome = hv.genome,
-                                                   haploid.genos = candidate.haploid.i,
-                                                   h2 = h2,
-                                                   n.env = n.env,
-                                                   n.rep = n.rep,
-                                                   V_e.scale = 8 )
+        candidate.i.values <- evaluate.population2( genome = hv.genome,
+                                                    haploid.genos = candidate.haploid.i,
+                                                    V_E = V_E,
+                                                    V_e = V_e,
+                                                    n.env = n.env,
+                                                    n.rep = n.rep )
         
         # Validate the predictions
         # Find the correlation between the GEBVs and the true genotypic value
@@ -363,12 +373,10 @@ for (change in tp.change) {
             phenotyped.lines <- row.names(candidate.i.marker.genos)
             unphenotyped.lines <- parent.lines
             
-            # Determine the genetic variance
-            solve.out <- mixed.solve(y = TP.phenos.i, Z = diag(nrow(A))[1:nrow(TP.genos.i),], K = A)
-            
-            # The V_e and V_a will be taken from the REML estimates of the previous mixed model
-            V_e.i <- solve.out$Ve
-            V_a.i <- solve.out$Vu
+            # V_e is estimated from maximum liklihood
+            V_e.i <- marker.effects.solve$Ve
+            # V_a is estimated as the variance among marker effects * the number of markers
+            V_a.i <- marker.effects.solve$Vu * ncol(TP.genos.use)
             
             # Subset the relationship matrix among candidates
             optimized.TP.additions <- try(TP.optimization.algorithms(A = A,
@@ -385,15 +393,15 @@ for (change in tp.change) {
             # Use a counter to make sure this doesn't implode
             counter = 0
             while (all(class(optimized.TP.additions) == "try-error", counter < 100) ) {
-              optimized.TP.additions <- try(TP.optimization(genos = candidate.genos.use,
-                                                            phenotyped.lines = phenotyped.lines,
-                                                            unphenotyped.lines = unphenotyped.lines,
-                                                            n.TP = 150,
-                                                            V_e = V_e.i,
-                                                            V_a = V_a.i,
-                                                            optimization = change,
-                                                            max.iter = 500,
-                                                            use.subset = T))
+              optimized.TP.additions <- try(TP.optimization.algorithms(A = A,
+                                                                       phenotyped.lines = phenotyped.lines,
+                                                                       unphenotyped.lines = unphenotyped.lines,
+                                                                       n.TP = tp.update.increment,
+                                                                       V_e = V_e.i,
+                                                                       V_a = V_a.i,
+                                                                       optimization.method = change,
+                                                                       max.iter = 500,
+                                                                       use.subset = T))
               counter = counter + 1
             }
             
@@ -461,7 +469,7 @@ for (change in tp.change) {
         simulation.results[[cycle.name]] <- list(geno.summary.stats = list(allele.freq = candidate.i.genos.allele.freq,
                                                                            qtl.marker.LD = qtl.marker.LD,
                                                                            mu.TP.candidate.rel = mu.relationship),
-                                                 marker.effects = marker.effects.i,
+                                                 marker.effects.solve = marker.effects.solve,
                                                  candidate.values = candidate.i.values,
                                                  selection.values = parent.values,
                                                  prediction.accuracy = pred.validation.i,

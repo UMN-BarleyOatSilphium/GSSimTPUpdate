@@ -664,6 +664,80 @@ evaluate.population <- function(genome,
 } # Close the function
 
 
+## Define a new function to take the haploid genome, environmental variance, and
+# residual variance and simulate phenotypes
+evaluate.population2 <- function(genome, 
+                                 haploid.genos, 
+                                 V_E, # environmental variance
+                                 V_e, # Residual variance
+                                 just.geno.values = F, # Should the function only output the genotypic values?
+                                 n.env,
+                                 n.rep
+                                 ) {
+  
+  # Deal with input
+  if(!is.list(haploid.genos)) {
+    haploid.mat <- as.matrix(haploid.genos)
+  } else {
+    haploid.mat <- do.call("rbind", haploid.genos)
+  }
+  
+  # Pull out the line names
+  line.names <- row.names(haploid.mat)
+  # Condense the names
+  line.names <- unique(sub(pattern = "\\.[0-9]$", replacement = "", x = line.names))
+  
+  # First generate genotype values based on the genome and genotypes
+  g <- genotypic.value(genome = genome, haploid.genos = haploid.mat)
+  row.names(g) <- line.names
+  # Find the length (i.e. number of genotypes)
+  n.geno = length(g)
+  
+  # Find the genotype variance
+  V_g <- var(g)
+  
+  # If just genotypic values are requested, stop and return a list
+  if (just.geno.values) {
+    output.list <- list(geno.values = g,
+                        var.components = list(V_g = V_g))
+    return(output.list)
+  }
+  
+  # Sample the environmental effects
+  e = rnorm(n.env, 0, sqrt(V_E))
+  
+  # Sample the residuals
+  # Remember this includes error and gxe effect
+  residual <- matrix(rnorm(n.geno * n.env * n.rep, 0, sqrt(V_e)), n.geno, n.env * n.rep)
+  
+  # Calculate phenotypic values
+  y <- matrix(g, n.geno, (n.env * n.rep)) + matrix(e, n.geno, (n.env * n.rep), byrow = T) + residual
+  
+  # Label the matrix
+  row.names(y) <- line.names
+  colnames(y) <- paste( paste("env", 1:n.env, sep = ""), rep(paste("rep", 1:n.rep, sep = ""), each = n.env), sep = "." )
+  
+  # Find the average across environments as the value to use
+  mu_y <- as.matrix(rowMeans(y))
+  row.names(mu_y) <- line.names
+  
+  # Find the average across genotypes
+  mu.p <- mean(mu_y) # Phenotypic value
+  mu.g <- mean(g) # Genotypic values
+  
+  # Output list
+  output.list <- list(full.matrix = y,
+                      geno.values = g,
+                      mean.pheno.values = mu_y,
+                      mu.p = mu.p,
+                      mu.g = mu.g,
+                      var.components = list(V_g = V_g, V_E = V_E, V_e = V_e))
+  
+  return(output.list)
+  
+} # Close the function
+
+
 # Define a function to subset a list of values
 subset.values <- function(values.list,
                           lines.to.subset) {
@@ -688,6 +762,11 @@ subset.values <- function(values.list,
   return(subset.list)
   
 } # Close the function
+
+
+
+
+
   
 
 
