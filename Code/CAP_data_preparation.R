@@ -64,8 +64,24 @@ CAP.M <- t(CAP.hmp[,-c(1:4)])
 # Set column names to marker names
 colnames(CAP.M) <- marker.info$rs
 
-# Remove monomorphic markers
-M.poly <- abs(colMeans(CAP.M, na.rm = T)) != 1
+
+# Extract line names
+line.names <- row.names(CAP.M)
+# Separate MN from ND
+ND.lines <- line.names[grep(pattern = "^ND", x = line.names)]
+MN.lines <- setdiff(line.names, ND.lines)
+
+# Split the M matrix by breeding program
+MN.M <- CAP.M[MN.lines,]
+ND.M <- CAP.M[ND.lines,]
+
+# Remove snps that are monomorphic in BOTH the MN marker matrix and the ND
+## marker matrix
+MN.M.poly <- which(abs(colMeans(MN.M, na.rm = T)) != 1)
+ND.M.poly <- which(abs(colMeans(ND.M, na.rm = T)) != 1)
+
+# Find the common polymorphic snps
+M.poly <- intersect(MN.M.poly, ND.M.poly)
 CAP.M <- CAP.M[,M.poly]
 
 marker.info <- marker.info[M.poly,]
