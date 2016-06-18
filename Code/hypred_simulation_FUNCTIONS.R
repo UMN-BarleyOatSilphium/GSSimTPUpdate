@@ -1952,15 +1952,17 @@ measure.LD <- function(genome,
     pos.markers <- list(ID = pos.markers, M = genome[[i]]@pos.snp[pos.markers])
     
     # Find the polymorphic qtl and markers
-    pos.poly.qtl <- lapply(X = pos.qtl, FUN = function(q) q[apply(X = genos.split[[i]][,pos.qtl$ID], MARGIN = 2, FUN = function(locus) length(unique(locus)) > 1)] )
-    pos.poly.markers <- lapply(X = pos.markers, FUN = function(m) m[apply(X = genos.split[[i]][,pos.qtl$ID], MARGIN = 2, FUN = function(locus) length(unique(locus)) > 1)] )
+    pos.poly.qtl <- lapply(X = pos.qtl, FUN = function(q) 
+      q[apply(X = genos.split[[i]][,pos.qtl$ID], MARGIN = 2, FUN = function(locus) abs(mean(locus)) != 1)] )
+    pos.poly.markers <- lapply(X = pos.markers, FUN = function(m) 
+      m[apply(X = genos.split[[i]][,pos.markers$ID], MARGIN = 2, FUN = function(locus) abs(mean(locus)) != 1)] )
     
     # Exit if there are not polymorphic QTL or markers
     if(length(pos.poly.qtl$ID) == 0) return(NA)
     if(length(pos.poly.markers$ID) == 0) return(NA)
     
-    # Iterate over the polymorphic qtl Morgan positions
-    chr.i.LD <- sapply(X = 1:length(pos.poly.qtl$ID), FUN = function(q.i) {
+    # Iterate over the polymorphic qtl indices 
+    chr.LD.i <- lapply(X = 1:length(pos.poly.qtl$ID), FUN = function(q.i) {
       # Pull out the Morgan position of the ith polymorphic qtl
       M.i <- pos.poly.qtl$M[q.i]
       # Pull out the index of the ith polymotphic qtl
@@ -1971,19 +1973,24 @@ measure.LD <- function(genome,
       # Find snps within the window
       markers.in.window <- pos.poly.markers$ID[findInterval(x = pos.poly.markers$M, vec = c(M.i.lower, M.i.upper)) == 1]
       
-      # Iterate over polymorphic marker positions
-      q.i.LD <- suppressWarnings(sapply(X = markers.in.window, FUN = function(m.i) {
-        abs(cor(genos.split[[i]][,ID.i], genos.split[[i]][,m.i])) }) )
-      names(q.i.LD) <- colnames(genos.split[[i]])[markers.in.window]
+      # If no polymorphic QTL are in the window, return NA
+      if (length(markers.in.window) == 0) return(NA)
       
-      return(q.i.LD)
-    }); names(chr.i.LD) <- colnames(genos.split[[i]])[pos.poly.qtl$ID]
+      # Iterate over polymorphic marker positions
+      q.LD.i <- sapply(X = markers.in.window, FUN = function(m.i) {
+        abs(cor(genos.split[[i]][,ID.i], genos.split[[i]][,m.i])) })
+      
+      names(q.LD.i) <- colnames(genos.split[[i]])[markers.in.window]
+      return(q.LD.i) 
+      
+    }); names(chr.LD.i) <- colnames(genos.split[[i]])[pos.poly.qtl$ID]
     
-    return(chr.i.LD)
+    # Remove NAs
+    chr.LD.i[!is.na(chr.LD.i)]
     
   })
   
-  # Return the LD data
+  # Don't remove chromosome NAs
   return(genome.LD)
   
 } # Close the function
