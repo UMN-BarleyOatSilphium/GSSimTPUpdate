@@ -139,7 +139,7 @@ for (change in tp.change) {
   experiment.sub.results <- mclapply(X = iters.per.core, FUN = function(iter.set) {
     
     # Loop over each iteration
-    lapply(X = 1:length(iter.set), FUN = function(i) {
+    lapply(X = 1:length(iter.set), FUN = function(rep.i) {
       
       # All code below this line is variable in each iteration of the simulation
       
