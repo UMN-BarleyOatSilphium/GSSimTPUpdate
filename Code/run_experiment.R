@@ -30,7 +30,6 @@ library(hypred, quietly = T)
 library(rrBLUP, quietly = T)
 library(boot, quietly = T)
 library(parallel, quietly = T)
-library(EMMREML, quietly = T)
 
 # # Other tools
 if (MSI) {
@@ -46,7 +45,7 @@ if (MSI) {
 load(file = "Files/Barley_CAP_simuation_starting_material.RData")
 
 # Source functions
-source("Code/hypred_simulation_FUNCTIONS.R")
+source("Code/simulation_functions.R")
 
 
 # Other simulation parameters
