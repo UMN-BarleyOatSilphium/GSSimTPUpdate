@@ -3,20 +3,19 @@
 # Load packages
 library(plyr)
 
-# Set working directory
-# # Base experiment
-# setwd("C:/Users/Jeff/Google Drive/Barley Lab/Projects/Side Projects/Simulations/BarleySimGS-TPUpdate/Results/Base Experiment/")
-# 
-# # Load data
-# all.files <- list.files()
-# filename <- all.files[5]
-
-# # Allele freq experiment
-setwd("C:/Users/Jeff/Google Drive/Barley Lab/Projects/Side Projects/Simulations/BarleySimGS-TPUpdate/Results/Allele Freq Experiment/")
+# Base experiment
+setwd("C:/Users/Jeff/Google Drive/Barley Lab/Projects/Side Projects/Simulations/BarleySimGS-TPUpdate/Results/Base Experiment/")
 
 # Load data
 all.files <- list.files()
 filename <- all.files[1]
+
+# # Allele freq experiment
+# setwd("C:/Users/Jeff/Google Drive/Barley Lab/Projects/Side Projects/Simulations/BarleySimGS-TPUpdate/Results/Allele Freq Experiment/")
+# 
+# # Load data
+# all.files <- list.files()
+# filename <- all.files[1]
 
 load(filename)
 
@@ -188,7 +187,7 @@ sim.plot(data.list = obs.R.list,
 val.pred.list <- lapply(X = collective.abbreviated.results, function(tpc)
   do.call("cbind", lapply(X = tpc$validation.results.list, FUN = function(set) 
     sapply(set, function(rep) 
-      sapply(rep, function(cycle) cycle$pred.r ) ))))
+      sapply(rep, function(cycle) cycle ) ))))
 
 # Plot
 sim.plot(data.list = val.pred.list,

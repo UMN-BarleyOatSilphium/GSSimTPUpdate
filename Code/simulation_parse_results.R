@@ -54,7 +54,8 @@ for (f in args[-1]) {
     lapply(X = set, FUN = function(rep) 
       lapply(X = rep$sim.result, FUN = function(cycle)
         list(mean.window = cycle$geno.summary.stats$qtl.marker.LD$mean.window,
-             mean.max = cycle$geno.summary.stats$qtl.marker.LD$mean.max ))))
+             mean.max = cycle$geno.summary.stats$qtl.marker.LD$mean.max, 
+             persistence = cycle$geno.summary.stats$qtl.marker.LD$persistance.of.phase ))))
   
   
   # Relationship of TP to the candidates
@@ -62,18 +63,12 @@ for (f in args[-1]) {
     lapply(X = set, FUN = function(rep) {
       lapply(X = rep$sim.result, FUN = function(cycle) {
         return(cycle$geno.summary.stats$mu.TP.candidate.rel) })})})
-  
-  # Heterzygosity 
-  heterozygosity.list <- lapply(X = experiment.sub.results, FUN = function(set) {
-    lapply(X = set, FUN = function(rep) {
-      lapply(X = rep$sim.result, FUN = function(cycle) {
-        return(cycle$geno.summary.stats$heterozygosity) })})})
-  
-  # Genomic prediction results
-  prediction.results.list<- lapply(X = experiment.sub.results, FUN = function(set) {
-    lapply(X = set, FUN = function(rep) {
-      lapply(X = rep$sim.result, FUN = function(cycle) {
-        return(cycle$prediction.results) })})})
+
+  # Marker effects
+  marker.effects.list <- lapply(X = experiment.sub.results, FUN = function(set) 
+    lapply(X = set, FUN = function(rep) 
+      lapply(X = rep$sim.result, FUN = function(cycle) 
+        return(cycle$marker.effects.solve$u) )))
   
   # Prediction accuracy results
   validation.results.list <- lapply(X = experiment.sub.results, FUN = function(set) {
@@ -104,17 +99,16 @@ for (f in args[-1]) {
     allele.freq.list = allele.freq.list,
     qtl.marker.LD.list = qtl.marker.LD.list,
     relationship.list = relationship.list,
-    heterozygosity.list = heterozygosity.list,
-    prediction.results.list = prediction.results.list,
+    marker.effects.list = marker.effects.list,
     validation.results.list = validation.results.list,
     tp.update.list = tp.update.list,
-    genome.list = genome.list
+    genome.list = genome.list,
+    metadata = metadata
   )
   
   # Build a list
   collective.abbreviated.results[[change]] <- abbreviate.output.list
-  # collective.abbreviated.results[["no.change_0.1"]] <- abbreviate.output.list
-  
+
   
 } # Close the for loop
 
