@@ -281,9 +281,14 @@ for (change in tp.change) {
             data.frame( TP.LD = TP.qtl.marker.LD.i[[i]][[poly.qtl]][common.poly.markers], cand.LD = candidate.qtl.marker.LD.i[[i]][[poly.qtl]][common.poly.markers])
           })) }) )
         
-        # Find the correlation of r across all correlations
-        TP.candidate.persistance.of.phase.i <- cor(TP.candidate.LD.i$TP.LD, TP.candidate.LD.i$cand.LD)
-        
+        # If the data.frame has no data, return NA
+        if (nrow(TP.candidate.LD.i == 0)) {
+          TP.candidate.persistance.of.phase.i <- NA
+        } else {
+          # Find the correlation of r across all correlations
+          TP.candidate.persistance.of.phase.i <- cor(TP.candidate.LD.i$TP.LD, TP.candidate.LD.i$cand.LD)
+        }
+          
         # Create a list to save
         qtl.marker.LD.i <- list(candidate.i.qtl.marker.LD = candidate.qtl.marker.LD.i,
                                 TP.i.qtl.marker.LD = TP.qtl.marker.LD.i,
