@@ -666,7 +666,7 @@ evaluate.population <- function(genome,
 
 ## Define a new function to take the haploid genome, environmental variance, and
 # residual variance and simulate phenotypes
-evaluate.population2 <- function(genome, 
+phenotype.population <- function(genome, 
                                  haploid.genos, 
                                  V_E, # environmental variance
                                  V_e, # Residual variance
@@ -1042,45 +1042,29 @@ validate.predictions <- function(predicted.GEBVs,
 } # Close the function
 
 
-# Define a function to calculate allele frequencies
-# The function will calculate the frequency of the 1 allele across all genotypes in a genotype matrix
-# It will also plot the site-frequency spectrum, if desired
-calculate.allele.freq <- function(geno.mat = NULL,
-                                  plot.sfs = FALSE) {
+# Define a function to calculate minor allele frequencies. It will also plot the
+## site-frequency spectrum, if desired
+measure.maf <- function(geno.mat = NULL, # A n x m genotype matrix
+                        plot.sfs = FALSE) {
   
   # Deal with input
   geno.mat <- as.matrix(geno.mat)
   
-  # Add 1 to get the count of the first allele at each locus per entry
+  # Add 1 to get the count of the 1 allele at each locus per entry
   geno.mat <- geno.mat + 1
   
-  # Apply a function over the columns of the matrix (SNPs)
-  freq.alleles <- apply(X = geno.mat, MARGIN = 2, FUN = function(snp) {
-    # Find the total number of "1" alleles
-    sum.1 <- sum(snp)
-    # Find the total number of alleles
-    n.alleles <- 2 * length(snp)
-    # Calculate frequency
-    freq.1 <- sum.1 / n.alleles
-    return(freq.1)
-  })
+  # Taking the mean across a SNP gives the frequency of the 1 allele as a function
+  ## of diploid genotypes. We need to divide by two to get the frequency as a function
+  ## of haploid genotypes
+  freq <- colMeans(geno.mat) / 2
+  maf <- sapply(X = freq, FUN = function(f) min(f, 1-f))
+  
   
   # If requested, plot the site-frequency spectrum
   if(plot.sfs) {
-    # Calculate minor allele frequency
-    MAF <- apply(X = geno.mat, MARGIN = 2, FUN = function(snp) {
-      # Find the total number of "1" alleles
-      sum.1 <- sum(snp)
-      # Find the total number of alleles
-      n.alleles <- 2 * length(snp)
-      # Calculate frequency
-      freq.1 <- sum.1 / n.alleles
-      maf <- min(freq.1, (1 - freq.1))
-      return(maf)
-    })
     
     # Plot
-    hist(x = MAF,
+    hist(x = maf,
          main = "Site Frequency Spectrum",
          xlab = "Minor Allele Frequency",
          ylab = "Count",
@@ -1088,7 +1072,7 @@ calculate.allele.freq <- function(geno.mat = NULL,
   }
   
   # Return the data
-  return(freq.alleles)
+  return(maf)
   
 } # Close the function
 
