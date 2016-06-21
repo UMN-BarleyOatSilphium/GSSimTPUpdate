@@ -1474,9 +1474,6 @@ TP.optimization.algorithms <- function(A, # relationship matrix of all candidate
         # Create the new training set
         new.OTP <- sort(c(candidate.to.add, start.OTP[start.OTP != train.to.remove]))
         
-        # Create the new candidate set
-        candidates.OTP <- setdiff(phenotyped.index, new.OTP)
-        
         # Create a vector of the indicies of the sampled training set and the unphenotyped lines
         subset.index <- c(new.OTP, unphenotyped.index)
         # Subset the A.matrix
@@ -1505,6 +1502,8 @@ TP.optimization.algorithms <- function(A, # relationship matrix of all candidate
         if (PEVmean.new < PEVmean.save) {
           start.OTP <- new.OTP
           PEVmean.save <- PEVmean.new
+          # Create the new candidate set
+          candidates.OTP <- setdiff(phenotyped.index, new.OTP)
         }
         
         # Record the PEVmean of the new PEVmean (if accepted) or the previous (if not)
@@ -1578,8 +1577,6 @@ TP.optimization.algorithms <- function(A, # relationship matrix of all candidate
         # Create the new training set
         new.OTP <- sort(c(candidate.to.add, start.OTP[start.OTP != train.to.remove]))
         
-        # Create the new candidate set
-        candidates.OTP <- setdiff(phenotyped.index, new.OTP)
         # When using the whole candidates
         Z <- matrix(0, n.TP, n.total)
         # Fill in the coordinates of the starting TP (rows = index in the start.OTP, column = index in the A.mat)
@@ -1599,6 +1596,8 @@ TP.optimization.algorithms <- function(A, # relationship matrix of all candidate
         if (PEVmean.new < PEVmean.save) {
           start.OTP <- new.OTP
           PEVmean.save <- PEVmean.new
+          # Create the new candidate set
+          candidates.OTP <- setdiff(phenotyped.index, new.OTP)
         }
         
         # Record the PEVmean of the new PEVmean (if accepted) or the previous (if not)
@@ -1689,9 +1688,6 @@ TP.optimization.algorithms <- function(A, # relationship matrix of all candidate
         # Create the new training set
         new.OTP <- sort(c(candidate.to.add, start.OTP[start.OTP != train.to.remove]))
         
-        # Create the new candidate set
-        candidates.OTP <- setdiff(phenotyped.index, new.OTP)
-        
         # Create a vector of the indicies of the sampled training set and the unphenotyped lines
         subset.index <- c(new.OTP, unphenotyped.index)
         # Subset the A.matrix
@@ -1721,6 +1717,8 @@ TP.optimization.algorithms <- function(A, # relationship matrix of all candidate
         if (CDmean.new > CDmean.save) {
           start.OTP <- new.OTP
           CDmean.save <- CDmean.new
+          # Create the new candidate set
+          candidates.OTP <- setdiff(phenotyped.index, new.OTP)
         }
         
         # Record the CDmean of the new CDmean (if accepted) or the previous (if not)
@@ -1794,8 +1792,6 @@ TP.optimization.algorithms <- function(A, # relationship matrix of all candidate
         # Create the new training set
         new.OTP <- sort(c(candidate.to.add, start.OTP[start.OTP != train.to.remove]))
         
-        # Create the new candidate set
-        candidates.OTP <- setdiff(phenotyped.index, new.OTP)
         # When using the whole candidates
         Z <- matrix(0, n.TP, n.total)
         # Fill in the coordinates of the starting TP (rows = index in the start.OTP, column = index in the A.mat)
@@ -1816,6 +1812,8 @@ TP.optimization.algorithms <- function(A, # relationship matrix of all candidate
         if (CDmean.new > CDmean.save) {
           start.OTP <- new.OTP
           CDmean.save <- CDmean.new
+          # Create the new candidate set
+          candidates.OTP <- setdiff(phenotyped.index, new.OTP)
         }
         
         # Record the CDmean of the new CDmean (if accepted) or the previous (if not)

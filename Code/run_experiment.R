@@ -391,7 +391,7 @@ for (change in tp.change) {
             # We want to see what optimized TP is best for the parents, so we will optimize the training set based
             ## on the lines from the whole candidate set, including the parents?
             phenotyped.lines <- row.names(candidate.marker.genos.i)
-            unphenotyped.lines <- parent.lines
+            unphenotyped.lines <- parent.selections.i$lines.sel
             
             # V_e is estimated from maximum liklihood
             V_e.i <- marker.effects.solve$Ve
@@ -399,31 +399,15 @@ for (change in tp.change) {
             V_a.i <- marker.effects.solve$Vu * ncol(TP.genos.use)
             
             # Subset the relationship matrix among candidates
-            optimized.TP.additions <- try( TP.optimization.algorithms(A = A,
-                                                                      phenotyped.lines = phenotyped.lines,
-                                                                      unphenotyped.lines = unphenotyped.lines,
-                                                                      n.TP = tp.update.increment,
-                                                                      V_e = V_e.i,
-                                                                      V_a = V_a.i,
-                                                                      optimization.method = change,
-                                                                      max.iter = 500,
-                                                                      use.subset = T), silent = T )
-            
-            # If an error is found, just try again
-            # Use a counter to make sure this doesn't implode
-            counter = 0
-            while (all(class(optimized.TP.additions) == "try-error", counter < 100) ) {
-              optimized.TP.additions <- try( TP.optimization.algorithms(A = A,
-                                                                        phenotyped.lines = phenotyped.lines,
-                                                                        unphenotyped.lines = unphenotyped.lines,
-                                                                        n.TP = tp.update.increment,
-                                                                        V_e = V_e.i,
-                                                                        V_a = V_a.i,
-                                                                        optimization.method = change,
-                                                                        max.iter = 500,
-                                                                        use.subset = T), silent = T )
-              counter = counter + 1
-            }
+            optimized.TP.additions <- TP.optimization.algorithms(A = A,
+                                                                 phenotyped.lines = phenotyped.lines,
+                                                                 unphenotyped.lines = unphenotyped.lines,
+                                                                 n.TP = tp.update.increment,
+                                                                 V_e = V_e.i,
+                                                                 V_a = V_a.i,
+                                                                 optimization.method = change,
+                                                                 max.iter = 500,
+                                                                 use.subset = T) )
             
             # The optimized TP lines become the TP additions
             TP.addition.list <- list(TP.addition.lines = optimized.TP.additions$optimized.lines, optimization = optimized.TP.additions[-1])
