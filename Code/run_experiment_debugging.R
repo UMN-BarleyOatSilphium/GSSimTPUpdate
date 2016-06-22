@@ -121,7 +121,8 @@ hv.genome <- make.genome( n.chr = length(chr.len),
 
 
 # Iterate over the different tp.change types
-for (change in tp.change) {
+# for (change in tp.change) {
+change = "worst"
   
   # Split iterations into cores
   if (n.cores > 1) {
@@ -131,12 +132,15 @@ for (change in tp.change) {
     iters.per.core <- 1:n.iterations
   }
   
-  # Apply the iterations over cores
-  experiment.sub.results <- mclapply(X = iters.per.core, FUN = function(iter.set) {
-
-    # Loop over each iteration
-    lapply(X = 1:length(iter.set), FUN = function(rep.i) {
+  # # Apply the iterations over cores
+  # experiment.sub.results <- mclapply(X = iters.per.core, FUN = function(iter.set) {
+  #   
+  #   # Loop over each iteration
+  #   lapply(X = 1:length(iter.set), FUN = function(rep.i) {
       
+  ### DEBUGGING ###
+  
+  for (rep.i in 1:n.iterations) {    
       
       # All code below this line is variable in each iteration of the simulation
       
@@ -212,6 +216,7 @@ for (change in tp.change) {
       
       # Create an initial data list
       simulation.results <- list()
+      debug.results <- list()
       
       # Loop over the number of cycles
       for (breeding.cycle in 1:n.cycles) {
@@ -491,15 +496,18 @@ for (change in tp.change) {
       } # Close the per-cycle loop
       
       # Return the simulation data
-      return( list(sim.results = simulation.results, genome = hv.genome) )
+      # return( list(sim.results = simulation.results, genome = hv.genome) )
+      debug.results[[rep.i]] <- simulation.results
       
-    }) # Close the iteration lapply
-
-  }, mc.cores = n.cores)
+      } # Replicate for debugging
+      
+  #   }) # Close the iteration lapply
+  #   
+  # }, mc.cores = n.cores)
   
-  # Save the tp.change data
-  filename = paste("Files/", "simulation_results_q", n.QTL, "_sel", parents.sel.intensity, "_popmakeup-", pop.makeup, "_tpchange-", change, "_tpformation-", tp.formation, "_", date, ".RData", sep = "")
-  save(list = c("experiment.sub.results", "change", "metadata"), file = filename)
-  
-  
-} # Close the tp.change for loop
+#   # Save the tp.change data
+#   filename = paste("Files/", "simulation_results_q", n.QTL, "_sel", parents.sel.intensity, "_popmakeup-", pop.makeup, "_tpchange-", change, "_tpformation-", tp.formation, "_", date, ".RData", sep = "")
+#   save(list = c("experiment.sub.results", "change", "metadata"), file = filename)
+#   
+#   
+# } # Close the tp.change for loop
