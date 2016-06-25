@@ -77,9 +77,9 @@ make.family <- function(genome, # hypred genome
   # Determine the number of gametes to produce
   n.gamete <- N * 2
   
-  F_1 <- do.call("rbind", lapply(X = 1:N, function(ind) {
+  F_1 <- do.call("rbind", lapply(X = seq(N), function(ind) {
     # Gamete 1
-    gamete1 <- recombine(genome = genome,
+    haploid1 <- recombine(genome = genome,
                          haploid.genomeA = parent1.genome[1,],
                          haploid.genomeB = parent1.genome[2,],
                          mutate = mutate,
@@ -87,14 +87,14 @@ make.family <- function(genome, # hypred genome
                          mutation.rate.qtl = mutation.rate.qtl)
     
     # Gamete 2
-    gamete2 <- recombine(genome = genome,
+    haploid2 <- recombine(genome = genome,
                          haploid.genomeA = parent2.genome[1,],
                          haploid.genomeB = parent2.genome[2,],
                          mutate = mutate,
                          mutation.rate.snp = mutation.rate.snp,
                          mutation.rate.qtl = mutation.rate.qtl)
     
-    return(rbind(gamete1, gamete2)) }) )
+    return(rbind(haploid1, haploid2)) }) )
   
   # Iterate changes to the population over a number of generations
   # Rename the population
@@ -104,7 +104,7 @@ make.family <- function(genome, # hypred genome
   if (generations > 0) {
     
     # Iterate over generations
-    for (g in 1:generations) {
+    for (g in seq(generations)) {
       
       # This applies the function over individuals
       # First we generate a set of recombinant gametes
@@ -444,9 +444,16 @@ make.population <- function(genome,
   # Pull out the loci names
   loci.names <- colnames(parental.haploids)
   
-  # Apply a function over the crossing block
+  # The number of crosses
+  n.crosses = nrow(crossing.block)
+  
+  # Create empty output matrix
+  fam.list <- vector("list", nrow(crossing.block))
+  
+  # fam.list <- lapply(X = 1:nrow(crossing.block), FUN = function(i) {
+  # Apply a loop over the crossing block
   # This function will return a list of the cross families
-  fam.list <- lapply(X = 1:nrow(crossing.block), FUN = function(i) {
+  for (i in seq(n.crosses)) {
     
     # Identify the cross
     cross <- crossing.block[i,]
@@ -470,9 +477,13 @@ make.population <- function(genome,
     # Add marker names back in
     colnames(pop) <- loci.names
     
-    # Return the population genotypes in a list
-    return(pop)
-  })
+    fam.list[[i]] <- pop
+    
+  }
+    
+  #   # Return the population genotypes in a list
+  #   return(pop)
+  # })
   
   # Rename the list entries
   names(fam.list) <- apply(X = crossing.block, MARGIN = 1, FUN = function(cross) return(paste(cross[1],cross[2], sep = ".")))
@@ -1457,7 +1468,7 @@ TP.optimization.algorithms <- function(A, # relationship matrix of all candidate
       PEVmean.save = mean(PEV)
       
       # Create an empty vector to store PEVmean values
-      PEV.vector <- numeric()
+      PEV.vector <- vector("numeric", length = max.iter)
       
       iter.counter = 1 # Iteration counter
       # While loop
@@ -1560,7 +1571,7 @@ TP.optimization.algorithms <- function(A, # relationship matrix of all candidate
       PEVmean.save = mean(PEV)
       
       # Create an empty vector to store PEVmean values
-      PEV.vector <- numeric()
+      PEV.vector <- vector("numeric", length = max.iter)
       
       iter.counter = 1 # Iteration counter
       # While loop
@@ -1671,7 +1682,7 @@ TP.optimization.algorithms <- function(A, # relationship matrix of all candidate
       CDmean.save = mean(CD)
       
       # Create an empty vector to store PEVmean values
-      CD.vector <- numeric()
+      CD.vector <- vector("numeric", length = max.iter)
       
       iter.counter = 1 # Iteration counter
       # While loop
@@ -1775,7 +1786,7 @@ TP.optimization.algorithms <- function(A, # relationship matrix of all candidate
       CDmean.save = mean(CD)
       
       # Create an empty vector to store CDmean values
-      CD.vector <- numeric()
+      CD.vector <- vector("numeric", length = max.iter)
       
       iter.counter = 1 # Iteration counter
       # While loop

@@ -500,6 +500,10 @@ change = "worst"
       debug.results[[rep.i]] <- simulation.results
       
       } # Replicate for debugging
+
+# Save everything
+save.image(file = paste("simulation_debugging_", date, ".RData", sep = ""))
+savehistory(file = paste("simulation_debugging_", date, ".Rhistory", sep = ""))
       
   #   }) # Close the iteration lapply
   #   

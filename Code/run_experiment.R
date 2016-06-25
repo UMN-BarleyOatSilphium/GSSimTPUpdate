@@ -211,10 +211,10 @@ for (change in tp.change) {
       TP.genos.i <- TP.genos
       
       # Create an initial data list
-      simulation.results <- list()
+      simulation.results <- vector("list", length = n.cycles)
       
       # Loop over the number of cycles
-      for (breeding.cycle in 1:n.cycles) {
+      for (breeding.cycle in seq(n.cycles)) {
 
         ##### Start the Cycle Executions #####
 
