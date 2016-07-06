@@ -27,6 +27,7 @@ library(hypred, quietly = T)
 library(rrBLUP, quietly = T)
 library(boot, quietly = T)
 library(parallel, quietly = T)
+library(EMMREML, quietly = T)
 
 # # Other tools
 if (MSI) {
@@ -211,7 +212,7 @@ for (change in tp.change) {
       TP.genos.i <- TP.genos
       
       # Create an initial data list
-      simulation.results <- vector("list", length = n.cycles)
+      simulation.results <- list()
       
       # Loop over the number of cycles
       for (breeding.cycle in seq(n.cycles)) {
@@ -331,9 +332,11 @@ for (change in tp.change) {
         
         
         # Estimate marker effects
-        marker.effects.solve <- mixed.solve(y = TP.phenos.i, Z = TP.genos.use, method = "REML")
+        # solve.out <- mixed.solve(y = TP.phenos.i, Z = TP.genos.use, method = "REML")
+        solve.out <- emmreml(y = TP.phenos.i, Z = TP.genos.use, X = matrix(1, nrow(TP.genos.use), 1), K = diag(ncol(TP.genos.use)))
         # Calculate GEBVs
-        candidate.GEBV.i <- candidate.genos.use %*% marker.effects.solve$u
+        # candidate.GEBV.i1 <- candidate.genos.use %*% solve.out$u
+        candidate.GEBV.i <- candidate.genos.use %*% solve.out$uhat
         
 
         

@@ -22,12 +22,19 @@ load(filename)
 pop.makeup = strsplit(x = substring(text = filename, first = regexpr(pattern = "popmakeup", text = filename)[1] + 10), split = "_")[[1]][1]
 tp.formation = strsplit(x = substring(text = filename, first = regexpr(pattern = "tpformation", text = filename)[1] + 12), split = "_")[[1]][1]
 
-n.cycles = length(collective.abbreviated.results[[1]][[1]][[1]][[1]])
+# n.cycles = length(collective.abbreviated.results[[1]][[1]][[1]][[1]])
+n.cycles = 15
 n.reps = sum(unlist(lapply(X = collective.abbreviated.results[[1]][[1]], FUN = length)))
 
 tp.change.factors <- as.factor(names(collective.abbreviated.results))
 
 
+# Remove the NULLs
+collective.abbreviated.results <- lapply(collective.abbreviated.results, FUN = function(tpc) 
+  lapply(X = tpc, FUN = function(l) 
+    lapply(X = l, FUN = function(set)
+      lapply(X = set, FUN = function(rep)
+        rep[-c(1:15)] ))))
 
 
 
@@ -53,12 +60,12 @@ sim.plot <- function(data.list,
   data.parameters <- lapply(X = data.list, FUN = function(data) {
     
     # Find the mean across iterations
-    mu <- apply(X = data, MARGIN = 1, FUN = mean)
+    mu <- apply(X = data, MARGIN = 1, FUN = mean, na.rm = T)
     
     # Calculate a confidence interval based on a t-distribution
     CI <- apply(X = data, MARGIN = 1, FUN = function(cycle) {
       t.per <- qt(p = (1 - (0.05 / 2)), df = length(cycle) - 1)
-      t.per * ( sd(cycle) / sqrt(length(cycle)) ) }) 
+      t.per * ( sd(cycle, na.rm = T) / sqrt(length(cycle)) ) }) 
     
     list(mu = mu, CI = CI) })
   
@@ -216,18 +223,18 @@ sim.plot(data.list = poly.marker.list,
          legend.pos = "bottomleft")
 
 
-# Size of training population
-tp.size.list <- lapply(X = collective.abbreviated.results, FUN = function(tpc) 
-  do.call("cbind", sapply(tpc$prediction.results.list, FUN = function(set) 
-    sapply(set, function(rep) 
-      sapply(rep, FUN = function(cycle) 
-        return(cycle$parameters$n.TP))))) )
-
-# Plot
-sim.plot(data.list = tp.size.list,
-         ylab = "Training Population Size", 
-         main = paste("Training Population Size Across Cycles", paste("Population:", pop.makeup, ", TP formation:", tp.formation), sep = "\n"), 
-         legend.pos = "topleft")
+# # Size of training population
+# tp.size.list <- lapply(X = collective.abbreviated.results, FUN = function(tpc) 
+#   do.call("cbind", sapply(tpc$prediction.results.list, FUN = function(set) 
+#     sapply(set, function(rep) 
+#       sapply(rep, FUN = function(cycle) 
+#         return(cycle$parameters$n.TP))))) )
+# 
+# # Plot
+# sim.plot(data.list = tp.size.list,
+#          ylab = "Training Population Size", 
+#          main = paste("Training Population Size Across Cycles", paste("Population:", pop.makeup, ", TP formation:", tp.formation), sep = "\n"), 
+#          legend.pos = "topleft")
 
 
 
@@ -310,6 +317,16 @@ sim.plot(data.list = qtl.marker.mean.LD.list,
          main = paste("LD of Polymorphic QTL with Markers Within 50 cM", paste("Population:", pop.makeup, ", TP formation:", tp.formation), sep = "\n"), 
          legend.pos = "bottomleft")
 
+# Persistence of LD phase
+persistence.of.phase.list <- lapply(X = collective.abbreviated.results, function(tpc)
+  do.call("cbind", lapply(X = tpc$qtl.marker.LD.list, FUN = function(set) 
+    sapply(set, function(rep) 
+      sapply(rep, function(cycle) cycle$persistence ) ))))
+
+sim.plot(data.list = persistence.of.phase.list,
+         ylab = "Correlatio of r",
+         main = paste("Persistance of LD Phase Between TP and Selection Candidates", paste("Population:", pop.makeup, ", TP formation:", tp.formation), sep = "\n"), 
+         legend.pos = "bottomleft")
 
 
 # Change in average relationship between TP and candidates
@@ -320,7 +337,7 @@ relationship.list <- lapply(X = collective.abbreviated.results, function(tpc)
 
 # Plot
 sim.plot(data.list = relationship.list,
-         ylab = "Additive Genetic Relationship", 
+         ylab = "Additive Genetic Relationship\n(With Respect to the Base Population)", 
          main = paste("Scaled Additive Relationship Between Training Set and Candidates", paste("Population:", pop.makeup, ", TP formation:", tp.formation), sep = "\n"), 
-         legend.pos = "bottomleft")
+         legend.pos = "topleft")
   
