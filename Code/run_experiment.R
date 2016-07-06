@@ -398,9 +398,9 @@ for (change in tp.change) {
             unphenotyped.lines <- parent.selections.i$lines.sel
             
             # V_e is estimated from maximum liklihood
-            V_e.i <- marker.effects.solve$Ve
+            V_e.i <- solve.out$Ve
             # V_a is estimated as the variance among marker effects * the number of markers
-            V_a.i <- marker.effects.solve$Vu * ncol(TP.genos.use)
+            V_a.i <- solve.out$Vu * ncol(TP.genos.use)
             
             # Subset the relationship matrix among candidates
             optimized.TP.additions <- TP.optimization.algorithms(A = A,
@@ -482,7 +482,7 @@ for (change in tp.change) {
                                                                            TP.maf = TP.genos.maf.i,
                                                                            qtl.marker.LD = qtl.marker.LD.i,
                                                                            mu.TP.candidate.rel = mu.relationship),
-                                                 marker.effects.solve = marker.effects.solve,
+                                                 MM.solve = solve.out,
                                                  candidate.GEBV = candidate.GEBV.i,
                                                  candidate.values = candidate.values.i,
                                                  selection.values = parent.values,
