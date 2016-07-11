@@ -141,6 +141,8 @@ for (change in tp.change) {
       
       # All code below this line is variable in each iteration of the simulation
       
+      {
+      
       #### Define trait parameters ####
       hv.genome <- trait.architecture(genome = hv.genome,
                                       n.QTL = n.QTL, 
@@ -495,6 +497,8 @@ for (change in tp.change) {
       
       # Return the simulation data
       return( list(sim.results = simulation.results, genome = hv.genome) )
+      
+      }
       
     }) # Close the iteration lapply
 
