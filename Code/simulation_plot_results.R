@@ -29,14 +29,14 @@ n.reps = sum(unlist(lapply(X = collective.abbreviated.results[[1]][[1]], FUN = l
 tp.change.factors <- as.factor(names(collective.abbreviated.results))
 
 
-# Remove the NULLs
-collective.abbreviated.results <- lapply(collective.abbreviated.results, FUN = function(tpc) 
-  lapply(X = tpc, FUN = function(l) 
-    lapply(X = l, FUN = function(set)
-      lapply(X = set, FUN = function(rep)
-        rep[-c(1:15)] ))))
-
-
+# # Remove the NULLs
+# collective.abbreviated.results <- lapply(collective.abbreviated.results, FUN = function(tpc) 
+#   lapply(X = tpc, FUN = function(l) 
+#     lapply(X = l, FUN = function(set)
+#       lapply(X = set, FUN = function(rep)
+#         rep[-c(1:15)] ))))
+# 
+# 
 
 
 # Define a function to plot

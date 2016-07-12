@@ -8,12 +8,14 @@ args <- commandArgs(trailingOnly = T)
 
 # First and only argument is the pop makeup (MN, ND, or MNxND)
 # Second argument is how the TP should be combined after each cycle (cumulative or window)
+# If no arguments are given (i.e. it's being run locally), set defaults for testing
 if (all(is.na(args))) {
   pop.makeup <- "MN"
   tp.formation <- "cumulative"
   parents.sel.intensity = 100
   n.crosses = 50
   MSI = F
+  
 } else {
   pop.makeup <- args[1]
   tp.formation <- args[2]
@@ -22,21 +24,28 @@ if (all(is.na(args))) {
   MSI = T
 }
 
-# Load the packages
-library(hypred, quietly = T)
-library(rrBLUP, quietly = T)
-library(boot, quietly = T)
-library(parallel, quietly = T)
-library(EMMREML, quietly = T)
-
-# # Other tools
+# Other information and pre-processing
 if (MSI) {
   setwd("/panfs/roc/groups/6/smithkp/neyhartj/Genomic_Selection/Simulations/BarleySimGS-TPUpdate")
   # source("/panfs/roc/groups/6/smithkp/neyhartj/GitHub_Repos/Quant-Gen-Scripts/genotype_matrix_utils.R")
   n.cores = 16
+  # Load the packages
+  library(hypred, quietly = T, lib.loc = "/home/smithkp/neyhartj/R/x86_64-unknown-linux-gnu-library/3.1/")
+  library(rrBLUP, quietly = T, lib.loc = "/home/smithkp/neyhartj/R/x86_64-unknown-linux-gnu-library/3.1/")
+  library(boot, quietly = T, lib.loc = "/home/smithkp/neyhartj/R/x86_64-unknown-linux-gnu-library/3.1/")
+  library(parallel, quietly = T, lib.loc = "/home/smithkp/neyhartj/R/x86_64-unknown-linux-gnu-library/3.1/")
+  library(EMMREML, quietly = T, lib.loc = "/home/smithkp/neyhartj/R/x86_64-unknown-linux-gnu-library/3.1/")
+  
 } else {
   setwd("C:/Users/Jeff/Google Drive/Barley Lab/Projects/Side Projects/Simulations/BarleySimGS-TPUpdate/")
   n.cores = 1
+  # Load the packages
+  library(hypred)
+  library(rrBLUP)
+  library(boot)
+  library(parallel)
+  library(EMMREML)
+  
 }
 
 # Load already-curated gamete data
