@@ -77,24 +77,27 @@ make.family <- function(genome, # hypred genome
   # Determine the number of gametes to produce
   n.gamete <- N * 2
   
-  F_1 <- do.call("rbind", lapply(X = seq(N), function(ind) {
-    # Gamete 1
-    haploid1 <- recombine(genome = genome,
-                         haploid.genomeA = parent1.genome[1,],
-                         haploid.genomeB = parent1.genome[2,],
-                         mutate = mutate,
-                         mutation.rate.snp = mutation.rate.snp,
-                         mutation.rate.qtl = mutation.rate.qtl)
     
-    # Gamete 2
-    haploid2 <- recombine(genome = genome,
-                         haploid.genomeA = parent2.genome[1,],
-                         haploid.genomeB = parent2.genome[2,],
-                         mutate = mutate,
-                         mutation.rate.snp = mutation.rate.snp,
-                         mutation.rate.qtl = mutation.rate.qtl)
+  F_1 <- replicate(n = n.gamete, expr = {
     
-    return(rbind(haploid1, haploid2)) }) )
+    rbind(
+      # Gamete 1
+      recombine(genome = genome,
+                haploid.genomeA = parent1.genome[1,],
+                haploid.genomeB = parent1.genome[2,],
+                mutate = mutate,
+                mutation.rate.snp = mutation.rate.snp,
+                mutation.rate.qtl = mutation.rate.qtl),
+      # Gamete 2
+      recombine(genome = genome,
+                haploid.genomeA = parent2.genome[1,],
+                haploid.genomeB = parent2.genome[2,],
+                mutate = mutate,
+                mutation.rate.snp = mutation.rate.snp,
+                mutation.rate.qtl = mutation.rate.qtl) ) %>%
+      list() }) %>%
+    # Transpose
+    do.call("rbind", .)
   
   # Iterate changes to the population over a number of generations
   # Rename the population
@@ -108,20 +111,24 @@ make.family <- function(genome, # hypred genome
       
       # This applies the function over individuals
       # First we generate a set of recombinant gametes
-      recomb.pop <- lapply(X = seq(1, n.gamete, 2), FUN = function(i) {
+      pop.i <- lapply(X = seq(1, n.gamete, 2), FUN = function(i) {
         gamete.index1 <- i
         gamete.index2 <- i + 1
         
         # Simulate the gametes from the i-th individual
-        t(replicate(2, recombine(genome = genome,
-                                 haploid.genomeA = pop.i[gamete.index1,],
-                                 haploid.genomeB = pop.i[gamete.index2,],
-                                 mutate = mutate,
-                                 mutation.rate.snp = mutation.rate.snp,
-                                 mutation.rate.qtl = mutation.rate.qtl))) })
+        replicate(n = 2, expr = {
+          
+          recombine(genome = genome,
+                    haploid.genomeA = pop.i[gamete.index1,],
+                    haploid.genomeB = pop.i[gamete.index2,],
+                    mutate = mutate,
+                    mutation.rate.snp = mutation.rate.snp,
+                    mutation.rate.qtl = mutation.rate.qtl) }) %>%
+          # Transpose
+          t() }) %>%
         
-      # Collapse the list into the correct matrix
-      pop.i <- do.call("rbind", recomb.pop)
+        # Bind the rows
+        do.call("rbind", .)
       
       # If randomly mating, permutate
       if (pop.type == "random") {
@@ -133,7 +140,10 @@ make.family <- function(genome, # hypred genome
   } # Close the if statement
   
   # Name the individuals
-  row.names(pop.i) <- paste("C", cycle.number, "_", (1+generations), formatC(family.number, width = 3, format = "d", flag = "0"), "-", formatC(rep(c(1:N), each = 2), width = 4, format = "d", flag = "0"), ".", rep(c(1:2), 2), sep = "")
+  row.names(pop.i) <- paste("C", cycle.number, "_", (1+generations), 
+                            formatC(family.number, width = 3, format = "d", flag = "0"), 
+                            "-", formatC(rep(c(1:N), each = 2), width = 4, format = "d", flag = "0"),
+                            ".", rep(c(1:2), 2), sep = "")
   
   # Return the population matrix
   return(pop.i)
@@ -447,20 +457,20 @@ make.population <- function(genome,
   # The number of crosses
   n.crosses = nrow(crossing.block)
   
-  # Create empty output matrix
-  fam.list <- vector("list", nrow(crossing.block))
+  # Create empty vector
+  fam.list <- vector("list", n.crosses)
   
-  # fam.list <- lapply(X = 1:nrow(crossing.block), FUN = function(i) {
-  # Apply a loop over the crossing block
-  # This function will return a list of the cross families
+  # Iterate over the number of crosses
   for (i in seq(n.crosses)) {
     
-    # Identify the cross
+    # Extract the cross
     cross <- crossing.block[i,]
     
-    # Use grep to pull out the gametes
-    parent1.haploid <- parental.haploids[grep(pattern = cross[1], x = row.names(parental.haploids)),]
-    parent2.haploid <- parental.haploids[grep(pattern = cross[2], x = row.names(parental.haploids)),]
+    # Pull out the gametes
+    parent1.haploid <- parental.haploids %>%
+      subset.matrix(subset = str_detect(string = row.names(.), pattern = cross[1]))
+    parent2.haploid <- parental.haploids %>%
+      subset.matrix(subset = str_detect(string = row.names(.), pattern = cross[2]))
     
     # Make a population from each cross
     pop <- make.family(genome = genome, 
@@ -477,13 +487,10 @@ make.population <- function(genome,
     # Add marker names back in
     colnames(pop) <- loci.names
     
+    # Add the population to the list
     fam.list[[i]] <- pop
     
-  }
-    
-  #   # Return the population genotypes in a list
-  #   return(pop)
-  # })
+  } # Close the per-cross loop
   
   # Rename the list entries
   names(fam.list) <- apply(X = crossing.block, MARGIN = 1, FUN = function(cross) return(paste(cross[1],cross[2], sep = ".")))
@@ -722,27 +729,57 @@ phenotype.population <- function(genome,
   residual <- matrix(rnorm(n.geno * n.env * n.rep, 0, sqrt(V_e)), n.geno, n.env * n.rep)
   
   # Calculate phenotypic values
-  y <- matrix(g, n.geno, (n.env * n.rep)) + matrix(e, n.geno, (n.env * n.rep), byrow = T) + residual
+  y <- matrix(g, n.geno, (n.env * n.rep)) + 
+    matrix(e, n.geno, (n.env * n.rep), byrow = T) + 
+    residual
   
-  # Label the matrix
-  row.names(y) <- line.names
-  colnames(y) <- paste( paste("env", 1:n.env, sep = ""), rep(paste("rep", 1:n.rep, sep = ""), each = n.env), sep = "." )
+  # Convert to vector
+  y <- as.numeric(y)
+  
+  # Reform into data.frame
+  phenos <- data.frame(line = rep(line.names, n.env * n.rep),
+                       env = rep( rep( paste("env", seq(n.env), sep = ""), each = n.geno ), n.rep ),
+                       rep = rep( rep( paste("rep", seq(n.rep), sep = ""), each = n.geno ), each = n.rep),
+                       value = y )
+  
+  # Run a analysis of variance
+  ## For unreplicated, multi-environment
+  if (n.env > 1 & n.rep == 1) {
+    # Fit the model
+    lm.fit <- lm(formula = value ~ line + env, data = phenos)
+    lm.anova <- anova(lm.fit)
+    
+    # Mean squares
+    MS_error <- lm.anova["Residuals",]$`Mean Sq`
+    MS_line <- lm.anova["line",]$`Mean Sq`
+    
+    # Variance components
+    V_error <- MS_error
+    V_line <- (MS_line - MS_error) / n.env
+    
+    # Heritability
+    H = V_line / (V_line + (V_error / n.env))
+    
+  }
   
   # Find the average across environments as the value to use
-  mu_y <- as.matrix(rowMeans(y))
-  row.names(mu_y) <- line.names
+  mu_y <- tapply(X = phenos$value, INDEX = phenos$line, FUN = mean) %>%
+    as.matrix()
   
   # Find the average across genotypes
   mu.p <- mean(mu_y) # Phenotypic value
   mu.g <- mean(g) # Genotypic values
   
+
   # Output list
-  output.list <- list(full.matrix = y,
+  output.list <- list(full.matrix = phenos,
                       geno.values = g,
                       mean.pheno.values = mu_y,
                       mu.p = mu.p,
                       mu.g = mu.g,
-                      var.components = list(V_g = V_g, V_E = V_E, V_e = V_e))
+                      true.var.components = list(V_g = V_g, V_E = V_E, V_e = V_e),
+                      obs.var.components = list(V_g = V_line, V_e = V_error),
+                      obs.H = H)
   
   return(output.list)
   
@@ -1931,38 +1968,38 @@ measure.LD <- function(genome,
   # Pull out the number of chromosomes
   n.chr <- length(genome)
   # Pull out the number of loci per chromsosome
-  loci.per.chr <- sapply(X = genome, FUN = function(chromosome) length(slot(chromosome, "pos.snp")))
+  loci.per.chr <- sapply(X = genome, FUN = function(chr) length(chr@pos.snp))
   
   # Split the genotypes into chromosomes
-  genos.split <- sapply(X = split(1:ncol(genos), rep(1:n.chr, loci.per.chr)), FUN = function(i) genos[,i])
+  genos.split <- sapply(X = split(x = seq(ncol(genos)), rep(seq(n.chr), loci.per.chr)), FUN = function(i) genos[,i])
   
-  # Apply a function over each chromosome of the genome
-  genome.LD <- lapply(X = 1:n.chr, FUN = function(i) {
+  # Apply a function over the genome and genotype data simulaneously
+  genome.LD <- mapply(genome, genos.split, FUN = function(chr, chr.genos) {
+    
     # Pull out QTL positions and index
-    pos.qtl <- genome[[i]]@pos.add.qtl
+    pos.qtl <- chr@pos.add.qtl
+    # Number of loci
+    n.loci <- chr@pos.snp
     # Calculate the position of markers
-    pos.markers <- setdiff(seq(loci.per.chr[[i]]), pos.qtl$ID)
-    pos.markers <- list(ID = pos.markers, M = genome[[i]]@pos.snp[pos.markers])
+    pos.markers <- setdiff(seq(n.loci), pos.qtl$ID) %>%
+      list(ID = ., M = chr@pos.snp[.])
     
     # Find the polymorphic qtl and markers
     pos.poly.qtl <- lapply(X = pos.qtl, FUN = function(q) 
-      q[apply(X = genos.split[[i]][,pos.qtl$ID], MARGIN = 2, FUN = function(locus) abs(mean(locus)) != 1)] )
+      q[apply(X = chr.genos[,pos.qtl$ID], MARGIN = 2, FUN = function(locus) abs(mean(locus)) != 1)] )
     pos.poly.markers <- lapply(X = pos.markers, FUN = function(m) 
-      m[apply(X = genos.split[[i]][,pos.markers$ID], MARGIN = 2, FUN = function(locus) abs(mean(locus)) != 1)] )
+      m[apply(X = chr.genos[,pos.markers$ID], MARGIN = 2, FUN = function(locus) abs(mean(locus)) != 1)] )
     
     # Exit if there are not polymorphic QTL or markers
     if(length(pos.poly.qtl$ID) == 0) return(NA)
     if(length(pos.poly.markers$ID) == 0) return(NA)
     
-    # Iterate over the polymorphic qtl indices 
-    chr.LD.i <- lapply(X = 1:length(pos.poly.qtl$ID), FUN = function(q.i) {
-      # Pull out the Morgan position of the ith polymorphic qtl
-      M.i <- pos.poly.qtl$M[q.i]
-      # Pull out the index of the ith polymotphic qtl
-      ID.i <- pos.poly.qtl$ID[q.i]
+    # Iterate over the polymorphic qtl indices
+    chr.LD.i <- mapply(pos.poly.qtl$ID, pos.poly.qtl$M, FUN = function(q.ID, q.M) {
+
       # Add and subtract the Morgan window, while rounding
-      M.i.lower <- round.limit(x = M.i - Morgan.window, 0, "lower")
-      M.i.upper <- round.limit(x = M.i + Morgan.window, genome[[i]]@len.chr, "upper")
+      M.i.lower <- round.limit(x = q.M - Morgan.window, 0, "lower")
+      M.i.upper <- round.limit(x = q.M + Morgan.window, chr@len.chr, "upper")
       # Find snps within the window
       markers.in.window <- pos.poly.markers$ID[findInterval(x = pos.poly.markers$M, vec = c(M.i.lower, M.i.upper)) == 1]
       
@@ -1971,12 +2008,12 @@ measure.LD <- function(genome,
       
       # Iterate over polymorphic marker positions
       q.LD.i <- sapply(X = markers.in.window, FUN = function(m.i) {
-        abs(cor(genos.split[[i]][,ID.i], genos.split[[i]][,m.i])) })
+        abs(cor(chr.genos[,q.ID], chr.genos[,m.i])) })
       
-      names(q.LD.i) <- colnames(genos.split[[i]])[markers.in.window]
+      names(q.LD.i) <- colnames(chr.genos)[markers.in.window]
       return(q.LD.i) 
       
-    }); names(chr.LD.i) <- colnames(genos.split[[i]])[pos.poly.qtl$ID]
+    }); names(chr.LD.i) <- colnames(chr.genos)[pos.poly.qtl$ID]
     
     # Remove NAs
     chr.LD.i[!is.na(chr.LD.i)]
@@ -2103,141 +2140,9 @@ measure.relationship <- function(TP.genos, # An n x m matrix of marker genotypes
 
 } # Close the function
   
-  
-      
-# # To estimate variance, we will use a generalized linear mixed model
-# # Genos and gxe will be fit as random effects, and environment will be fit as a fixed effect
-# # First develop factors
-# g_i = factor(rep(1:n.geno, n.env * n.rep))
-# e_j = factor(rep(1:n.env, each = n.geno, n.rep))
-# r_k = factor(rep(1:n.rep, each = n.geno * n.env))
+# ## Playing with other packages for simulation
+# library(mpMap2)
+# library(qtl)
 # 
-# # If no model is called, don't estimate variances
-# if (is.null(model)) {
-#   V_g.hat <- NA
-#   V_residual.hat <- NA
-#   h2.hat <- NA
-#   V_p.hat <- NA
-#   
-# } else {
-#   
-#   # If the model is anova, run an anova
-#   if (model == "anova") {
-#     
-#     p <- as.vector(y)
-#     
-#     # Phenotypic variance
-#     V_p.hat <- var(p)
-#     
-#     # With more than one rep and more than one environment
-#     if (all(n.rep > 1, n.env > 1)) {
-#       p.anova <- anova(aov(p ~ g_i + e_j + r_k %in% e_j + g_i:e_j))
-#       
-#       # Find the mean squares
-#       MS_g <- p.anova['g_i',]$`Mean Sq`
-#       MS_ge <- p.anova['g_i:e_j',]$'Mean Sq'
-#       MS_error <- p.anova['Residuals',]$`Mean Sq`
-#       
-#       # Calculate variance
-#       V_g.hat <- (MS_g - MS_ge) / (n.env * n.rep)
-#       V_ge.hat <- (MS_ge - MS_error) / n.rep
-#       V_residual.hat <- MS_error
-#       
-#       # Calculate heritability
-#       h2.hat = V_g.hat / (V_g.hat + (V_ge.hat / n.env) + (V_residual.hat / (n.env * n.rep)))
-#       
-#     } else {
-#       # With 1 rep
-#       if (n.rep == 1) {
-#         p.anova <- anova(aov(p ~ g_i + e_j))
-#         
-#         # Find the mean squares
-#         MS_g <- p.anova['g_i',]$`Mean Sq`
-#         MS_error <- p.anova['Residuals',]$`Mean Sq`
-#         
-#         # Calculate variances
-#         V_g.hat = (MS_g - MS_error) / (n.env * n.rep)
-#         V_ge.hat <- NA
-#         V_residual.hat = MS_error
-#         
-#         # Calculate heritability
-#         h2.hat = V_g.hat / (V_g.hat + (V_residual.hat / (n.env * n.rep)))
-#       }
-#       
-#       # With 1 env
-#       if (n.env == 1) {
-#         p.anova <- anova(aov(p ~ g_i + r_k))
-#         
-#         # Find the mean squares
-#         MS_g <- p.anova['g_i',]$`Mean Sq`
-#         MS_error <- p.anova['Residuals',]$`Mean Sq`
-#         
-#         # Calculate variance
-#         V_g.hat = (MS_g - MS_error) / (n.env * n.rep)
-#         V_ge.hat <- NA
-#         V_residual.hat = MS_error
-#         
-#         # Calculate heritability
-#         h2.hat = V_g.hat / (V_g.hat + (V_residual.hat / (n.env * n.rep)))
-#       }
-#     }
-#   }
-#   
-#   # Use the mixed model if called on
-#   if (model == "mixed") {
-#     
-#     # Stack the data 
-#     y.stack <- data.frame(value = stack(as.data.frame(y))[,1], env = e_j, geno = g_i, rep = r_k)
-#     
-#     if (all(n.rep > 1, n.env > 1)) {
-#       stop("This option is not yet developed")
-#       # Solve a generalized linear mixed model
-#       glm.fit <- lmer(value ~ -1 + env + (1|geno) + (geno|env), data = y.stack)
-#       
-#       # Extract variance estimates
-#       V_g.hat <- VarCorr(glm.fit)$geno[1]
-#       V_e.hat <- var(fixef(glm.fit))
-#       V_residual.hat <- attr(VarCorr(glm.fit), "sc") ^ 2
-#       
-#     } else {
-#       # With 1 rep
-#       if (n.rep == 1) {
-#         # Solve a generalized linear mixed model
-#         glm.fit <- lmer(value ~ -1 + (1|geno) + env, data = y.stack)
-#         
-#         # Extract variance estimates
-#         V_g.hat <- VarCorr(glm.fit)$geno[1]
-#         V_e.hat <- var(fixef(glm.fit))
-#         V_residual.hat <- attr(VarCorr(glm.fit), "sc") ^ 2
-#         
-#         # Estimate heritability
-#         h2.hat = V_g.hat / (V_g.hat + (V_residual.hat / n.env))
-#       }
-#       
-#       if (n.env == 1) {
-#         glm.fit <- lmer(value ~ -1 + (1|geno), data = y.stack)
-#         
-#         # Extract variance estimates
-#         V_g.hat <- VarCorr(glm.fit)$geno[1]
-#         V_e.hat <- NA
-#         V_residual.hat <- attr(VarCorr(glm.fit), "sc") ^ 2
-#         
-#         # Estimate heritability
-#         h2.hat <- V_g.hat / (V_g.hat + (V_residual.hat / n.rep))
-#       }
-#     }
-#   }
-# } # Close the model null else statement
-
-
-
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
+# map <- sim.map(len=rep(100,2), n.mar=10, eq.spacing=TRUE, include.x=FALSE)
+# sim.ped <- sim.mpped(nfounders = 2, nfunnels = 1, nperfam = 30, nssdgen = 2, nseeds = 30)

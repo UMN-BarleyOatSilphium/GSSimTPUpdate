@@ -10,7 +10,7 @@ args <- commandArgs(trailingOnly = T)
 # Second argument is how the TP should be combined after each cycle (cumulative or window)
 # If no arguments are given (i.e. it's being run locally), set defaults for testing
 if (all(is.na(args))) {
-  pop.makeup <- "MN"
+  pop.makeup <- "MNxND"
   tp.formation <- "cumulative"
   parents.sel.intensity = 100
   n.crosses = 50
@@ -32,9 +32,7 @@ if (MSI) {
   # Load the packages
   library(hypred, quietly = T, lib.loc = "/home/smithkp/neyhartj/R/x86_64-unknown-linux-gnu-library/3.1/")
   library(rrBLUP, quietly = T, lib.loc = "/home/smithkp/neyhartj/R/x86_64-unknown-linux-gnu-library/3.1/")
-  library(boot, quietly = T, lib.loc = "/home/smithkp/neyhartj/R/x86_64-unknown-linux-gnu-library/3.1/")
   library(parallel, quietly = T, lib.loc = "/home/smithkp/neyhartj/R/x86_64-unknown-linux-gnu-library/3.1/")
-  library(EMMREML, quietly = T, lib.loc = "/home/smithkp/neyhartj/R/x86_64-unknown-linux-gnu-library/3.1/")
   
 } else {
   setwd("C:/Users/Jeff/Google Drive/Barley Lab/Projects/Side Projects/Simulations/BarleySimGS-TPUpdate/")
@@ -42,9 +40,9 @@ if (MSI) {
   # Load the packages
   library(hypred)
   library(rrBLUP)
-  library(boot)
   library(parallel)
-  library(EMMREML)
+  library(dplyr)
+  library(stringr)
   
 }
 
@@ -56,7 +54,7 @@ source("Code/simulation_functions.R")
 
 
 # Other simulation parameters
-# Entry-mean heritability
+# Entry-mean heritability in the base population
 h2 = 0.5
 # How many cycles?
 n.cycles = 15
@@ -94,7 +92,7 @@ date <- format(Sys.time(), "%d%m%y-%H%M%S")
 # Save the metadata to a list
 metadata <- list(h2 = h2,
                  n.cycles = n.cycles,
-                 n.QTL = 100,
+                 n.QTL = n.QTL,
                  min.marker.maf = min.maf,
                  parents.sel.intensity = parents.sel.intensity,
                  n.env = n.env, 
@@ -186,7 +184,8 @@ for (change in tp.change) {
       
       ## Set the inital variances for the heritability
       # True genetic variance
-      TP.V_g <- var(genotypic.value(genome = hv.genome, haploid.genos = TP.haploids.i))
+      TP.V_g <- genotypic.value(genome = hv.genome, haploid.genos = TP.haploids.i) %>%
+        var()
       # Environmental variance (scale * 8 as in Bernardo 2015)
       V_E <- TP.V_g * 8
       # Residual variance
@@ -277,12 +276,16 @@ for (change in tp.change) {
         # Per QTL, find the LD of the marker (within the window) with which the 
         ## QTL has the highest LD then find the mean of those values across 
         ## polymorphic qtl
-        candidate.mean.max.LD.i <- mean(unlist(lapply(X = candidate.qtl.marker.LD.i, FUN = function(chr)
-          lapply(X = chr, FUN = function(qtl) max(qtl^2)) )), na.rm = T)
+        candidate.mean.max.LD.i <- lapply(X = candidate.qtl.marker.LD.i, FUN = function(chr)
+          lapply(X = chr, FUN = function(qtl) max(qtl^2)) ) %>%
+          unlist() %>%
+          mean(na.rm = T)
         
         # Now just find the mean of LD across the whole window
-        candidate.mean.window.LD.i <- mean(unlist(lapply(X = candidate.qtl.marker.LD.i, FUN = function(chr)
-          lapply(X = chr, FUN = function(qtl) mean(qtl^2)) )), na.rm = T)
+        candidate.mean.window.LD.i <- lapply(X = candidate.qtl.marker.LD.i, FUN = function(chr)
+          lapply(X = chr, FUN = function(qtl) mean(qtl^2)) ) %>%
+            unlist() %>%
+            mean(na.rm = T)
         
         # Measure LD on the TP
         TP.qtl.marker.LD.i <- measure.LD(genome = hv.genome, 
@@ -290,23 +293,34 @@ for (change in tp.change) {
                                          Morgan.window = 0.5)
         
         # Apply over chromosomes and combine the data
-        TP.candidate.LD.i <- do.call("rbind", lapply(X = 1:length(TP.qtl.marker.LD.i), FUN = function(i) {
+        TP.candidate.LD.i <- mapply(TP.qtl.marker.LD.i, candidate.qtl.marker.LD.i, FUN = function(TP.LD, cand.LD) {
+          
           # Find the common polymorphic QTL
-          common.poly.qtl <- intersect(names(TP.qtl.marker.LD.i[[i]]), names(candidate.qtl.marker.LD.i[[i]]))
+          common.poly.qtl <- intersect( names(TP.LD), names(cand.LD) )
+          
           # Apply over the common QTL and combine the data
-          do.call("rbind", lapply(X = common.poly.qtl, FUN = function(poly.qtl) {
+          lapply(X = common.poly.qtl, FUN = function(poly.qtl) {
             # Find the common polymorphic markers within the polymorphic qtl
-            common.poly.markers <- intersect(names(TP.qtl.marker.LD.i[[i]][[poly.qtl]]), names(candidate.qtl.marker.LD.i[[i]][[poly.qtl]]))
+            common.poly.markers <- intersect(names(TP.LD[[poly.qtl]]), names(cand.LD[[poly.qtl]]))
             # Return r for those markers
-            data.frame( TP.LD = TP.qtl.marker.LD.i[[i]][[poly.qtl]][common.poly.markers], cand.LD = candidate.qtl.marker.LD.i[[i]][[poly.qtl]][common.poly.markers])
-          })) }) )
+            data.frame( TP.LD = TP.LD[[poly.qtl]][common.poly.markers], 
+                        cand.LD = cand.LD[[poly.qtl]][common.poly.markers] ) }) %>%
+            bind_rows() %>%
+            list()
+          
+        }) %>%
+          bind_rows() %>%
+          tbl_df()
         
+      
         # If the data.frame has no data, return NA
         if (nrow(TP.candidate.LD.i) == 0) {
           TP.candidate.persistance.of.phase.i <- NA
         } else {
           # Find the correlation of r across all correlations
-          TP.candidate.persistance.of.phase.i <- cor(TP.candidate.LD.i$TP.LD, TP.candidate.LD.i$cand.LD)
+          TP.candidate.persistance.of.phase.i <- TP.candidate.LD.i %>% 
+            cor() %>% 
+            .[upper.tri(.)]
         }
           
         # Create a list to save
@@ -325,17 +339,20 @@ for (change in tp.change) {
         A = tcrossprod(W) / c
         
         # Calculate the mean relationship between the TP and the candidates
-        mu.relationship <- mean( rowMeans(A[row.names(TP.genos.i), row.names(candidate.marker.genos.i)]) )
+        mu.relationship <- A[row.names(TP.genos.i), row.names(candidate.marker.genos.i)] %>%
+          rowMeans() %>%
+          mean()
         
         
         ##### Step 4 - Prediction
         # Remove the markers with maf below the threshold (set at the start of the sim)
         ## also remove monomorphic markers
-        markers.to.remove <- sort(unique(c(
-          which(candidate.marker.maf.i == 0),
-          which(TP.genos.maf.i == 0),
-          markers.below.maf
-        )))
+        markers.to.remove <- c( which(candidate.marker.maf.i == 0), 
+                                which(TP.genos.maf.i == 0),
+                                markers.below.maf ) %>%
+          unique() %>%
+          sort()
+
         
         # Filter the TP and candidate marker matrices for those markers
         TP.genos.use <- TP.genos.i[,-markers.to.remove]
@@ -343,11 +360,11 @@ for (change in tp.change) {
         
         
         # Estimate marker effects
-        # solve.out <- mixed.solve(y = TP.phenos.i, Z = TP.genos.use, method = "REML")
-        solve.out <- emmreml(y = TP.phenos.i, Z = TP.genos.use, X = matrix(1, nrow(TP.genos.use), 1), K = diag(ncol(TP.genos.use)))
+        solve.out <- mixed.solve(y = TP.phenos.i, Z = TP.genos.use, method = "REML")
+        # solve.out <- emmreml(y = TP.phenos.i, Z = TP.genos.use, X = matrix(1, nrow(TP.genos.use), 1), K = diag(ncol(TP.genos.use)))
         # Calculate GEBVs
-        # candidate.GEBV.i1 <- candidate.genos.use %*% solve.out$u
-        candidate.GEBV.i <- candidate.genos.use %*% solve.out$uhat
+        candidate.GEBV.i <- candidate.genos.use %*% solve.out$u
+        # candidate.GEBV.i <- candidate.genos.use %*% solve.out$uhat
         
 
         
@@ -425,7 +442,8 @@ for (change in tp.change) {
                                                                  use.subset = T)
             
             # The optimized TP lines become the TP additions
-            TP.addition.list <- list(TP.addition.lines = optimized.TP.additions$optimized.lines, optimization = optimized.TP.additions[-1])
+            TP.addition.list <- list(TP.addition.lines = optimized.TP.additions$optimized.lines, 
+                                     optimization = optimized.TP.additions[-1])
             
           } # Close the tp optimization algorithm if statement
           
