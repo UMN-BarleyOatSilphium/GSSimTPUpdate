@@ -1,0 +1,45 @@
+#!/bin/bash
+
+#PBS -l walltime=32:00:00,mem=62gb,nodes=1:ppn=24
+#PBS -N GS_simulations_cumulative_MNxND
+#PBS -M neyha001@umn.edu
+#PBS -m abe
+#PBS -r n
+
+# Change the working directory
+cd /home/smithkp/neyhartj/Genomic_Selection/Simulations/BarleySimGS-TPUpdate
+
+module load R/3.3.1
+
+
+## Run the regular simulation
+
+#Rscript Code/run_experiment.R MN cumulative 100 50
+#Rscript Code/run_experiment.R ND cumulative 100 50
+Rscript Code/run_experiment.R MNxND cumulative 100 50
+
+#Rscript Code/run_experiment.R MN window 100 50
+#Rscript Code/run_experiment.R ND window 100 50
+#Rscript Code/run_experiment.R MNxND window 100 50
+
+## Run using a smaller selection intensity
+#Rscript Code/run_experiment.R MN cumulative 40 20
+#Rscript Code/run_experiment.R ND cumulative 40 20
+#Rscript Code/run_experiment.R MNxND cumulative 40 20
+
+#Rscript Code/run_experiment.R MN window 40 20
+#Rscript Code/run_experiment.R ND window 40 20
+#Rscript Code/run_experiment.R MNxND window 40 20
+
+## Debugging
+#Rscript Code/run_experiment_debugging.R MN cumulative 100 50
+#Rscript Code/run_experiment_debugging.R ND cumulative 100 50
+#Rscript Code/run_experiment_debugging.R MNxND cumulative 100 50
+
+
+
+## Run the allele frequency experiment
+
+#Rscript Code/run_experiment_maf.R MN window
+#Rscript Code/run_experiment_maf.R ND window
+#Rscript Code/run_experiment_maf.R MNxND window
