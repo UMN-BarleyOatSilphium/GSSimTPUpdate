@@ -5,7 +5,7 @@
 3. Explore allele frequency
     1. How often do alleles at low frequency drift to higher frequency
     2. Can we track markers / QTL that move into intermediate allele frequency?
-4. ~~Filtering minor alleles more stringently and observing the results in the scenario of not updating the training population.
+4. Filtering minor alleles more stringently and observing the results in the scenario of not updating the training population.
     1. Filter on 0.03 minimum MAF (original) and 0.10 MAF
     2. Plot the site frequency spectra of markers at each cycle for each of the two MAF filtering strategies~~
 5. Try to diagnose why updating the training population in some way is better than not doing anything at all. This represents the greatest difference among results, so it would be worth investigating.
@@ -25,4 +25,13 @@ a proxy for V_g in PEVmean / CDmean
 4. Use procedures to optimize for accuracy and diversity
 5. Repeat cycle 0 to cycle 1 to look for parent overlap
 6. Different TP sizes for different optimization schemes
-7. Justify the random mating procedure for crossing. A: This is recurrent selection, so random mating would not be beyond the realm of possibility, especially if the selection procedure was being used to improve the population as a whole, from which elite inbreds would be derived.
+7. ~~Justify the random mating procedure for crossing. A: This is recurrent selection, so random mating would not be beyond the realm of possibility, especially if the selection procedure was being used to improve the population as a whole, from which elite inbreds would be derived.~~
+
+
+## September 7, 2016
+1. ~~Correlation of r, not r^2 for persistance of phase~~ This was correct
+2. QTL-markers in narrow window and across whole genome
+3. Measure expected heterozygosity (diveristy) of the lines being
+added to the TP
+
+
