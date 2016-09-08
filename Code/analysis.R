@@ -5,23 +5,30 @@
 # Date: 16 May 2016
 
 # Load packages
-library(plyr)
+library(dplyr)
+library(stringr)
 
-# Set working directory
-setwd("C:/Users/Jeff/Google Drive/Barley Lab/Projects/Side Projects/Simulations/BarleySimGS-TPUpdate/Results/Allele Freq Experiment/")
+# Designate the directory with the files
+results.dir <- "C:/Users/Jeff/Google Drive/Barley Lab/Projects/Side Projects/Simulations/BarleySimGS-TPUpdate/Results/Base Experiment/"
 
 # Load data from the allele frequency experiment
-all.files <- list.files()
+all.files <- list.files(results.dir, full.names = T)
 filename <- all.files[1]
 
 load(filename)
 
 # Experimental parameters
-pop.makeup = strsplit(x = substring(text = filename, first = regexpr(pattern = "popmakeup", text = filename)[1] + 10), split = "_")[[1]][1]
-tp.formation = strsplit(x = substring(text = filename, first = regexpr(pattern = "tpformation", text = filename)[1] + 12), split = "_")[[1]][1]
+pop.makeup <- str_extract(string = filename, pattern = 'popmakeup-[A-Za-z]{2,5}') %>%
+  str_extract(pattern = '[A-Za-z]{2,5}$')
 
-n.cycles = length(collective.abbreviated.results[[1]][[1]][[1]][[1]])
-n.reps = sum(unlist(lapply(X = collective.abbreviated.results[[1]][[1]], FUN = length)))
+tp.formation <- str_extract(string = filename, pattern = 'tpformation-[a-z]*') %>% 
+  str_extract(pattern = '[a-z]*$')
+
+n.cycles = collective.abbreviated.results[[1]][[1]][[1]][[1]] %>%
+  length()
+n.reps = lapply(X = collective.abbreviated.results[[1]][[1]], FUN = length) %>%
+  unlist() %>%
+  sum()
 
 
 # Find markers in each replication of the experiment that have gone from a

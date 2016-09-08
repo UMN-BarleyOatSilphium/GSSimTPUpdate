@@ -603,94 +603,16 @@ genotypic.value <- function(genome,
 
 # Define a function to generate value measures on the population of interest. The values can be the genotypic values (sum
 # of the a values at each locus) or the phenoypic values (genetic values + error)
-# This function will require the genome, the matrix, heritability, and distribution of phenotypes
-evaluate.population <- function(genome, 
-                                haploid.genos, 
-                                h2,
-                                just.geno.values = F, # Should the function only output the genotypic values?
-                                V_e.scale = 8, # By how much should the environmental variance be larger than the genotypic variance?
-                                n.env = 3,
-                                n.rep = 2
-) {
-  
-  # Deal with input
-  if(!is.list(haploid.genos)) {
-    haploid.mat <- as.matrix(haploid.genos)
-  } else {
-    haploid.mat <- do.call("rbind", haploid.genos)
-  }
-  
-  # Pull out the line names
-  line.names <- row.names(haploid.mat)
-  # Condense the names
-  line.names <- unique(sub(pattern = "\\.[0-9]$", replacement = "", x = line.names))
-  
-  # First generate genotype values based on the genome and genotypes
-  g <- genotypic.value(genome = genome, haploid.genos = haploid.mat)
-  row.names(g) <- line.names
-  # Find the length (i.e. number of genotypes)
-  n.geno = length(g)
-  
-  # Calculate the true genetic variance
-  V_g <- var(g)
-  
-  # Determine the residual variance from the heritability
-  # V_residual is V_ge and V_epsilon confounded
-  V_residual = n.rep * n.env * ((V_g / h2) - V_g)
-  
-  # If just genotypic values are requested, stop and return a list
-  if (just.geno.values) {
-    output.list <- list(geno.values = g,
-                        var.components = list(V_g = V_g, V_residual = V_residual))
-    return(output.list)
-  }
-  
-  # Calculate the environmental variance as a multiplicative scale of the genetic variance
-  V_e <- V_g * V_e.scale
-  # Sample the environmental effects
-  e = rnorm(n.env, 0, sqrt(V_e))
-  
-  # Sample the residuals
-  # Remember this includes error and gxe effect
-  residual <- matrix(rnorm(n.geno * n.env * n.rep, 0, sqrt(V_residual)), n.geno, n.env * n.rep)
-  
-  # Calculate phenotypic values
-  y <- matrix(g, n.geno, (n.env * n.rep)) + matrix(e, n.geno, (n.env * n.rep), byrow = T) + residual
-  
-  # Label the matrix
-  row.names(y) <- line.names
-  colnames(y) <- paste( paste("env", 1:n.env, sep = ""), rep(paste("rep", 1:n.rep, sep = ""), each = n.env), sep = "." )
-  
-  # Find the average across environments as the value to use
-  mu_y <- as.matrix(rowMeans(y))
-  row.names(mu_y) <- line.names
-  
-  # Find the average across genotypes
-  mu.p <- mean(mu_y) # Phenotypic value
-  mu.g <- mean(g) # Genotypic values
-  
-  # Output list
-  output.list <- list(full.matrix = y,
-                      geno.values = g,
-                      mean.pheno.values = mu_y,
-                      mu.p = mu.p,
-                      mu.g = mu.g,
-                      var.components = list(V_g = V_g, V_e = V_e, V_residual = V_residual))
-  
-  return(output.list)
-  
-} # Close the function
-
-
-## Define a new function to take the haploid genome, environmental variance, and
-# residual variance and simulate phenotypes
+# This function will require the genome, the matrix, environmental variance, and
+# residual variance and will then simulate phenotypes
 phenotype.population <- function(genome, 
                                  haploid.genos, 
                                  V_E, # environmental variance
                                  V_e, # Residual variance
                                  just.geno.values = F, # Should the function only output the genotypic values?
                                  n.env,
-                                 n.rep
+                                 n.rep,
+                                 run.anova = FALSE
                                  ) {
   
   # Deal with input
@@ -742,25 +664,54 @@ phenotype.population <- function(genome,
                        rep = rep( rep( paste("rep", seq(n.rep), sep = ""), each = n.geno ), each = n.rep),
                        value = y )
   
-  # Run a analysis of variance
-  ## For unreplicated, multi-environment
-  if (n.env > 1 & n.rep == 1) {
-    # Fit the model
-    lm.fit <- lm(formula = value ~ line + env, data = phenos)
-    lm.anova <- anova(lm.fit)
+  # Run a analysis of variance, if desired
+  if (run.anova) {
+  
+    ## For unreplicated, multi-environment
+    if (n.env > 1 & n.rep == 1) {
+      # Fit the model
+      lm.fit <- lm(formula = value ~ line + env, data = phenos)
+      lm.anova <- anova(lm.fit)
+      
+      # Mean squares
+      MS_error <- lm.anova["Residuals",]$`Mean Sq`
+      MS_line <- lm.anova["line",]$`Mean Sq`
+      
+      # Variance components
+      V_error <- MS_error
+      V_line <- (MS_line - MS_error) / n.env
+      
+      # Heritability
+      H = V_line / (V_line + (V_error / n.env))
+      
+    }
     
-    # Mean squares
-    MS_error <- lm.anova["Residuals",]$`Mean Sq`
-    MS_line <- lm.anova["line",]$`Mean Sq`
+    if (n.env > 1 & n.rep > 1) {
+      # Fit the model
+      lm.fit <- lm(formula = value ~ line:env, data = phenos)
+      lm.anova <- anova(lm.fit)
+      
+      # Mean squares
+      MS_error <- lm.anova["Residuals",]$`Mean Sq`
+      MS_line <- lm.anova["line",]$`Mean Sq`
+      MS_linebyenv <- lm.anova["line:env"]$`Mean Sq`
+      
+      # Variance components
+      V_error <- MS_error
+      V_linebyenv = (MS_linebyenv - MS_error) / n.rep
+      V_line = (MS_line - MS_linebyenv) / (n.rep * n.env)
+      
+      # Heritability
+      H = V_line / (V_line + (V_linebyenv / n.rep) + (V_error / (n.rep * n.env)))
+    }
     
-    # Variance components
-    V_error <- MS_error
-    V_line <- (MS_line - MS_error) / n.env
-    
-    # Heritability
-    H = V_line / (V_line + (V_error / n.env))
-    
-  }
+    # Else NAs for the observed variance components
+  } else {
+    V_line = NA
+    V_error = NA
+    H = NA
+  
+  } # Close the run anova if statement
   
   # Find the average across environments as the value to use
   mu_y <- tapply(X = phenos$value, INDEX = phenos$line, FUN = mean) %>%
@@ -1947,7 +1898,7 @@ augment.gamete.mat <- function(genome, # The object of class "hypredGenome"
 ## the correlation between that QTL and the markerrs
 measure.LD <- function(genome,
                        genos,
-                       Morgan.window = 0.5
+                       Morgan.window = NULL
 ){
   
   # Define a function to round a number down or up if it is outside a lower or upper limit
@@ -1964,185 +1915,170 @@ measure.LD <- function(genome,
     }
   } # Close
   
-  # Split the genotype data by chromosome
-  # Pull out the number of chromosomes
-  n.chr <- length(genome)
-  # Pull out the number of loci per chromsosome
-  loci.per.chr <- sapply(X = genome, FUN = function(chr) length(chr@pos.snp))
-  
-  # Split the genotypes into chromosomes
-  genos.split <- sapply(X = split(x = seq(ncol(genos)), rep(seq(n.chr), loci.per.chr)), FUN = function(i) genos[,i])
-  
-  # Apply a function over the genome and genotype data simulaneously
-  genome.LD <- mapply(genome, genos.split, FUN = function(chr, chr.genos) {
+  # If a window is requested, split the genotype data by chromosome
+  if (!is.null(Morgan.window)) {
     
-    # Pull out QTL positions and index
-    pos.qtl <- chr@pos.add.qtl
-    # Number of loci
-    n.loci <- chr@pos.snp
-    # Calculate the position of markers
-    pos.markers <- setdiff(seq(n.loci), pos.qtl$ID) %>%
-      list(ID = ., M = chr@pos.snp[.])
+    # Pull out the number of chromosomes
+    n.chr <- length(genome)
+    # Pull out the number of loci per chromsosome
+    loci.per.chr <- sapply(X = genome, FUN = function(chr) length(chr@pos.snp))
+    
+    # Split the genotypes into chromosomes
+    genos.split <- sapply(X = split(x = seq(ncol(genos)), rep(seq(n.chr), loci.per.chr)), FUN = function(i) genos[,i])
+    
+    # Apply a function over the genome and genotype data simulaneously
+    genome.LD <- mapply(genome, genos.split, FUN = function(chr, chr.genos) {
+      
+      # Pull out QTL positions and index
+      pos.qtl <- chr@pos.add.qtl
+      # Number of loci
+      n.loci <- chr@pos.snp %>%
+        length()
+      # Calculate the position of markers
+      pos.markers <- setdiff(seq(n.loci), pos.qtl$ID) %>%
+        list(ID = ., M = chr@pos.snp[.])
+      
+      # Find the polymorphic qtl and markers
+      pos.poly.qtl <- lapply(X = pos.qtl, FUN = function(q) 
+        q[apply(X = chr.genos[,pos.qtl$ID], MARGIN = 2, FUN = is.polymorphic )] )
+      pos.poly.markers <- lapply(X = pos.markers, FUN = function(m) 
+        m[apply(X = chr.genos[,pos.markers$ID], MARGIN = 2, FUN = is.polymorphic)] )
+      
+      # Exit if there are not polymorphic QTL or markers
+      if(length(pos.poly.qtl$ID) == 0) return(NA)
+      if(length(pos.poly.markers$ID) == 0) return(NA)
+      
+      # Iterate over the polymorphic qtl indices
+      chr.LD.i <- mapply(pos.poly.qtl$ID, pos.poly.qtl$M, FUN = function(q.ID, q.M) {
+  
+        # Add and subtract the Morgan window, while rounding
+        M.i.lower <- round.limit(x = q.M - Morgan.window, 0, "lower")
+        M.i.upper <- round.limit(x = q.M + Morgan.window, chr@len.chr, "upper")
+        # Find snps within the window
+        markers.in.window <- pos.poly.markers$ID[findInterval(x = pos.poly.markers$M, vec = c(M.i.lower, M.i.upper)) == 1]
+        
+        # If no polymorphic markers are in the window, return NA
+        if (length(markers.in.window) == 0) return(NA)
+        
+        # Extract geno data for those markers
+        genos.markers.in.window <- chr.genos[,markers.in.window]
+        
+        # Correlation matrix
+        cor(chr.genos[,q.ID], genos.markers.in.window)
+        
+      }); names(chr.LD.i) <- colnames(chr.genos)[pos.poly.qtl$ID]
+      
+      # Remove NAs
+      chr.LD.i[!is.na(chr.LD.i)]
+      
+    })
+    
+    # Don't remove chromosome NAs
+    return(genome.LD)
+    
+    # If the Morgan window is null, find the LD of QTL with all other genomic
+    ## markers
+  } else {
+      
+    # Pull out all QTL positions and index
+    pos <- find.pos(genome = genome, genos = genos)
+    # QTL positions
+    pos.qtl <- pos$pos.qtl
+    pos.snp <- pos$pos.snp
     
     # Find the polymorphic qtl and markers
-    pos.poly.qtl <- lapply(X = pos.qtl, FUN = function(q) 
-      q[apply(X = chr.genos[,pos.qtl$ID], MARGIN = 2, FUN = function(locus) abs(mean(locus)) != 1)] )
-    pos.poly.markers <- lapply(X = pos.markers, FUN = function(m) 
-      m[apply(X = chr.genos[,pos.markers$ID], MARGIN = 2, FUN = function(locus) abs(mean(locus)) != 1)] )
+    pos.poly.qtl <- pos.qtl[apply(X = genos[,pos.qtl], MARGIN = 2, FUN = is.polymorphic)]
+    pos.poly.markers <- pos.snp[apply(X = genos[,pos.snp], MARGIN = 2, FUN = is.polymorphic)]
     
-    # Exit if there are not polymorphic QTL or markers
-    if(length(pos.poly.qtl$ID) == 0) return(NA)
-    if(length(pos.poly.markers$ID) == 0) return(NA)
+    # Exit if nothing is polymorphic
+    if(length(pos.poly.qtl) == 0) return(NA)
+    if(length(pos.poly.markers) == 0) return(NA)
     
-    # Iterate over the polymorphic qtl indices
-    chr.LD.i <- mapply(pos.poly.qtl$ID, pos.poly.qtl$M, FUN = function(q.ID, q.M) {
-
-      # Add and subtract the Morgan window, while rounding
-      M.i.lower <- round.limit(x = q.M - Morgan.window, 0, "lower")
-      M.i.upper <- round.limit(x = q.M + Morgan.window, chr@len.chr, "upper")
-      # Find snps within the window
-      markers.in.window <- pos.poly.markers$ID[findInterval(x = pos.poly.markers$M, vec = c(M.i.lower, M.i.upper)) == 1]
-      
-      # If no polymorphic QTL are in the window, return NA
-      if (length(markers.in.window) == 0) return(NA)
-      
-      # Iterate over polymorphic marker positions
-      q.LD.i <- sapply(X = markers.in.window, FUN = function(m.i) {
-        abs(cor(chr.genos[,q.ID], chr.genos[,m.i])) })
-      
-      names(q.LD.i) <- colnames(chr.genos)[markers.in.window]
-      return(q.LD.i) 
-      
-    }); names(chr.LD.i) <- colnames(chr.genos)[pos.poly.qtl$ID]
+    # Allele calls of polymorphic QTL and markers
+    genos.poly.qtl <- genos[,pos.poly.qtl]
+    genos.poly.markers <- genos[,pos.poly.markers]
     
-    # Remove NAs
-    chr.LD.i[!is.na(chr.LD.i)]
+    # Calculate an LD matrix of QTL x markers
+    LD.mat <- cor(genos.poly.qtl, genos.poly.markers)
     
-  })
-  
-  # Don't remove chromosome NAs
-  return(genome.LD)
+    # Return the LD matrix
+    return(LD.mat)
+    
+  } # Close the if statement
   
 } # Close the function
+
+  
+# Define a function to find the whole-genome position of different loci
+find.pos <- function(genome, genos) {
+  
+  # Return all the loci (this is easy - just the index of the number of columns)
+  pos.loci <- genos %>%
+    ncol() %>%
+    seq()
+  
+  # Number of chromosomes
+  n.chr <- length(genome)
+  
+  # Running count of the number of loci up to the nth chromosome
+  n.loci.total <- 0
+  
+  # Empty lists of qtl and snp positions
+  pos.qtl <- list()
+  
+  # Iterate over chromosomes to find the position of markers and qtl
+  for (i in seq(n.chr)) {
     
-#     
-#     
-#     
-#     # First pull out the location of QTL and markers
-#     pos.qtl <- list()
-#     # Find the index of the qtl in the combined matrix  
-#     for (i in 1:length(hv.genome)) {
-#       # QTL index for the ith chromosome
-#       qtl.index.i <- slot(hv.genome[[i]], "pos.add.qtl")$ID
-#       # Adjust for the previous chromosomes and add to the vector
-#       pos.qtl[[i]] <- sum(loci.per.chr[1:i]) + qtl.index.i
-#     }
-#     
-#     # Collapse to vector
-#     pos.qtl <- do.call("c", pos.qtl)
-#     # Figure the positions of the SNPs
-#     pos.snps <- setdiff(1:ncol(candidate.i.genos), pos.qtl)
-#     
-#     # Determine the index of the polymorphic qtl
-#     poly.qtl.index <- pos.qtl[apply(X = candidate.i.genos[,pos.qtl], MARGIN = 2, FUN = function(locus) length(unique(locus)) > 1)]
-#     # Determine the index of the polymorphic markers (monomorphic markers will return a NA for the correlation)
-#     poly.snp.index <- pos.snps[apply(X = candidate.i.genos[,pos.snps], MARGIN = 2, FUN = function(locus) length(unique(locus)) > 1)]
-#     
-#     # Convert the haploid list to a matrix
-#     candidate.haploid.i.mat <- do.call("rbind", candidate.haploid.i)
-#     
-#     # Apply a function over the polymorphic qtl
-#     sapply(X = poly.qtl.index, FUN = function(qtl.i) {
-#       # Subset the haploid matrix
-#       qtl.i.haploid <- as.matrix(candidate.haploid.i.mat[,qtl.i])
-#       # Apply a function over the polymorphic snp indicies
-#       apply(X = candidate.haploid.i.mat[,poly.snp.index], MARGIN = 2, FUN = function(snp.i) abs(cor(qtl.i.haploid, snp.i)) ) })
-#     
-#     
-#     # Measure LD
-#     candidate.i.qtl.marker.LD <- measure.LD(genome = hv.genome, genos = candidate.i.genos)
-#   
-#   
-#   
-#   
-#   
-#   # Error handling
-#   accepted.methods = c("D", "D.prime", "r", "cor")
-#   if (!all(method %in% accepted.methods)) stop("Method not accepted. Accepted methods are D, D.prime, r, and cor.")
-#   
-#   # Calculate frequency of 1 allele between snps
-#   p.A <- sum(g1 == 1) / length(g1)
-#   p.a = 1 - p.A
-#   p.B <- sum(g2 == 1) / length(g2)
-#   p.b = 1 - p.B
-#   # Since the genos are phased, we can measure the frequency of the AB haplotype directly
-#   p.AB <- sum(apply(X = cbind(g1, g2), MARGIN = 1, FUN = function(allele.pair) all(allele.pair == c(1,1)) )) / length(g1)
-#   
-#   # Calculate LD
-#   # D
-#   D = p.AB - (p.A * p.B)
-# 
-#   # D'
-#   if (D == 0) {
-#     # If D is 0, D.prime is NA
-#     D.prime = NA
-#   } else {
-#     if (D > 0) {
-#       D.max = min( (p.A * p.b), (p.a * p.B) )
-#     } else {
-#       D.max = max( -(p.A * p.B), -(p.a * p.b) )
-#     }
-#     # Calculate D prime
-#     D.prime = D / D.max
-#   }
-# 
-#   # r
-#   r = abs(cor(g1, g2))
-#   
-#   # Create a results list 
-#   LD.results <- list(D = D, D.prime = D.prime, r = r)
-#   
-#   # Return the results from the desired methods
-#   return(LD.results[method])
-#   
-# } # Close the function
+    # Extract the position of the qtl and add the loci total
+    pos.qtl[[i]] <- genome[[i]]@pos.add.qtl$ID + n.loci.total
+    
+    # Total number of loci up to the chromosome
+    n.loci.total = n.loci.total + genome[[i]]@num.snp.chr
+    
+  }
   
+  # Unlist the qtl position list
+  pos.qtl <- pos.qtl %>%
+    unlist()
+  
+  # Position of markers
+  pos.snp <- setdiff(pos.loci, pos.qtl)
+  
+  # Create list
+  out.list <- list(pos.loci = pos.loci,
+                   pos.qtl = pos.qtl,
+                   pos.snp = pos.snp)
+  
+  # Return
+  return(out.list)
+  
+} # Close the function
+
+# Define a function to determine if a row of of genotype data is polymorphic or not
+is.polymorphic <- function(x) {
+  mean(x) %>%
+    abs() != 1
+} # Close the function
 
 
-
-# Define a function to determine the mean relationship between TP individuals
-## and selection candidates
-measure.relationship <- function(TP.genos, # An n x m matrix of marker genotypes for the TP
-                                 candidates.genos # A n x m matrix of marker genotypes for the selection candidates
-                                 ) {
+# Define a function to calculate expected heterozygosity
+measure.expected.het <- function(genos) {
   
-  # Pull out the names from each matrix
-  TP.line.names <- row.names(TP.genos)
-  candidate.line.names <- row.names(candidates.genos)
+  # Calculate the minor allele frequency of the loci
+  maf <- measure.maf(genos)
   
-  # Combine the matricies
-  all.genos <- rbind(TP.genos, candidates.genos)
+  # Create a matrix of the frequency of the two alleles
+  allele.freqs <- cbind(maf, 1-maf)
   
-  # Find the additive relationship matrix
-  G <- A.mat(all.genos, min.MAF = 0, max.missing = 1)
+  # Iterate over loci
+  summation <- apply(X = allele.freqs, MARGIN = 1, FUN = function(locus)
+    # Square the frequencies and sum
+    locus^2 %>%
+      sum() )
   
-  # Subset the G matrix for TP (rows) and candidates (columns)
-  G.sub <- G[TP.line.names, candidate.line.names]
+  # Average the summation and subtract that from 1
+  1 - mean(summation)
   
-  # Calculate the mean relationship of the whole TP to every candidate
-  mu.rel.candidate <- colMeans(G.sub)
-  # Find the mean of the mean relationship. This is essentially the mean relationship
-  ## of the whole TP to all selection candidates
-  mu.rel <- mean(mu.rel.candidate)
-  
-  # Return the mean
-  return(mu.rel)
-
 } # Close the function
   
-# ## Playing with other packages for simulation
-# library(mpMap2)
-# library(qtl)
-# 
-# map <- sim.map(len=rep(100,2), n.mar=10, eq.spacing=TRUE, include.x=FALSE)
-# sim.ped <- sim.mpped(nfounders = 2, nfunnels = 1, nperfam = 30, nssdgen = 2, nseeds = 30)
+  
