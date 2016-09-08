@@ -27,12 +27,17 @@ if (all(is.na(args))) {
 # Other information and pre-processing
 if (MSI) {
   setwd("/panfs/roc/groups/6/smithkp/neyhartj/Genomic_Selection/Simulations/BarleySimGS-TPUpdate")
-  # source("/panfs/roc/groups/6/smithkp/neyhartj/GitHub_Repos/Quant-Gen-Scripts/genotype_matrix_utils.R")
+  
+  # Set the directory of the R packages
+  package.dir <- "/panfs/roc/groups/6/smithkp/neyhartj/R/x86_64-pc-linux-gnu-library/3.3/"
+  
   n.cores = 24
   # Load the packages
-  library(hypred, quietly = T, lib.loc = "/home/smithkp/neyhartj/R/x86_64-unknown-linux-gnu-library/3.1/")
-  library(rrBLUP, quietly = T, lib.loc = "/home/smithkp/neyhartj/R/x86_64-unknown-linux-gnu-library/3.1/")
-  library(parallel, quietly = T, lib.loc = "/home/smithkp/neyhartj/R/x86_64-unknown-linux-gnu-library/3.1/")
+  library(hypred, quietly = T, lib.loc = package.dir)
+  library(rrBLUP, quietly = T, lib.loc = package.dir)
+  library(parallel, quietly = T, package.dir)
+  library(dplyr, quietly = T, package.dir)
+  library(stringr, quietly = T, package.dir)
   
 } else {
   setwd("C:/Users/Jeff/Google Drive/Barley Lab/Projects/Side Projects/Simulations/BarleySimGS-TPUpdate/")
