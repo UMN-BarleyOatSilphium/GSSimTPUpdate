@@ -28,7 +28,7 @@ if (all(is.na(args))) {
 if (MSI) {
   setwd("/panfs/roc/groups/6/smithkp/neyhartj/Genomic_Selection/Simulations/BarleySimGS-TPUpdate")
   # source("/panfs/roc/groups/6/smithkp/neyhartj/GitHub_Repos/Quant-Gen-Scripts/genotype_matrix_utils.R")
-  n.cores = 16
+  n.cores = 24
   # Load the packages
   library(hypred, quietly = T, lib.loc = "/home/smithkp/neyhartj/R/x86_64-unknown-linux-gnu-library/3.1/")
   library(rrBLUP, quietly = T, lib.loc = "/home/smithkp/neyhartj/R/x86_64-unknown-linux-gnu-library/3.1/")
