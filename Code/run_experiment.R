@@ -535,6 +535,9 @@ for (change in tp.change) {
       rep.results[[rep.name]] <- list(sim.results = simulation.results, genome = hv.genome)
       
     } # Close the iteration loop
+    
+    # Return the rep list
+    return(rep.results)
 
   }, mc.cores = n.cores)
   
