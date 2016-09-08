@@ -40,22 +40,16 @@ if (MSI) {
   library(stringr, quietly = T, package.dir)
   
 } else {
-  setwd("C:/Users/Jeff/Google Drive/Barley Lab/Projects/Side Projects/Simulations/BarleySimGS-TPUpdate/")
+  
+  setwd("C:/Users/Jeff/Google Drive/Barley Lab/Projects/Side Projects/Simulations/GSsim.TPUpdate/")
   n.cores = 1
+  
   # Load the packages
-  library(hypred)
-  library(rrBLUP)
+  library(GSsim.TPUpdate)
   library(parallel)
-  library(dplyr)
   library(stringr)
   
 }
-
-# Load already-curated gamete data
-load(file = "Files/Barley_CAP_simuation_starting_material.RData")
-
-# Source functions
-source("Code/simulation_functions.R")
 
 
 # Other simulation parameters
@@ -168,7 +162,7 @@ for (change in tp.change) {
       TP.genos <- genotype.loci(haploid.genos = TP.haploids.i, genome = hv.genome)
       
       # Find the MAF of all marker snps
-      marker.maf <- measure.maf(geno.mat = TP.genos)
+      marker.maf <- measure.maf(TP.genos)
       # Determine which are below 
       markers.below.maf <- which(marker.maf < min.maf)
       
@@ -184,7 +178,6 @@ for (change in tp.change) {
       # First separate MN and ND lines
       line.names <- row.names(TP.genos)
       ND.lines <- str_subset(string = line.names, pattern = "^ND")
-      ND.lines <- grep(pattern = "^ND", x = line.names, value = T)
       MN.lines <- setdiff(x = line.names, y = ND.lines)
       
       ## Set the inital variances for the heritability
@@ -221,7 +214,7 @@ for (change in tp.change) {
       
       # Set the parent gamete data input
       parent.lines.list <- pop.makeup.list[[pop.makeup]]
-      parent.haploids <- subset.gametes(gametes = TP.haploids.i, line.names = unique(unlist(parent.lines.list)))
+      parent.haploids <- select.haploids(haploid.genos = TP.haploids.i, line.names = unique(unlist(parent.lines.list)))
       
       # Set dummy variables for the phenos and genos
       TP.phenos.i <- TP.phenos
@@ -268,10 +261,10 @@ for (change in tp.change) {
         
         ##### Step 3 - Genotypic Summary Statistics
         # Measure the minor allele frequency of all loci
-        candidate.genos.maf.i <- measure.maf(geno.mat = candidate.genos.i)
+        candidate.genos.maf.i <- measure.maf(genos = candidate.genos.i)
         # Measure the maf of just the markers
-        candidate.marker.maf.i <- measure.maf(geno.mat = candidate.marker.genos.i)
-        TP.genos.maf.i <- measure.maf(geno.mat = TP.genos.i)
+        candidate.marker.maf.i <- measure.maf(genos = candidate.marker.genos.i)
+        TP.genos.maf.i <- measure.maf(genos = TP.genos.i)
         
         ### LD measures
         # Candidates
@@ -326,7 +319,7 @@ for (change in tp.change) {
           
         # Create a list to save
         qtl.marker.LD.i <- list(mean.max.window = candidate.mean.max.LD.window,
-                                mean.windwo = candidate.mean.LD.window,
+                                mean.window = candidate.mean.LD.window,
                                 mean.max.genome = candidate.mean.max.LD.genome,
                                 mean.genome = candidate.mean.LD.genome,
                                 persistance.of.phase = TP.candidate.persistance.of.phase)
@@ -360,14 +353,9 @@ for (change in tp.change) {
         
         
         # Estimate marker effects
-        solve.out <- mixed.solve(y = TP.phenos.i, Z = TP.genos.use, method = "REML")
-        # solve.out <- emmreml(y = TP.phenos.i, Z = TP.genos.use, X = matrix(1, nrow(TP.genos.use), 1), K = diag(ncol(TP.genos.use)))
-        # Calculate GEBVs
-        candidate.GEBV.i <- candidate.genos.use %*% solve.out$u
-        # candidate.GEBV.i <- candidate.genos.use %*% solve.out$uhat
-        
-
-        
+        predictions.out <- make.predictions(pheno.train = TP.phenos.i,
+                                            geno.train = TP.genos.use,
+                                            geno.pred = candidate.genos.use)
         
         ##### Step 5 - Phenotype the population
         # We use the haploid genotypes from the F1:3 generation to measure the
@@ -383,7 +371,8 @@ for (change in tp.change) {
         
         # Validate the predictions
         # Find the correlation between the GEBVs and the true genotypic value
-        pred.validation.i <- cor( candidate.GEBV.i, candidate.values.i$geno.values )
+        pred.validation.i <- validate.predictions(predicted.values = predictions.out$GEBV,
+                                                  observed.values = candidate.values.i$geno.values)
 
 
         
@@ -391,18 +380,18 @@ for (change in tp.change) {
         
         # Make selections on the GEBVs
         # Select the top 100 based on GEBVs for parents of the next cycle
-        parent.selections.i <- select.population(pheno.mat = candidate.GEBV.i, 
+        parent.selections.i <- select.population(value.mat = predictions.out$GEBV, 
                                                  sel.intensity = parents.sel.intensity, 
                                                  selection = "best")
         
         parent.lines.list <- list(p1 = parent.selections.i$lines.sel, p2 = parent.selections.i$lines.sel)
         
         # The parents are selected and crossed at the F3 stage, so subset the haploid genotpyes from the F1:3
-        parent.haploids <- subset.gametes(gametes = candidate.haploid.i,
+        parent.haploids <- select.haploids(haploid.genos = candidate.haploid.i,
                                           line.names = parent.selections.i$lines.sel)
         
-        parent.values <- subset.values(values.list = candidate.values.i, 
-                                       lines.to.subset = parent.selections.i$lines.sel)
+        parent.values <- select.values(pheno.values.list = candidate.values.i, 
+                                       line.names = parent.selections.i$lines.sel)
         
         
         ##### Step 7 - Update the TP
@@ -413,7 +402,7 @@ for (change in tp.change) {
           # If the TP change is best, worst, or random, simply subset the population.
           if (change %in% c("best", "worst", "random")) {
             
-            TP.addition.list <- list(TP.addition.lines = select.population(pheno.mat = candidate.GEBV.i,
+            TP.addition.list <- list(TP.addition.lines = select.population(value.mat = predictions.out$GEBV,
                                                                            sel.intensity = tp.update.increment,
                                                                            selection = change)$lines.sel )
           }
@@ -452,14 +441,15 @@ for (change in tp.change) {
           # TP additions
           TP.addition.lines <- TP.addition.list$TP.addition.lines
           # Subset the haploid genotypes for these lines
-          TP.addition.haploids <- subset.gametes(gametes = candidate.haploid.i,
-                                                line.names = TP.addition.lines)
+          TP.addition.haploids <- select.haploids(haploid.genos = candidate.haploid.i,
+                                                  line.names = TP.addition.lines)
           
           # Subset the geno matrix for these lines
           TP.addition.genos <- candidate.marker.genos.i[TP.addition.lines,]
           
           # Gather genotypic and phenotypic values of the TP additions
-          TP.addition.values <- subset.values(values.list = candidate.values.i, TP.addition.lines)
+          TP.addition.values <- select.values(pheno.values.list = candidate.values.i, 
+                                              line.names = TP.addition.lines)
           # Separate the phenotypes
           TP.addtion.phenos <- TP.addition.values$mean.pheno.values
           
@@ -502,7 +492,8 @@ for (change in tp.change) {
           
         } else {
           
-          TP.addition.list <- NA
+          TP.addition.list <- list(TP.addition.lines = NA,
+                                   Exp.het = NA)
           
         } # Close the tp.change if statement
                               
@@ -547,3 +538,15 @@ for (change in tp.change) {
   
   
 } # Close the tp.change for loop
+
+
+
+
+
+
+
+
+
+
+
+

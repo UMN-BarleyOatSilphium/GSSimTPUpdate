@@ -1,0 +1,19 @@
+Package: GSsim.TPUpdate
+Title: Code and data to accompany the publication [TITLE]
+Version: 0.0.0.9000
+Authors@R: person("Jeff", "Neyhart", email = "neyhartje@gmail.com", role = c("aut", "cre"))
+Description: Provides functions, code, and data to replicate the experiment and analysis as presented in [REF]
+Depends:
+    R (>= 3.3.1)
+Imports:
+    hypred,
+    rrBLUP,
+    dplyr,
+    stringr
+Suggests:
+    boot,
+    parallel
+License: MIT
+Encoding: UTF-8
+LazyData: true
+RoxygenNote: 5.0.1
