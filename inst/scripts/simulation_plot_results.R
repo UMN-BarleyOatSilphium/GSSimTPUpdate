@@ -5,11 +5,12 @@ library(dplyr)
 library(stringr)
 
 # Designate the directory with the files
-results.dir <- "C:/Users/Jeff/Google Drive/Barley Lab/Projects/Side Projects/Simulations/BarleySimGS-TPUpdate/Results/Base Experiment/"
+results.dir <- "C:/Users/Jeff/Google Drive/Barley Lab/Projects/Side Projects/Simulations/GSsim.TPUpdate/Results/Base Experiment/"
 
 # Load data from the allele frequency experiment
-all.files <- list.files(results.dir, full.names = T)
-filename <- all.files[2]
+all.files <- list.files(results.dir, full.names = T) %>%
+  str_subset(pattern = "collective")
+filename <- all.files[1]
 
 load(filename)
 
@@ -101,7 +102,7 @@ sim.plot <- function(data.list,
 V_g.list <- lapply(X = collective.abbreviated.results, function(tpc)
   do.call("cbind", lapply(X = tpc$candidate.variance.components.list, FUN = function(set) 
     sapply(set, function(rep) 
-      sapply(rep, function(cycle) return(cycle$V_g) )))))
+      sapply(rep, function(cycle) return(cycle) )))))
 
 # Plot
 sim.plot(data.list = V_g.list, 
@@ -290,7 +291,7 @@ sim.plot(data.list = val.pred.list,
 qtl.marker.max.LD.list <- lapply(X = collective.abbreviated.results, function(tpc)
   do.call("cbind", lapply(X = tpc$qtl.marker.LD.list, FUN = function(set) 
     sapply(set, function(rep) 
-      sapply(rep, function(cycle) cycle$mean.max ) ))))
+      sapply(rep, function(cycle) cycle$mean.max.genome ) ))))
 
 # Plot
 sim.plot(data.list = qtl.marker.max.LD.list,
@@ -298,11 +299,11 @@ sim.plot(data.list = qtl.marker.max.LD.list,
          main = paste("Mean LD of Polymorphic QTL with Marker in Highest LD", paste("Population:", pop.makeup, ", TP formation:", tp.formation), sep = "\n"), 
          legend.pos = "bottomleft")
 
-# Mean LD within 50 cM window
+# Mean LD across whole genome
 qtl.marker.mean.LD.list <- lapply(X = collective.abbreviated.results, function(tpc)
   do.call("cbind", lapply(X = tpc$qtl.marker.LD.list, FUN = function(set) 
     sapply(set, function(rep) 
-      sapply(rep, function(cycle) cycle$mean.window ) ))))
+      sapply(rep, function(cycle) cycle$mean.genome ) ))))
 
 sim.plot(data.list = qtl.marker.mean.LD.list,
          ylab = "Linkage Disequilibrium (r)",
@@ -332,4 +333,17 @@ sim.plot(data.list = relationship.list,
          ylab = "Additive Genetic Relationship\n(With Respect to the Base Population)", 
          main = paste("Scaled Additive Relationship Between Training Set and Candidates", paste("Population:", pop.makeup, ", TP formation:", tp.formation), sep = "\n"), 
          legend.pos = "topleft")
+
+
+# Expected heterozygosity
+exp.het.list <- lapply(X = collective.abbreviated.results, function(tpc)
+  do.call("cbind", lapply(X = tpc$tp.update.exp.het.list, FUN = function(set) 
+    sapply(set, function(rep) 
+      sapply(rep, function(cycle) cycle )))) )
+
+# Plot
+sim.plot(data.list = exp.het.list,
+         ylab = "Additive Genetic Relationship\n(With Respect to the Base Population)", 
+         main = paste("Expected Heterozygosity of TP Additions", paste("Population:", pop.makeup, ", TP formation:", tp.formation), sep = "\n"), 
+         legend.pos = "bottomleft")
   

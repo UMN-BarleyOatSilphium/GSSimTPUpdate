@@ -26,22 +26,21 @@ if (all(is.na(args))) {
 
 # Other information and pre-processing
 if (MSI) {
-  setwd("/panfs/roc/groups/6/smithkp/neyhartj/Genomic_Selection/Simulations/BarleySimGS-TPUpdate")
+  # Directory to save the files
+  save.dir <- "/panfs/roc/groups/6/smithkp/neyhartj/Genomic_Selection/Simulations/GSsim.TPUpdate/output"
   
   # Set the directory of the R packages
   package.dir <- "/panfs/roc/groups/6/smithkp/neyhartj/R/x86_64-pc-linux-gnu-library/3.3/"
   
   n.cores = 24
   # Load the packages
-  library(hypred, quietly = T, lib.loc = package.dir)
-  library(rrBLUP, quietly = T, lib.loc = package.dir)
+  library(GSsim.TPUpdate, quietly = T, lib.loc = package.dir)
   library(parallel, quietly = T, package.dir)
-  library(dplyr, quietly = T, package.dir)
   library(stringr, quietly = T, package.dir)
   
 } else {
   
-  setwd("C:/Users/Jeff/Google Drive/Barley Lab/Projects/Side Projects/Simulations/GSsim.TPUpdate/")
+  save.dir <- "C:/Users/Jeff/Google Drive/Barley Lab/Projects/Side Projects/Simulations/GSsim.TPUpdate/output/"
   n.cores = 1
   
   # Load the packages
@@ -301,7 +300,7 @@ for (change in tp.change) {
         
         # Measure genomic LD on the TP
         TP.LD.genome <- measure.LD(genome = hv.genome, 
-                                   genos = TP.haploids.i)
+                                   genos = TP.genos.i)
         
         ## Persistance of LD phase
         # First find the common polymorphic QTL
@@ -402,9 +401,10 @@ for (change in tp.change) {
           # If the TP change is best, worst, or random, simply subset the population.
           if (change %in% c("best", "worst", "random")) {
             
-            TP.addition.list <- list(TP.addition.lines = select.population(value.mat = predictions.out$GEBV,
-                                                                           sel.intensity = tp.update.increment,
-                                                                           selection = change)$lines.sel )
+            TP.addition.list <- 
+              list(TP.addition.lines = select.population(value.mat = predictions.out$GEBV,
+                                                         sel.intensity = tp.update.increment,
+                                                         selection = change)$lines.sel )
           }
 
           if (change %in% c("PEVmean", "CDmean")) {
@@ -440,12 +440,10 @@ for (change in tp.change) {
           
           # TP additions
           TP.addition.lines <- TP.addition.list$TP.addition.lines
-          # Subset the haploid genotypes for these lines
-          TP.addition.haploids <- select.haploids(haploid.genos = candidate.haploid.i,
-                                                  line.names = TP.addition.lines)
           
           # Subset the geno matrix for these lines
           TP.addition.genos <- candidate.marker.genos.i[TP.addition.lines,]
+          TP.addition.genos.qtl <- candidate.genos.i[TP.addition.lines,]
           
           # Gather genotypic and phenotypic values of the TP additions
           TP.addition.values <- select.values(pheno.values.list = candidate.values.i, 
@@ -457,12 +455,10 @@ for (change in tp.change) {
           # Combine the new data to the TP
           TP.phenos.i <- rbind(TP.phenos.i, TP.addtion.phenos)
           TP.genos.i <- rbind(TP.genos.i, TP.addition.genos)
-          TP.haploids.i <- rbind(TP.haploids.i, TP.addition.haploids)
           
-          ## Measure the expected heterozygosity of the additions
-          TP.addition.list[["Exp.het"]] <- measure.expected.het(genos = genotype.loci(
-            haploid.genos = TP.addition.haploids, genome = hv.genome, include.QTL = T
-          ))
+          ## Measure the expected heterozygosity of the additions, using all
+          ## loci including QTL
+          TP.addition.list[["Exp.het"]] <- measure.expected.het(genos = TP.addition.genos.qtl)
           
           
           # If the TP formation calls for a sliding window, use only the ~750 most recent training individuals
@@ -487,7 +483,6 @@ for (change in tp.change) {
               # Set the TP.pheno and TP.genos
               TP.phenos.i <- as.matrix(TP.phenos.i[tp.keep.index,])
               TP.genos.i <- as.matrix(TP.genos.i[tp.keep.index,])
-              TP.haploids.i <- subset.gametes(gametes = TP.haploids.i, line.names = row.names(TP.genos.i))
           }
           
         } else {
@@ -503,17 +498,18 @@ for (change in tp.change) {
         cycle.name <- paste("cycle", breeding.cycle, sep = "")
         
         # Gather data for analysis
-        simulation.results[[cycle.name]] <- list(geno.summary.stats = list(candidate.maf = candidate.genos.maf.i,
-                                                                           TP.maf = TP.genos.maf.i,
-                                                                           qtl.marker.LD = qtl.marker.LD.i,
-                                                                           mu.TP.candidate.rel = mu.relationship),
-                                                 MM.solve = solve.out,
-                                                 candidate.GEBV = candidate.GEBV.i,
-                                                 candidate.values = candidate.values.i,
-                                                 selection.values = parent.values,
-                                                 prediction.accuracy = pred.validation.i,
-                                                 parents <- parent.lines.list,
-                                                 tp.update = TP.addition.list )
+        simulation.results[[cycle.name]] <- 
+          list(geno.summary.stats = list(candidate.maf = candidate.genos.maf.i,
+                                         TP.maf = TP.genos.maf.i,
+                                         qtl.marker.LD = qtl.marker.LD.i,
+                                         mu.TP.candidate.rel = mu.relationship),
+               MM.solve = predictions.out$solve.out,
+               candidate.GEBV = predictions.out$GEBV,
+               candidate.values = candidate.values.i,
+               selection.values = parent.values,
+               prediction.accuracy = pred.validation.i,
+               parents <- parent.lines.list,
+               tp.update = TP.addition.list )
 
                                    
         
@@ -533,11 +529,16 @@ for (change in tp.change) {
   }, mc.cores = n.cores)
   
   # Save the tp.change data
-  filename = paste("Files/", "simulation_results_q", n.QTL, "_sel", parents.sel.intensity, "_popmakeup-", pop.makeup, "_tpchange-", change, "_tpformation-", tp.formation, "_", date, ".RData", sep = "")
+  filename <- file.path(save.dir, paste("simulation_results_", pop.makeup, "_", change, "_", 
+                                        tp.formation, "_", date, ".RData", sep = "") )
+                        
   save(list = c("experiment.sub.results", "change", "metadata"), file = filename)
   
   
 } # Close the tp.change for loop
+
+
+# Parse the results
 
 
 
