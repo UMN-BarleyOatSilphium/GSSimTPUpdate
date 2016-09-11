@@ -32,7 +32,7 @@ if (MSI) {
   # Set the directory of the R packages
   package.dir <- "/panfs/roc/groups/6/smithkp/neyhartj/R/x86_64-pc-linux-gnu-library/3.3/"
   
-  n.cores = 24
+  n.cores = 1
   # Load the packages
   library(GSsim.TPUpdate, quietly = T, lib.loc = package.dir)
   library(parallel, quietly = T, package.dir)
@@ -49,6 +49,7 @@ if (MSI) {
   library(stringr)
   
 }
+
 
 
 # Other simulation parameters
@@ -125,18 +126,17 @@ hv.genome <- make.genome( n.chr = length(chr.len),
                           genetic.map = genetic.map.list)
 
 
-
 # Iterate over the different tp.change types
 for (change in tp.change) {
   
-  # Split iterations into cores
+    # Split iterations into cores
   if (n.cores > 1) {
     iters.per.core <- split(x = 1:n.iterations, factor(cut(x = 1:n.iterations, breaks = n.cores)))
-    names(iters.per.core) <- paste("set", 1:length(iters.per.core), sep = "")
+    names(iters.per.core) <- paste("set", seq_along(iters.per.core), sep = "")
   } else {
     iters.per.core <- 1:n.iterations
-  }
-  
+  }    
+
   # Apply the iterations over cores
   experiment.sub.results <- mclapply(X = iters.per.core, FUN = function(iter.set) {
 
@@ -146,7 +146,8 @@ for (change in tp.change) {
     # Loop over each iteration
     for (r in seq_along(iter.set)) {
       
-      # All code below this line is variable in each iteration of the simulation
+      # All code below this line is variable in each iteration of the simulat
+
       #### Define trait parameters ####
       hv.genome <- trait.architecture(genome = hv.genome,
                                       n.QTL = n.QTL, 
@@ -156,6 +157,7 @@ for (change in tp.change) {
                                       qtl.add.eff = "geometric", 
                                       qtl.dom.eff = NULL)
       
+
       TP.haploids.i <- CAP.haploids
       # Convert the gametes to genotypes
       TP.genos <- genotype.loci(haploid.genos = TP.haploids.i, genome = hv.genome)
