@@ -16,7 +16,7 @@ module load R/3.3.1
 
 #Rscript Code/run_experiment.R MN cumulative 100 50
 #Rscript Code/run_experiment.R ND cumulative 100 50
-Rscript Code/run_experiment.R MNxND cumulative 100 50
+Rscript inst/scripts/run_experiment.R MNxND cumulative 100 50
 
 #Rscript Code/run_experiment.R MN window 100 50
 #Rscript Code/run_experiment.R ND window 100 50
