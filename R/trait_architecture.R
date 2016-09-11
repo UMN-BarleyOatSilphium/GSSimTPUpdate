@@ -41,24 +41,17 @@ trait.architecture <- function(genome, n.QTL, qtl.index = NULL,
   if (is.null(qtl.index)) {
     
     # Create a list to determine the number of qtl for each chromosome. This will
-    ## essentially make the distribution of qtl even across the chromosome indices
-    qtl.per.chr <- sapply(X = split(x = 1:n.QTL, f = cut(1:n.QTL, breaks = n.chr)), FUN = length)
+    # randomize the number of QTL per chromosome
+    qtl.per.chr <- sapply(X = split(x = seq(n.QTL), f = sample(x = n.chr, size = n.QTL, replace = T)), FUN = length)
     
-    # Create an empty list
-    qtl.index.per.chr <- list()
-    
-    # Loop over the chromosomes in the genome
-    for (p in 1:n.chr) {
-      
-      # Pull out the number of QTL designated for the chromosome
-      n.qtl.p <- qtl.per.chr[p]
+    # Iterate over chromosomes
+    qtl.index.per.chr <- mapply(qtl.per.chr, genome, FUN = function(n.qtl.p, chr) {
       
       # Pull out the number of loci on the chromsome and create an index
-      loci.index.p <- seq(1, slot(genome[[p]], "num.snp.chr"))
+      loci.index.p <- seq(chr@num.snp.chr)
       
       # Sample the index and add to the list
-      qtl.index.per.chr[[p]] <- sort(sample(x = loci.index.p, size = n.qtl.p))
-    }
+      sort(sample(x = loci.index.p, size = n.qtl.p)) })
     
     # If the list is specified, check it
   } else {
@@ -73,7 +66,7 @@ trait.architecture <- function(genome, n.QTL, qtl.index = NULL,
   # QTL dominance IDs
   if (is.null(qtl.dom.index)) {
     # Create a list of NULLs
-    qtl.dom.index.per.chr <- sapply(X = 1:n.chr, FUN = function(i) NULL)
+    qtl.dom.index.per.chr <- vector("list", n.chr)
     
   } else { # Otherwise check the list
     if (length(qtl.dom.index) != n.chr) stop("The length of the qtl.dom.index list is not the same as the number of chromsomes.")
@@ -85,7 +78,7 @@ trait.architecture <- function(genome, n.QTL, qtl.index = NULL,
   # Perfect QTL IDs
   if (is.null(qtl.perf.index)) {
     # Create a list of NULLs
-    qtl.perf.index.per.chr <- sapply(X = 1:n.chr, FUN = function(i) NULL)
+    qtl.perf.index.per.chr <- vector("list", n.chr)
     
   } else { # Otherwise check the list
     if (length(qtl.perf.index) != n.chr) stop("The length of the qtl.perf.index list is not the same as the number of chromosomes.")
@@ -113,7 +106,7 @@ trait.architecture <- function(genome, n.QTL, qtl.index = NULL,
         
         # Break up the effects into chromosomes with the same number of elements
         ## as QTL on those chromosomes
-        qtl.add.eff.per.chr <- split(qtl.add.eff, rep(1:n.chr, qtl.per.chr))
+        qtl.add.eff.per.chr <- split(qtl.add.eff, rep(seq(n.chr), qtl.per.chr))
         
       } else {
         # Otherwise, make sure the length of the additive effects is the same as the number of chr
@@ -123,7 +116,7 @@ trait.architecture <- function(genome, n.QTL, qtl.index = NULL,
   # Dominance effects
   if (is.null(qtl.dom.eff)) {
     # Create a list of NULLs
-    qtl.dom.eff.per.chr <- sapply(X = 1:n.chr, FUN = function(i) NULL)
+    qtl.dom.eff.per.chr <- vector("list", n.chr)
     
   } else { # Otherwise check it
     if (length(qtl.dom.eff) != n.chr) stop("The length of the qtl.dom.eff list is not the same as the number of chromosomes.")
@@ -134,22 +127,19 @@ trait.architecture <- function(genome, n.QTL, qtl.index = NULL,
     if (!all(dom.elements.same)) stop("One or more of the elements in the qtl.dom.eff list are not the same length as the corresponding qtl.dom.index list.")
   }
   
-  
-  
-  # Apply a function over each chromosome in the genome
-  genome <- sapply(X = 1:n.chr, FUN = function(i) {
-    
-    # Add to the ith position in the genome list a revised chromosome genome with
-    ## the qtl positions and effects
-    genome[[i]] <- hypredNewQTL(genome[[i]],
-                                new.id.add = qtl.index.per.chr[[i]],
-                                new.id.dom = qtl.dom.index.per.chr[[i]],
-                                new.id.per.mar = qtl.perf.index.per.chr[[i]],
-                                new.eff.add = qtl.add.eff.per.chr[[i]],
-                                new.eff.dom = qtl.dom.eff.per.chr[[i]] )
-  })
+  # Iterate over the chromosomes and qtl indices, effects, etc
+  genome1 <- mapply(genome, qtl.index.per.chr, qtl.dom.index.per.chr, 
+                    qtl.perf.index.per.chr, qtl.add.eff.per.chr, 
+                    qtl.dom.eff.per.chr, FUN = function(chr, a.i, d.i, p.i, a, d) {
+
+                      chr <- hypredNewQTL(chr,
+                                          new.id.add = a.i,
+                                          new.id.dom = d.i,
+                                          new.id.per.mar = p.i,
+                                          new.eff.add = a,
+                                          new.eff.dom = d ) })
   
   # Return the new genome
-  return(genome)
+  return(genome1)
   
 } # Close the function
