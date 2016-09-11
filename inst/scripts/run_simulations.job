@@ -7,7 +7,7 @@
 #PBS -r n
 
 # Change the working directory
-cd /home/smithkp/neyhartj/Genomic_Selection/Simulations/BarleySimGS-TPUpdate
+cd /panfs/roc/groups/6/smithkp/neyhartj/Genomic_Selection/Simulations/GSsim.TPUpdate/
 
 module load R/3.3.1
 
