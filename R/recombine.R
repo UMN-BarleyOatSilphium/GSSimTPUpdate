@@ -21,7 +21,7 @@ recombine <- function(genome, haploid.genomeA, haploid.genomeB, mutate = TRUE,
   # Pull out the number of chromosomes
   n.chr <- length(genome)
   # Pull out the number of loci per chromsosome
-  loci.per.chr <- sapply(X = genome, FUN = function(chromosome) length(slot(chromosome, "pos.snp")))
+  loci.per.chr <- sapply(X = genome, FUN = function(chr) length(chr@pos.snp))
   
   # Split each haploid genome into chromosomes
   haploid.genomeA.split <- split(haploid.genomeA, rep(seq(n.chr), loci.per.chr))
