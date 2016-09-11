@@ -32,7 +32,7 @@ if (MSI) {
   # Set the directory of the R packages
   package.dir <- "/panfs/roc/groups/6/smithkp/neyhartj/R/x86_64-pc-linux-gnu-library/3.3/"
   
-  n.cores = 1
+  n.cores = 24
   # Load the packages
   library(GSsim.TPUpdate, quietly = T, lib.loc = package.dir)
   library(parallel, quietly = T, package.dir)
