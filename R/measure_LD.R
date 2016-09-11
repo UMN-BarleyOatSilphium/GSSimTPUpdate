@@ -4,7 +4,8 @@
 #' Measures linkage disequilibrium as the correlation between QTL and markers.
 #' 
 #' @param genome The list of hypred genomes.
-#' @param genos The n x m matrix of genotypes for n entries across m loci.
+#' @param genos The n x m matrix of genotypes for n entries across m loci, 
+#' including QTL.
 #' @param Morgan.windwo The distance in each direction of a QTL to the markers
 #' used to calculate LD. If \code{NULL}, all markers in the genome are used
 #' to calculate LD with each QTL.
@@ -84,7 +85,7 @@ measure.LD <- function(genome,
   } else {
     
     # Pull out all QTL positions and index
-    pos <- find.pos(genome = genome, genos = genos)
+    pos <- GSsim.TPUpdate:::find.pos(genome = genome, genos = genos)
     # QTL positions
     pos.qtl <- pos$pos.qtl
     pos.snp <- pos$pos.snp

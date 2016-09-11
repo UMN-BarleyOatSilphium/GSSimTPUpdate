@@ -76,7 +76,7 @@ tp.update.increment = 150
 tp.size <- nrow(CAP.haploids) / 2
 
 # Parent selection and crossing parameters
-ind.per.cross = 30
+ind.per.cross = 20
 cycle.candidate.size = n.crosses * ind.per.cross
 
 # Standardized selection intensity
@@ -300,7 +300,9 @@ for (change in tp.change) {
         
         # Measure genomic LD on the TP
         TP.LD.genome <- measure.LD(genome = hv.genome, 
-                                   genos = TP.genos.i)
+                                   genos = genotype.loci(haploid.genos = TP.haploids.i,
+                                                         genome = hv.genome,
+                                                         include.QTL = T) )
         
         ## Persistance of LD phase
         # First find the common polymorphic QTL
@@ -330,6 +332,9 @@ for (change in tp.change) {
         W = M - matrix(P, nrow(M), length(P), byrow = T)
         # Calculate the relationship matrix
         A = tcrossprod(W) / c
+        
+        # Subset the relationship matrix for the selection candidates
+        A.sc <- A[row.names(candidate.marker.genos.i), row.names(candidate.marker.genos.i)]
         
         # Calculate the mean relationship between the TP and the candidates
         mu.relationship <- A[row.names(TP.genos.i), row.names(candidate.marker.genos.i)] %>%
@@ -408,31 +413,31 @@ for (change in tp.change) {
           }
 
           if (change %in% c("PEVmean", "CDmean")) {
+            
             # Analyze using PEVmean or CDmean
             # We want to see what optimized TP is best for the parents, so we will optimize the training set based
-            ## on the lines from the whole candidate set, including the parents?
-            phenotyped.lines <- row.names(candidate.marker.genos.i)
-            unphenotyped.lines <- parent.selections.i$lines.sel
-            
-            # V_e is estimated from maximum liklihood
-            V_e.i <- solve.out$Ve
+            ## on the lines from the whole candidate set, including the parents
+            phenotyped.index <- which( row.names(candidate.marker.genos.i) %in%
+                                         row.names(A.sc) )
+            unphenotyped.index <- which( parent.selections.i$lines.sel %in%
+                                           row.names(A.sc) )
+
+            # V_e is estimated from maximum likelihood
+            V_e.i <- predictions.out$solve.out$Ve
             # V_a is estimated as the variance among marker effects * the number of markers
-            V_a.i <- solve.out$Vu * ncol(TP.genos.use)
+            V_a.i <- predictions.out$solve.out$Vu * ncol(TP.genos.use)
             
-            # Subset the relationship matrix among candidates
-            optimized.TP.additions <- TP.optimization.algorithms(A = A,
-                                                                 phenotyped.lines = phenotyped.lines,
-                                                                 unphenotyped.lines = unphenotyped.lines,
-                                                                 n.TP = tp.update.increment,
-                                                                 V_e = V_e.i,
-                                                                 V_a = V_a.i,
-                                                                 optimization.method = change,
-                                                                 max.iter = 500,
-                                                                 use.subset = T)
+            # Run the optimization algorithm
+            optimized.TP <- optimize.subset(method = change, A = A.sc,
+                                            n.training = tp.update.increment,
+                                            phenotyped.index = phenotyped.index,
+                                            unphenotyped.index = unphenotyped.index,
+                                            V_a = V_a.i, V_e = V_e.i, max.iter = 200)
             
-            # The optimized TP lines become the TP additions
-            TP.addition.list <- list(TP.addition.lines = optimized.TP.additions$optimized.lines, 
-                                     optimization = optimized.TP.additions[-1])
+            # Using the optimized index of "phenotyped" entries, determine
+            # which candidates should be added to the TP
+            TP.addition.list <- list(TP.addition.lines = row.names(A.sc)[optimized.TP$OTP],
+                                     optimization.info = optimized.TP)
             
           } # Close the tp optimization algorithm if statement
           
@@ -440,6 +445,9 @@ for (change in tp.change) {
           
           # TP additions
           TP.addition.lines <- TP.addition.list$TP.addition.lines
+          
+          TP.addition.haploids <- select.haploids(haploid.genos = candidate.haploid.i,
+                                                  line.names = TP.addition.lines)
           
           # Subset the geno matrix for these lines
           TP.addition.genos <- candidate.marker.genos.i[TP.addition.lines,]
@@ -449,16 +457,18 @@ for (change in tp.change) {
           TP.addition.values <- select.values(pheno.values.list = candidate.values.i, 
                                               line.names = TP.addition.lines)
           # Separate the phenotypes
-          TP.addtion.phenos <- TP.addition.values$mean.pheno.values
+          TP.addition.phenos <- TP.addition.values$mean.pheno.values
           
           
           # Combine the new data to the TP
-          TP.phenos.i <- rbind(TP.phenos.i, TP.addtion.phenos)
+          TP.phenos.i <- rbind(TP.phenos.i, TP.addition.phenos)
           TP.genos.i <- rbind(TP.genos.i, TP.addition.genos)
+          TP.haploids.i <- rbind(TP.haploids.i, TP.addition.haploids)
           
           ## Measure the expected heterozygosity of the additions, using all
           ## loci including QTL
-          TP.addition.list[["Exp.het"]] <- measure.expected.het(genos = TP.addition.genos.qtl)
+          TP.addition.list[["Exp.het"]] <- 
+            measure.expected.het(genos = TP.addition.genos.qtl)
           
           
           # If the TP formation calls for a sliding window, use only the ~750 most recent training individuals
@@ -483,6 +493,8 @@ for (change in tp.change) {
               # Set the TP.pheno and TP.genos
               TP.phenos.i <- as.matrix(TP.phenos.i[tp.keep.index,])
               TP.genos.i <- as.matrix(TP.genos.i[tp.keep.index,])
+              TP.haploids.i <- select.haploids(haploid.genos = TP.haploids.i,
+                                               line.names = row.names(TP.genos.i))
           }
           
         } else {

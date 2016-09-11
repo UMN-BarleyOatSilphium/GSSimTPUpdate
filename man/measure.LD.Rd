@@ -9,7 +9,8 @@ measure.LD(genome, genos, Morgan.window = NULL)
 \arguments{
 \item{genome}{The list of hypred genomes.}
 
-\item{genos}{The n x m matrix of genotypes for n entries across m loci.}
+\item{genos}{The n x m matrix of genotypes for n entries across m loci, 
+including QTL.}
 
 \item{Morgan.windwo}{The distance in each direction of a QTL to the markers
 used to calculate LD. If \code{NULL}, all markers in the genome are used
