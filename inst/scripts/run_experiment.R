@@ -32,7 +32,7 @@ if (MSI) {
   # Set the directory of the R packages
   package.dir <- "/panfs/roc/groups/6/smithkp/neyhartj/R/x86_64-pc-linux-gnu-library/3.3/"
   
-  n.cores = 1
+  n.cores = 24
   # Load the packages
   library(GSsim.TPUpdate, quietly = T, lib.loc = package.dir)
   library(parallel, quietly = T, package.dir)
@@ -56,7 +56,7 @@ if (MSI) {
 # Entry-mean heritability in the base population
 h2 = 0.5
 # How many cycles?
-n.cycles = 1
+n.cycles = 15
 # Number of QTL underlying trait
 n.QTL = 100
 # Number of phenotyping environments and reps
@@ -84,7 +84,7 @@ cycle.candidate.size = n.crosses * ind.per.cross
 std.sel.intensity = parents.sel.intensity / cycle.candidate.size
 
 # Computation parameters
-n.iterations = 1
+n.iterations = 100
 
 date <- format(Sys.time(), "%d%m%y-%H%M%S")
 
@@ -545,8 +545,6 @@ for (change in tp.change) {
   # Save the tp.change data
   filename <- file.path(save.dir, paste("simulation_results_", pop.makeup, "_", change, "_", 
                                         tp.formation, "_", date, ".RData", sep = "") )
-
-  print(filename)
                         
   save(list = c("experiment.sub.results", "change", "metadata"), file = filename)
   
