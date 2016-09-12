@@ -70,7 +70,7 @@ min.maf = 0.03
 mutation.rate.snp = 7e-8
 mutation.rate.qtl = 7e-8
 
-tp.change = c("best", "worst", "random", "no.change", "PEVmean", "CDmean")
+tp.change = c("best", "worst", "random", "nochange", "PEVmean", "CDmean")
 # The number of lines to add the TP after each cycle
 tp.update.increment = 150
 # Size of the TP to maintain - this is the same as the starting TP
@@ -403,7 +403,7 @@ for (change in tp.change) {
         ##### Step 7 - Update the TP
         
         # Skip this step if not called
-        if (change != "no.change") {
+        if (change != "nochange") {
           
           # If the TP change is best, worst, or random, simply subset the population.
           if (change %in% c("best", "worst", "random")) {
@@ -552,14 +552,15 @@ for (change in tp.change) {
 } # Close the tp.change for loop
 
 
+## Parse the results
+# Create a filename to save
+filename <- file.path(save.dir, paste("simulation_results_", pop.makeup, "_", 
+                                      tp.formation, "_collective.RData", sep = ""))
 
-
-
-
-
-
-
-
-
-
-
+# Create a vector of file paths
+files <- list.files(save.dir, full.names = T) %>% 
+  str_subset(pattern = paste("simulation_results_", pop.makeup, "_[A-Za-z]*_", 
+                             tp.formation, "_[0-9]*-[0-9]*.RData", sep = ""))
+  
+# Parse
+parse.results(files = files, filename = filename)

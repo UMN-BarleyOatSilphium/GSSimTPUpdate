@@ -6,6 +6,12 @@
 \usage{
 parse.results(files, filename)
 }
+\arguments{
+\item{files}{A \code{character} vector of file paths. These files should be
+\code{.RData} files.}
+
+\item{filename}{A filepath to save the parsed, collective results}
+}
 \description{
 This function prases the R Data files created in interations
 of the simulations and extract useful data

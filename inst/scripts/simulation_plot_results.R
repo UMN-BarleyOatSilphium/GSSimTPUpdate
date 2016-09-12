@@ -3,6 +3,7 @@
 # Load packages
 library(dplyr)
 library(stringr)
+library(GSsim.TPUpdate)
 
 # Designate the directory with the files
 results.dir <- "C:/Users/Jeff/Google Drive/Barley Lab/Projects/Side Projects/Simulations/GSsim.TPUpdate/Results/Base Experiment/"
@@ -10,16 +11,17 @@ results.dir <- "C:/Users/Jeff/Google Drive/Barley Lab/Projects/Side Projects/Sim
 # Load data from the allele frequency experiment
 all.files <- list.files(results.dir, full.names = T) %>%
   str_subset(pattern = "collective")
+
 filename <- all.files[1]
 
 load(filename)
 
 # Experimental parameters
-pop.makeup <- str_extract(string = filename, pattern = 'popmakeup-[A-Za-z]{2,5}') %>%
+pop.makeup <- str_extract(string = filename, pattern = 'results_[A-Za-z]{2,5}') %>%
   str_extract(pattern = '[A-Za-z]{2,5}$')
 
-tp.formation <- str_extract(string = filename, pattern = 'tpformation-[a-z]*') %>% 
-  str_extract(pattern = '[a-z]*$')
+tp.formation <- 
+  str_extract(string = filename, pattern = paste0(c("cumulative", "window"), collapse = "|"))
 
 n.cycles = collective.abbreviated.results[[1]][[1]][[1]][[1]] %>%
   length()
@@ -32,69 +34,7 @@ tp.change.factors <- collective.abbreviated.results %>%
   as.factor()
 
 
-# Define a function to plot
-sim.plot <- function(data.list, 
-                     xlim = c(1, n.cycles), 
-                     xlab = "Cycle Number", 
-                     ylim = NULL, 
-                     ylab, 
-                     main,
-                     legend.pos,
-                     just.data = FALSE # If true, return the estimates of the mean and CI and stop the function.
-){
-  
-  # Extract the names from the data.list for use as a factor
-  list.names <- names(data.list)
-  list.names.factor <- factor(list.names)
-  list.names.numeric <- as.numeric(list.names.factor)
-  
-  # Apply a function over the data.list to calculate the mean and a confidence
-  ## interval at every cycle
-  data.parameters <- lapply(X = data.list, FUN = function(data) {
-    
-    # Find the mean across iterations
-    mu <- apply(X = data, MARGIN = 1, FUN = mean, na.rm = T)
-    
-    # Calculate a confidence interval based on a t-distribution
-    CI <- apply(X = data, MARGIN = 1, FUN = function(cycle) {
-      t.per <- qt(p = (1 - (0.05 / 2)), df = length(cycle) - 1)
-      t.per * ( sd(cycle, na.rm = T) / sqrt(length(cycle)) ) }) 
-    
-    list(mu = mu, CI = CI) })
-  
-  # If just the data is requested, return it
-  if (just.data) {
-    return(data.parameters)
-  }
-  
-  
-  # If ylim is null, use a pretty range to determine it
-  if (is.null(ylim)) {
-    ylim <- range(pretty(range(sapply(data.parameters, function(sublist) sublist$mu), na.rm = T)))
-  }
-  
-  # Create the empty plot first
-  plot(0, type = "n", xlim = xlim, xlab = xlab, ylim = ylim, ylab = ylab, main = main)
-  
-  # Add the legend
-  legend(legend.pos, legend = list.names.factor, pch = list.names.numeric, col = list.names.numeric)
-  
-  # Iterate over the data.parameters list
-  for (i in 1:length(data.parameters)) {
-    
-    # Add points to the plot
-    # Create jitter
-    x.jitter <- - (0.1 * scale(1:length(data.parameters), scale = F)[i])
-    points(x = (seq(xlim[1], xlim[2]) + x.jitter), data.parameters[[i]]$mu, pch = list.names.numeric[i], type = "b", col = list.names.numeric[i])
 
-    # Add CI bars
-    segments(x0 = (seq(xlim[1], xlim[2]) + x.jitter), 
-             y0 = (data.parameters[[i]]$mu - data.parameters[[i]]$CI), 
-             x1 = (seq(xlim[1], xlim[2]) + x.jitter), 
-             y1 = (data.parameters[[i]]$mu + data.parameters[[i]]$CI))
-  } # Close the for loop
-  
-} # Close the function
     
 
 
@@ -105,10 +45,11 @@ V_g.list <- lapply(X = collective.abbreviated.results, function(tpc)
       sapply(rep, function(cycle) return(cycle) )))))
 
 # Plot
-sim.plot(data.list = V_g.list, 
-         ylab = "Genetic Variance", 
-         main = paste("Genetic Variance", paste("Population:", pop.makeup, ", TP formation:", tp.formation), sep = "\n"), 
-         legend.pos = "bottomleft")
+plot.result(data.list = V_g.list, 
+            ylab = "Genetic Variance", 
+            main = paste("Genetic Variance", paste("Population:", pop.makeup, 
+                                                   ", TP formation:", tp.formation), sep = "\n"), 
+            legend.pos = "bottomleft")
   
 
 
@@ -121,10 +62,94 @@ gen.mu.list <- lapply(X = collective.abbreviated.results, function(tpc)
 
 
 # Plot
-sim.plot(data.list = gen.mu.list, 
+plot.result(data.list = gen.mu.list, 
          ylab = "Genotypic Value", 
          main = paste("Genotypic Value", paste("Population:", pop.makeup, ", TP formation:", tp.formation), sep = "\n"), 
          legend.pos = "topleft")
+
+
+
+
+# Change in the prediction accuracy over cycles
+val.pred.list <- lapply(X = collective.abbreviated.results, function(tpc)
+  do.call("cbind", lapply(X = tpc$validation.results.list, FUN = function(set) 
+    sapply(set, function(rep) 
+      sapply(rep, function(cycle) cycle$pred.r ) ))))
+
+# Plot
+plot.result(data.list = val.pred.list,
+         ylab = "Realized Prediction Accuracy", 
+         main = paste("Realized Prediction Accuracy", paste("Population:", pop.makeup, ", TP formation:", tp.formation), sep = "\n"), 
+         legend.pos = "bottomleft")
+
+
+
+
+
+# Change in QTL-marker LD over cycles
+# Each QTL's max LD
+qtl.marker.max.LD.list <- lapply(X = collective.abbreviated.results, function(tpc)
+  do.call("cbind", lapply(X = tpc$qtl.marker.LD.list, FUN = function(set) 
+    sapply(set, function(rep) 
+      sapply(rep, function(cycle) cycle$mean.max.genome ) ))))
+
+# Plot
+plot.result(data.list = qtl.marker.max.LD.list,
+         ylab = "Linkage Disequilibrium (r)", 
+         main = paste("Mean LD of Polymorphic QTL with Marker in Highest LD", paste("Population:", pop.makeup, ", TP formation:", tp.formation), sep = "\n"), 
+         legend.pos = "bottomleft")
+
+# Mean LD across whole genome
+qtl.marker.mean.LD.list <- lapply(X = collective.abbreviated.results, function(tpc)
+  do.call("cbind", lapply(X = tpc$qtl.marker.LD.list, FUN = function(set) 
+    sapply(set, function(rep) 
+      sapply(rep, function(cycle) cycle$mean.genome ) ))))
+
+plot.result(data.list = qtl.marker.mean.LD.list,
+         ylab = "Linkage Disequilibrium (r)",
+         main = paste("LD of Polymorphic QTL with Markers Within 50 cM", paste("Population:", pop.makeup, ", TP formation:", tp.formation), sep = "\n"), 
+         legend.pos = "bottomleft")
+
+# Persistence of LD phase
+persistence.of.phase.list <- lapply(X = collective.abbreviated.results, function(tpc)
+  do.call("cbind", lapply(X = tpc$qtl.marker.LD.list, FUN = function(set) 
+    sapply(set, function(rep) 
+      sapply(rep, function(cycle) cycle$persistence ) ))))
+
+plot.result(data.list = persistence.of.phase.list,
+         ylab = "Correlatio of r",
+         main = paste("Persistance of LD Phase Between TP and Selection Candidates", paste("Population:", pop.makeup, ", TP formation:", tp.formation), sep = "\n"), 
+         legend.pos = "bottomleft")
+
+
+# Change in average relationship between TP and candidates
+relationship.list <- lapply(X = collective.abbreviated.results, function(tpc)
+  do.call("cbind", lapply(X = tpc$relationship.list, FUN = function(set) 
+    sapply(set, function(rep) 
+      sapply(rep, function(cycle) cycle )))) )
+
+# Plot
+plot.result(data.list = relationship.list,
+         ylab = "Additive Genetic Relationship\n(With Respect to the Base Population)", 
+         main = paste("Scaled Additive Relationship Between Training Set and Candidates", paste("Population:", pop.makeup, ", TP formation:", tp.formation), sep = "\n"), 
+         legend.pos = "topleft")
+
+
+# Expected heterozygosity
+exp.het.list <- lapply(X = collective.abbreviated.results, function(tpc)
+  do.call("cbind", lapply(X = tpc$tp.update.exp.het.list, FUN = function(set) 
+    sapply(set, function(rep) 
+      sapply(rep, function(cycle) cycle )))) )
+
+# Plot
+plot.result(data.list = exp.het.list,
+         ylab = "Additive Genetic Relationship\n(With Respect to the Base Population)", 
+         main = paste("Expected Heterozygosity of TP Additions", paste("Population:", pop.makeup, ", TP formation:", tp.formation), sep = "\n"), 
+         legend.pos = "bottomleft")
+
+
+
+
 
 
 
@@ -180,21 +205,6 @@ sim.plot(data.list = gen.mu.list,
 #          main = paste("Observed Response to Selection", paste("Population:", pop.makeup, ", TP formation:", tp.formation), sep = "\n"), 
 #          legend.pos = "bottomleft")
 # 
-
-
-
-# Change in the prediction accuracy over cycles
-val.pred.list <- lapply(X = collective.abbreviated.results, function(tpc)
-  do.call("cbind", lapply(X = tpc$validation.results.list, FUN = function(set) 
-    sapply(set, function(rep) 
-      sapply(rep, function(cycle) cycle ) ))))
-
-# Plot
-sim.plot(data.list = val.pred.list,
-         ylab = "Realized Prediction Accuracy", 
-         main = paste("Realized Prediction Accuracy", paste("Population:", pop.makeup, ", TP formation:", tp.formation), sep = "\n"), 
-         legend.pos = "bottomleft")
-
 
 
 
@@ -284,66 +294,3 @@ sim.plot(data.list = val.pred.list,
 # } # Close the treatment loop
 # 
 
-
-
-# Change in QTL-marker LD over cycles
-# Each QTL's max LD
-qtl.marker.max.LD.list <- lapply(X = collective.abbreviated.results, function(tpc)
-  do.call("cbind", lapply(X = tpc$qtl.marker.LD.list, FUN = function(set) 
-    sapply(set, function(rep) 
-      sapply(rep, function(cycle) cycle$mean.max.genome ) ))))
-
-# Plot
-sim.plot(data.list = qtl.marker.max.LD.list,
-         ylab = "Linkage Disequilibrium (r)", 
-         main = paste("Mean LD of Polymorphic QTL with Marker in Highest LD", paste("Population:", pop.makeup, ", TP formation:", tp.formation), sep = "\n"), 
-         legend.pos = "bottomleft")
-
-# Mean LD across whole genome
-qtl.marker.mean.LD.list <- lapply(X = collective.abbreviated.results, function(tpc)
-  do.call("cbind", lapply(X = tpc$qtl.marker.LD.list, FUN = function(set) 
-    sapply(set, function(rep) 
-      sapply(rep, function(cycle) cycle$mean.genome ) ))))
-
-sim.plot(data.list = qtl.marker.mean.LD.list,
-         ylab = "Linkage Disequilibrium (r)",
-         main = paste("LD of Polymorphic QTL with Markers Within 50 cM", paste("Population:", pop.makeup, ", TP formation:", tp.formation), sep = "\n"), 
-         legend.pos = "bottomleft")
-
-# Persistence of LD phase
-persistence.of.phase.list <- lapply(X = collective.abbreviated.results, function(tpc)
-  do.call("cbind", lapply(X = tpc$qtl.marker.LD.list, FUN = function(set) 
-    sapply(set, function(rep) 
-      sapply(rep, function(cycle) cycle$persistence ) ))))
-
-sim.plot(data.list = persistence.of.phase.list,
-         ylab = "Correlatio of r",
-         main = paste("Persistance of LD Phase Between TP and Selection Candidates", paste("Population:", pop.makeup, ", TP formation:", tp.formation), sep = "\n"), 
-         legend.pos = "bottomleft")
-
-
-# Change in average relationship between TP and candidates
-relationship.list <- lapply(X = collective.abbreviated.results, function(tpc)
-  do.call("cbind", lapply(X = tpc$relationship.list, FUN = function(set) 
-    sapply(set, function(rep) 
-      sapply(rep, function(cycle) cycle )))) )
-
-# Plot
-sim.plot(data.list = relationship.list,
-         ylab = "Additive Genetic Relationship\n(With Respect to the Base Population)", 
-         main = paste("Scaled Additive Relationship Between Training Set and Candidates", paste("Population:", pop.makeup, ", TP formation:", tp.formation), sep = "\n"), 
-         legend.pos = "topleft")
-
-
-# Expected heterozygosity
-exp.het.list <- lapply(X = collective.abbreviated.results, function(tpc)
-  do.call("cbind", lapply(X = tpc$tp.update.exp.het.list, FUN = function(set) 
-    sapply(set, function(rep) 
-      sapply(rep, function(cycle) cycle )))) )
-
-# Plot
-sim.plot(data.list = exp.het.list,
-         ylab = "Additive Genetic Relationship\n(With Respect to the Base Population)", 
-         main = paste("Expected Heterozygosity of TP Additions", paste("Population:", pop.makeup, ", TP formation:", tp.formation), sep = "\n"), 
-         legend.pos = "bottomleft")
-  
