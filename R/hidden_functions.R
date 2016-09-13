@@ -7,7 +7,7 @@
 #' @param x A matrix to be inverted.
 #' @param silent Logical whether to print the method of inversion used.
 #' 
-#' @import MASS
+#' @importFrom MASS ginv
 #' 
 invert.mat <- function(x, silent = FALSE) {
   
@@ -172,3 +172,67 @@ design.M <- function(n) {
   I - tcrossprod(X %*% solve(crossprod(X, X)), X)
   
 } # Close the function
+
+#' 
+#' Parse results to data.frame
+#' 
+#' @description 
+#' Convert a vector of values to a df during data parsing
+#' 
+#' @param x A vector of values
+#' @param n.iters The number of simulation iterations
+#' @param change The method of updating the training population
+#' 
+#' @import stringr
+#' @import dplyr
+#' 
+nv_df <- function(x, change) {
+  
+  # Number of observations
+  n.obs <- length(x)
+  
+  # Subset the names
+  names.x <- names(x)
+  
+  # Extract all components of the names
+  names.components <- names.x %>%
+    str_split(pattern = '\\.', simplify = T)
+  
+  # Pull out the set-rep combinations
+  setrep <- names.x %>% 
+    str_extract('^[a-z]*[0-9]*\\.[a-z]*[0-9]*')
+
+  # Find the unique setreps and design replacement strings
+  setrep1 <- setrep %>%
+    unique()
+  
+  setrep.table <- cbind(setrep1,
+                        seq(length(setrep1)) )
+  
+  # Create the replacement vector with same length as n.obs
+  iter.nos <- setrep.table[match(x = setrep, table = setrep1), 2] %>%
+    as.numeric()
+  
+  # Number of extra parameters besides the cycles
+  n.extra <- ncol(names.components) - 3
+  
+  # Find the cycles in the names
+  cycle.nos <- names.x %>%
+    str_extract(pattern = "cycle[0-9]*") %>%
+    str_extract(pattern = '[0-9]*$') %>%
+    as.numeric()
+  
+  # Create a data.frame of the change, cycles, iterations, and the value
+  x.df <- data.frame(change = rep(change, n.obs),
+                     iter = iter.nos,
+                     cycle = cycle.nos,
+                     extra = names.components[,-c(1:3)],
+                     value = as.numeric(x) )
+  
+  # Convert to tibble and return
+  x.tbl <- tbl_df(x.df)
+  return(x.tbl)
+  
+} # Close the function
+
+
