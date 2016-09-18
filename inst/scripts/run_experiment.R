@@ -342,6 +342,12 @@ for (change in tp.change) {
         mu.relationship <- A[row.names(TP.genos.i), row.names(candidate.marker.genos.i)] %>%
           mean()
         
+        ## Find the average inbreeding coefficient among the selection candidates
+        candidate.inbreeding <- A.sc %>%
+          diag() %>%
+          - 1 %>%
+          mean()
+        
         
         ##### Step 4 - Prediction
         # Remove the markers with maf below the threshold (set at the start of the sim)
@@ -398,6 +404,17 @@ for (change in tp.change) {
         
         parent.values <- select.values(pheno.values.list = candidate.values.i, 
                                        line.names = parent.selections.i$lines.sel)
+        
+        # Calculate the mean relationship among the parents
+        parents.mu.relationship <- A[parent.lines.list$p1, parent.lines.list$p1] %>%
+          .[upper.tri(.)] %>% 
+          mean()
+        
+        # Calculat the mean inbreeding coefficient among the parents
+        parents.inbreeding <- A[parent.lines.list$p1, parent.lines.list$p1] %>%
+          diag() %>%
+          - 1 %>%
+          mean()
         
         
         ##### Step 7 - Update the TP
@@ -461,6 +478,16 @@ for (change in tp.change) {
           # Separate the phenotypes
           TP.addition.phenos <- TP.addition.values$mean.pheno.values
           
+          # Measure the average relationship among these lines
+          TP.addition.mu.relationship <- A[TP.addition.lines, TP.addition.lines] %>%
+            .[upper.tri(.)] %>% 
+            mean()
+          
+          # Measure inbreeding among the additions
+          TP.addition.inbreeding <- A[TP.addition.lines, TP.addition.lines] %>%
+            diag() %>% 
+            - 1 %>%
+            mean()
           
           # Combine the new data to the TP
           TP.phenos.i <- rbind(TP.phenos.i, TP.addition.phenos)
@@ -523,7 +550,13 @@ for (change in tp.change) {
                selection.values = parent.values,
                prediction.accuracy = pred.validation.i,
                parents <- parent.lines.list,
-               tp.update = TP.addition.list )
+               tp.update = TP.addition.list,
+               inbreeding = list(candidates = candidate.inbreeding,
+                                 TP.additions = TP.addition.inbreeding,
+                                 parents = parents.inbreeding),
+               relationship = list(TP.candidates = mu.relationship,
+                                   TP.additions = TP.addition.mu.relationship,
+                                   parents = parents.mu.relationship))
 
                                    
         
