@@ -13,7 +13,8 @@ Imports:
 Suggests:
     boot,
     parallel,
-    testthat
+    testthat,
+    MASS
 License: MIT
 Encoding: UTF-8
 LazyData: true

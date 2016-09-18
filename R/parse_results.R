@@ -46,100 +46,126 @@ parse.results <- function(files, filename) {
     n.cycles <- experiment.sub.results[[1]][[1]]$sim.results %>%
       length()
     
-    # Variance components
-    candidate.variance.components.list <- lapply(X = experiment.sub.results, FUN = function(set) 
+
+    # Genetic variance of the candidates
+    candidate.gen.var <- lapply(X = experiment.sub.results, FUN = function(set) 
       lapply(X = set, FUN = function(rep) 
         lapply(X = rep$sim.result, FUN = function(cycle) 
-          return(cycle$candidate.values$true.var.components$V_g) )))
+          return(cycle$candidate.values$true.var.components$V_g) ))) %>%
+      unlist() %>%
+      GSsim.TPUpdate:::nv_df(change = change)
     
     # Genotypic value of candidates
-    candidate.genotypic.value.list <- lapply(X = experiment.sub.results, FUN = function(set) {
+    candidate.gen.val <- lapply(X = experiment.sub.results, FUN = function(set) {
       lapply(X = set, FUN = function(rep) {
         lapply(X = rep$sim.result, FUN = function(cycle) {
-          return(cycle$candidate.values$mu.g) })})})
+          return(cycle$candidate.values$mu.g) })})}) %>%
+      unlist() %>%
+      GSsim.TPUpdate:::nv_df(change = change)
+    
     
     # Variance components of the selections
-    selection.variance.components.list <- lapply(X = experiment.sub.results, FUN = function(set) {
+    selection.gen.var <- lapply(X = experiment.sub.results, FUN = function(set) {
       lapply(X = set, FUN = function(rep) {
         lapply(X = rep$sim.result, FUN = function(cycle) {
-          return(cycle$selection.values$V_g) })})})
+          return(cycle$selection.values$V_g) })})}) %>%
+      unlist() %>%
+      GSsim.TPUpdate:::nv_df(change = change)
     
     # Genotypic value of the selections
-    selection.genotypic.value.list <- lapply(X = experiment.sub.results, FUN = function(set) {
+    selection.gen.val <- lapply(X = experiment.sub.results, FUN = function(set) {
       lapply(X = set, FUN = function(rep) {
         lapply(X = rep$sim.result, FUN = function(cycle) {
-          return(cycle$selection.values$mu.g) })})})
+          return(cycle$selection.values$mu.g) })})}) %>%
+      unlist() %>%
+      GSsim.TPUpdate:::nv_df(change = change)
     
     # Allele frequencies
-    candidate.allele.freq.list <- lapply(X = experiment.sub.results, FUN = function(set) {
+    candidate.allele.freq <- lapply(X = experiment.sub.results, FUN = function(set) {
       lapply(X = set, FUN = function(rep) {
         lapply(X = rep$sim.result, FUN = function(cycle) {
-          return(cycle$geno.summary.stats$candidate.maf) })})})
+          return(cycle$geno.summary.stats$candidate.maf) })})}) %>%
+      unlist() %>%
+      GSsim.TPUpdate:::nv_df(change = change)
     
-    TP.allele.freq.list <- lapply(X = experiment.sub.results, FUN = function(set) {
+    TP.allele.freq <- lapply(X = experiment.sub.results, FUN = function(set) {
       lapply(X = set, FUN = function(rep) {
         lapply(X = rep$sim.result, FUN = function(cycle) {
-          return(cycle$geno.summary.stats$TP.maf) })})})
+          return(cycle$geno.summary.stats$TP.maf) })})}) %>%
+      unlist() %>%
+      GSsim.TPUpdate:::nv_df(change = change)
     
     # Pairwise LD
-    qtl.marker.LD.list <- lapply(X = experiment.sub.results, FUN = function(set) 
+    qtl.marker.LD <- lapply(X = experiment.sub.results, FUN = function(set) 
       lapply(X = set, FUN = function(rep) 
         lapply(X = rep$sim.result, FUN = function(cycle)
-          list(mean.window = cycle$geno.summary.stats$qtl.marker.LD$mean.window,
-               mean.max.window = cycle$geno.summary.stats$qtl.marker.LD$mean.max.window,
-               mean.genome = cycle$geno.summary.stats$qtl.marker.LD$mean.genome,
-               mean.max.genome = cycle$geno.summary.stats$qtl.marker.LD$mean.max.genome, 
-               persistence = cycle$geno.summary.stats$qtl.marker.LD$persistance.of.phase ))))
+          list(mean_window = cycle$geno.summary.stats$qtl.marker.LD$mean.window,
+               mean_max_window = cycle$geno.summary.stats$qtl.marker.LD$mean.max.window,
+               mean_genome = cycle$geno.summary.stats$qtl.marker.LD$mean.genome,
+               mean_max_genome = cycle$geno.summary.stats$qtl.marker.LD$mean.max.genome, 
+               persistence = cycle$geno.summary.stats$qtl.marker.LD$persistance.of.phase )))) %>%
+      unlist() %>%
+      GSsim.TPUpdate:::nv_df(change = change) 
     
     
     # Relationship of TP to the candidates
-    relationship.list <- lapply(X = experiment.sub.results, FUN = function(set) {
+    relationship <- lapply(X = experiment.sub.results, FUN = function(set) {
       lapply(X = set, FUN = function(rep) {
         lapply(X = rep$sim.result, FUN = function(cycle) {
-          return(cycle$geno.summary.stats$mu.TP.candidate.rel) })})})
+          return(cycle$geno.summary.stats$mu.TP.candidate.rel) })})}) %>%
+      unlist() %>%
+      GSsim.TPUpdate:::nv_df(change = change) 
     
     # Marker effects
-    marker.effects.list <- lapply(X = experiment.sub.results, FUN = function(set) 
+    marker.effects <- lapply(X = experiment.sub.results, FUN = function(set) 
       lapply(X = set, FUN = function(rep) 
         lapply(X = rep$sim.result, FUN = function(cycle) 
-          return(cycle$MM.solve$u) )))
+          return(cycle$MM.solve$u) ))) %>%
+      unlist() %>%
+      GSsim.TPUpdate:::nv_df(change = change) 
     
     # Prediction accuracy results
-    validation.results.list <- lapply(X = experiment.sub.results, FUN = function(set) {
+    validation.results <- lapply(X = experiment.sub.results, FUN = function(set) {
       lapply(X = set, FUN = function(rep) {
         lapply(X = rep$sim.result, FUN = function(cycle) {
-          return(cycle$prediction.accuracy) })})})
+          return(cycle$prediction.accuracy$pred.r) })})}) %>%
+      unlist() %>%
+      GSsim.TPUpdate:::nv_df(change = change) 
     
     # Training population updating - expected heterozygosity
-    tp.update.exp.het.list <- lapply(X = experiment.sub.results, FUN = function(set) {
+    tp.update.exp.het <- lapply(X = experiment.sub.results, FUN = function(set) {
       lapply(X = set, FUN = function(rep) {
         lapply(X = rep$sim.result, FUN = function(cycle) {
-          return(cycle$tp.update$Exp.het) })})})
+          return(cycle$tp.update$Exp.het) })})}) %>%
+      unlist() %>%
+      GSsim.TPUpdate:::nv_df(change = change)
     
     # The genome
-    genome.list <- lapply(X = experiment.sub.results, FUN = function(set) {
+    genome <- lapply(X = experiment.sub.results, FUN = function(set) {
       lapply(X = set, FUN = function(rep) {
         return(rep$genome) })})
     
-    # Create a shorter output list
-    abbreviate.output.list <- list(
-      candidate.variance.components.list = candidate.variance.components.list,
-      candidate.genotypic.value.list = candidate.genotypic.value.list,
-      selection.variance.components.list = selection.variance.components.list,
-      selection.genotypic.value.list = selection.genotypic.value.list,
-      candidate.allele.freq.list = candidate.allele.freq.list,
-      TP.allele.freq.list = TP.allele.freq.list,
-      qtl.marker.LD.list = qtl.marker.LD.list,
-      relationship.list = relationship.list,
-      marker.effects.list = marker.effects.list,
-      validation.results.list = validation.results.list,
-      tp.update.exp.het.list = tp.update.exp.het.list,
-      genome.list = genome.list,
-      metadata = metadata
+    # Gather the data.frames / tibbles
+    save.list <- list(
+      candidate.gen.var = candidate.gen.var,
+      candidate.gen.val = candidate.gen.val,
+      selection.gen.var = selection.gen.var,
+      selection.gen.val = selection.gen.val,
+      candidate.allele.freq = candidate.allele.freq,
+      TP.allele.freq = TP.allele.freq,
+      qtl.marker.LD = qtl.marker.LD,
+      relationship = relationship,
+      marker.effects = marker.effects,
+      validation.results = validation.results,
+      validation.results = validation.results,
+      tp.update.exp.het = tp.update.exp.het,
+      genome = genome
     )
     
     # Build a list
-    collective.abbreviated.results[[change]] <- abbreviate.output.list
+    collective.abbreviated.results[[change]] <- save.list
+    
+    cat("File: ", f, " parsed.\n\n")
     
     
   } # Close the for loop
