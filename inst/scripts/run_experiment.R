@@ -24,9 +24,6 @@ if (all(is.na(args))) {
   MSI = T
 }
 
-# Set the number of cores by detection
-n.cores <- detectCores()
-
 # Other information and pre-processing
 if (MSI) {
   # Directory to save the files
@@ -51,6 +48,9 @@ if (MSI) {
   library(stringr)
   
 }
+
+# Set the number of cores by detection
+n.cores <- detectCores()
 
 # Other simulation parameters
 # Entry-mean heritability in the base population
