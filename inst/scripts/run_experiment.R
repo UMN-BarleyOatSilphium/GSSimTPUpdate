@@ -531,6 +531,10 @@ for (change in tp.change) {
           TP.addition.list <- list(TP.addition.lines = NA,
                                    Exp.het = NA)
           
+          TP.addition.inbreeding <- NA
+          TP.addition.mu.relationship <- NA
+          
+          
         } # Close the tp.change if statement
                               
         
