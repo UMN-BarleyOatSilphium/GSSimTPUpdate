@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#PBS -l walltime=12:00:00,mem=62gb,nodes=1:ppn=24
+#PBS -l walltime=48:00:00,mem=62gb,nodes=1:ppn=24
 #PBS -N GS_simulations_cumulative_MN
 #PBS -M neyha001@umn.edu
 #PBS -m abe
