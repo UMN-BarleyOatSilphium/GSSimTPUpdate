@@ -24,6 +24,9 @@ if (all(is.na(args))) {
   MSI = T
 }
 
+# Set the number of cores by detection
+n.cores <- detectCores()
+
 # Other information and pre-processing
 if (MSI) {
   # Directory to save the files
@@ -32,16 +35,15 @@ if (MSI) {
   # Set the directory of the R packages
   package.dir <- "/panfs/roc/groups/6/smithkp/neyhartj/R/x86_64-pc-linux-gnu-library/3.3/"
   
-  n.cores = 24
   # Load the packages
   library(GSsim.TPUpdate, quietly = T, lib.loc = package.dir)
   library(parallel, quietly = T, package.dir)
   library(stringr, quietly = T, package.dir)
   
+  # If we are not running MSI
 } else {
   
   save.dir <- "C:/Users/Jeff/Google Drive/Barley Lab/Projects/Side Projects/Simulations/GSsim.TPUpdate/inst/output/"
-  n.cores = 1
   
   # Load the packages
   library(GSsim.TPUpdate)
@@ -50,15 +52,16 @@ if (MSI) {
   
 }
 
-
-
 # Other simulation parameters
 # Entry-mean heritability in the base population
 h2 = 0.5
+
 # How many cycles?
 n.cycles = 15
+
 # Number of QTL underlying trait
 n.QTL = 100
+
 # Number of phenotyping environments and reps
 n.env = 3
 n.rep = 1
@@ -66,11 +69,12 @@ n.rep = 1
 # Minor allele frequency cut-off for markers
 min.maf = 0.03
 
-# Barley population genetics data
+# Barley population genetics data (citation!)
 mutation.rate.snp = 7e-8
 mutation.rate.qtl = 7e-8
 
 tp.change = c("best", "worst", "random", "nochange", "PEVmean", "CDmean")
+
 # The number of lines to add the TP after each cycle
 tp.update.increment = 150
 # Size of the TP to maintain - this is the same as the starting TP
@@ -576,7 +580,8 @@ for (change in tp.change) {
     
     # Return the rep list
     return(rep.results)
-
+    
+  # End parlapply
   }, mc.cores = n.cores)
   
   # Save the tp.change data
