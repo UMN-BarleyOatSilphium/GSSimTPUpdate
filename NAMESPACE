@@ -2,13 +2,11 @@
 
 export(CDmean)
 export(PEVmean)
-export(genetic.architecture)
 export(genotype.loci)
 export(genotypic.value)
 export(make.crossing.block)
 export(make.family)
 export(make.genome)
-export(make.pedigree)
 export(make.population)
 export(make.predictions)
 export(measure.LD)
