@@ -115,13 +115,11 @@ metadata <- list(h2 = h2,
 
 #### Define genome characteristics ####
 # Find the snps per chromsome
-n.chr.snps <- tapply(X = CAP.markers$rs, INDEX = CAP.markers$chrom, length)
+n.chr.snps <- sapply(CAP.marker.map, length)
 
 # Find the chromsome lengths
-chr.len <- as.numeric(tapply(X = CAP.markers$pos, INDEX = CAP.markers$chrom, FUN = max))
+chr.len <- sapply(CAP.marker.map, max)
 
-# Create a list of loci positions
-genetic.map.list <- tapply(X = CAP.markers$pos, INDEX = CAP.markers$chrom, FUN = function(chr) list(chr))
 
 # Make the initial genome
 hv.genome <- make.genome( n.chr = length(chr.len), 
@@ -133,27 +131,25 @@ hv.genome <- make.genome( n.chr = length(chr.len),
 # Iterate over the different tp.change types
 for (change in tp.change) {
   
-    # Split iterations into cores
+  # Split iterations into cores
   if (n.cores > 1) {
     iters.per.core <- split(x = 1:n.iterations, factor(cut(x = 1:n.iterations, breaks = n.cores)))
     names(iters.per.core) <- paste("set", seq_along(iters.per.core), sep = "")
   } else {
     iters.per.core <- 1:n.iterations
   }    
-
+  
   # Apply the iterations over cores
-  # experiment.sub.results <- mclapply(X = iters.per.core,  FUN = function(iter.set) {
+  experiment.sub.results <- mclapply(X = iters.per.core, FUN = function(iter.set) {
     
-  for (iter in n.iterations) {
-
-    # # Create an empty list to store repetition results
-    # rep.results <- list()
-    # 
-    # # Loop over each iteration
-    # for (r in seq_along(iter.set)) {
+    # Create an empty list to store repetition results
+    rep.results <- list()
+    
+    # Loop over each iteration
+    for (r in seq_along(iter.set)) {
       
-      # All code below this line is variable in each iteration of the simulation
-
+      # All code below this line is variable in each iteration of the simulat
+      
       #### Define trait parameters ####
       hv.genome <- trait.architecture(genome = hv.genome,
                                       n.QTL = n.QTL, 
@@ -163,7 +159,7 @@ for (change in tp.change) {
                                       qtl.add.eff = "geometric", 
                                       qtl.dom.eff = NULL)
       
-
+      
       TP.haploids.i <- CAP.haploids
       # Convert the gametes to genotypes
       TP.genos <- genotype.loci(haploid.genos = TP.haploids.i, genome = hv.genome)
@@ -232,9 +228,9 @@ for (change in tp.change) {
       
       # Loop over the number of cycles
       for (breeding.cycle in seq(n.cycles)) {
-
+        
         ##### Start the Cycle Executions #####
-
+        
         ##### Step 1 - Crossing and inbreeding
         # Make a crossing block
         crossing.block.i <- make.crossing.block(parent1.lines = parent.lines.list$p1, 
@@ -325,7 +321,7 @@ for (change in tp.change) {
         
         # Correlate
         TP.candidate.persistance.of.phase <- cor(TP.LD.vector, candidate.LD.vector)
-          
+        
         # Create a list to save
         qtl.marker.LD.i <- list(mean.max.window = candidate.mean.max.LD.window,
                                 mean.window = candidate.mean.LD.window,
@@ -363,7 +359,7 @@ for (change in tp.change) {
                                 markers.below.maf ) %>%
           unique() %>%
           sort()
-
+        
         
         # Filter the TP and candidate marker matrices for those markers
         TP.genos.use <- TP.genos.i[,-markers.to.remove]
@@ -391,8 +387,8 @@ for (change in tp.change) {
         # Find the correlation between the GEBVs and the true genotypic value
         pred.validation.i <- validate.predictions(predicted.values = predictions.out$GEBV,
                                                   observed.values = candidate.values.i$geno.values)
-
-
+        
+        
         
         ##### Step 6 - Select the parents of the next generation
         
@@ -406,7 +402,7 @@ for (change in tp.change) {
         
         # The parents are selected and crossed at the F3 stage, so subset the haploid genotpyes from the F1:3
         parent.haploids <- select.haploids(haploid.genos = candidate.haploid.i,
-                                          line.names = parent.selections.i$lines.sel)
+                                           line.names = parent.selections.i$lines.sel)
         
         parent.values <- select.values(pheno.values.list = candidate.values.i, 
                                        line.names = parent.selections.i$lines.sel)
@@ -436,7 +432,7 @@ for (change in tp.change) {
                                                          sel.intensity = tp.update.increment,
                                                          selection = change)$lines.sel )
           }
-
+          
           if (change %in% c("PEVmean", "CDmean")) {
             
             # Analyze using PEVmean or CDmean
@@ -446,7 +442,7 @@ for (change in tp.change) {
                                          row.names(A.sc) )
             unphenotyped.index <- which( parent.selections.i$lines.sel %in%
                                            row.names(A.sc) )
-
+            
             # V_e is estimated from maximum likelihood
             V_e.i <- predictions.out$solve.out$Ve
             # V_a is estimated as the variance among marker effects * the number of markers
@@ -525,11 +521,11 @@ for (change in tp.change) {
               tp.keep.index <- tail(1:nrow(TP.genos.i), tp.size)
               
             }
-              # Set the TP.pheno and TP.genos
-              TP.phenos.i <- as.matrix(TP.phenos.i[tp.keep.index,])
-              TP.genos.i <- as.matrix(TP.genos.i[tp.keep.index,])
-              TP.haploids.i <- select.haploids(haploid.genos = TP.haploids.i,
-                                               line.names = row.names(TP.genos.i))
+            # Set the TP.pheno and TP.genos
+            TP.phenos.i <- as.matrix(TP.phenos.i[tp.keep.index,])
+            TP.genos.i <- as.matrix(TP.genos.i[tp.keep.index,])
+            TP.haploids.i <- select.haploids(haploid.genos = TP.haploids.i,
+                                             line.names = row.names(TP.genos.i))
           }
           
         } else {
@@ -542,7 +538,7 @@ for (change in tp.change) {
           
           
         } # Close the tp.change if statement
-                              
+        
         
         print( paste("Cycle", breeding.cycle, "complete.") )
         
@@ -567,8 +563,8 @@ for (change in tp.change) {
                relationship = list(TP.candidates = mu.relationship,
                                    TP.additions = TP.addition.mu.relationship,
                                    parents = parents.mu.relationship))
-
-                                   
+        
+        
         
       } # Close the per-cycle loop
       
@@ -576,20 +572,20 @@ for (change in tp.change) {
       rep.name <- paste("rep", r, sep = "")
       
       # Add the simulation results to the set results
-      # rep.results[[rep.name]] <- list(sim.results = simulation.results, genome = hv.genome)
+      rep.results[[rep.name]] <- list(sim.results = simulation.results, genome = hv.genome)
       
     } # Close the iteration loop
     
     # Return the rep list
     return(rep.results)
     
-  # End parlapply
-  # }, mc.cores = n.cores)
+    # End parlapply
+  }, mc.cores = n.cores)
   
   # Save the tp.change data
   filename <- file.path(save.dir, paste("simulation_results_", pop.makeup, "_", change, "_", 
                                         tp.formation, "_", date, ".RData", sep = "") )
-                        
+  
   save(list = c("experiment.sub.results", "change", "metadata"), file = filename)
   
   
@@ -605,6 +601,6 @@ filename <- file.path(save.dir, paste("simulation_results_", pop.makeup, "_",
 files <- list.files(save.dir, full.names = T) %>% 
   str_subset(pattern = paste("simulation_results_", pop.makeup, "_[A-Za-z]*_", 
                              tp.formation, "_[0-9]*-[0-9]*.RData", sep = ""))
-  
+
 # Parse
 parse.results(files = files, filename = filename)

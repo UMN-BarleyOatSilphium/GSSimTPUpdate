@@ -4,12 +4,10 @@
 \alias{find.pos}
 \title{Finds the whole genome positions of QTL and markers}
 \usage{
-find.pos(genome, genos)
+find.pos(genome)
 }
 \arguments{
 \item{genome}{The list of hypred genomes.}
-
-\item{genos}{The n x m matrix of genotypes for n entries across m loci.}
 }
 \description{
 Finds the whole genome positions of QTL and markers

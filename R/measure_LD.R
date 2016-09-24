@@ -85,7 +85,7 @@ measure.LD <- function(genome,
   } else {
     
     # Pull out all QTL positions and index
-    pos <- GSsim.TPUpdate:::find.pos(genome = genome, genos = genos)
+    pos <- GSsim.TPUpdate:::find.pos(genome = genome)
     # QTL positions
     pos.qtl <- pos$pos.qtl
     pos.snp <- pos$pos.snp
