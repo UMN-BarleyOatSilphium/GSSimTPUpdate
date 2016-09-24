@@ -5,51 +5,87 @@ library(qtl)
 library(simcross)
 library(GSsim.TPUpdate)
 library(dplyr)
+library(mpMap2)
 
 data("CAP.markers")
 data("CAP.haploids")
 data("CAP.genotypes")
+data("CAP.genos")
+data("CAP.marker.map")
+
+
+
 
 
 CAP.lines <- colnames(CAP.genotypes)[-c(1:4)]
 
 # Crossing block
-crossing.block <- make.crossing.block(parent1.lines = CAP.lines[1:40], 
-                                      parent2.lines = CAP.lines[1:40], n.crosses = 20,
+crossing.block <- make.crossing.block(parent1.lines = CAP.lines[1:100], 
+                                      parent2.lines = CAP.lines[1:100], n.crosses = 50,
                                       method = "random", use.parents.once = T)
-
-# Create a RIL pedigree matrix
-ped <- sim_ril_pedigree(ngen = 3, selfing = T, parents = c(1,2))
-
-ped1 <- data.frame(id = c(1,2), mom = c(0,0), dad = c(0,0), sex = c(0,1), gen = c(0,0))
 
 # Population size per cross
 n.ind = 20
 # Number of crosses
-n.crosses = 30
+n.crosses = 10
 
-ids = paste(1, seq(n.ind), sep = "") %>% as.integer()
-
-f1.ped <- data.frame(id = ids, mom = rep(1,n.ind), dad = rep(2, n.ind), sex = 0, gen = 1)
-
-ids = paste(2, seq(n.ind), sep = "") %>% as.integer()
-
-f2.ped <- data.frame(id = ids, mom = f1.ped$id, dad = f1.ped$id, sex = 0, gen = 2)
-
-ped.all <- rbind(ped1, f1.ped, f2.ped)
-
-# Genetic map
-CAP.map.split <- split(x = CAP.markers, f = CAP.markers$chrom)
-CAP.map <- lapply(X = CAP.map.split, FUN = function(chr) {
-  chr.map <- chr$pos * 100
-  names(chr.map) <- chr$rs
-  return(chr.map) })
 
 # Sample founder genotypes
 founder1 <- CAP.haploids[c(1,2),] %>%
   apply(MARGIN = 2, FUN = sum) + 1
 founder2 <- CAP.haploids[c(1471, 1472),] %>%
   apply(MARGIN = 2, FUN = sum) + 1
+
+map <- CAP.marker.map
+
+n.self.gen <- 2
+
+m = 0
+
+p = 0
+
+parent.genos <- CAP.genos
+
+ped1 <- ped2 <- make.pedigree(n.self.gen = n.self.gen, n.ind = n.ind)
+
+ped1 <- ped1 %>% 
+  mutate(id = str_c(1,id) %>% as.numeric()) %>%
+  mutate(mom = str_c(1,mom) %>% as.numeric()) %>%
+  mutate(dad = str_c(1,dad) %>% as.numeric())
+ped1[1:2,2:3] <- 0
+
+ped2 <- ped2 %>% 
+  mutate(id = str_c(2,id) %>% as.numeric()) %>%
+  mutate(mom = str_c(2,mom) %>% as.numeric()) %>%
+  mutate(dad = str_c(2,dad) %>% as.numeric())
+ped2[1:2,2:3] <- 0
+
+ped <- rbind(ped1, ped2) %>%
+  arrange(id)
+
+xo.data <- sim_from_pedigree_allchr(pedigree = ped, map = map, m = 0)
+
+# Extract info for 1st ped
+xo.data1 <- lapply(xo.data, FUN = function(chr) {
+  to.keep <- startsWith(names(chr), "1")
+  chr[to.keep] })
+
+# Generate genos
+genos <- convert2geno_allchr(xodat = xo.data1, map = map, return.matrix = T)
+
+# Create a population
+population <- make.population(map = CAP.map, crossing.block = crossing.block,
+                              parent.genos = CAP.genos, n.ind = 20, n.gen = 2, 
+                              cycle.number = 1)
+
+# Make a family of inbred lines
+progeny <- make.family2(map = CAP.map, parent1.genome = founder1, 
+                        parent2.genome = founder2, n.gen = 2, n.ind = 30, m = 0,
+                        cycle.number = 1, family.number = 1)
+
+
+
+
 
 founders <- rbind(founder1, founder2) %>% t()
 

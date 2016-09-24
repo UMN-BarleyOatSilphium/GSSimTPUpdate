@@ -48,13 +48,13 @@ parse.results <- function(files, filename) {
     
 
     # Genetic variance of the candidates
-    candidate.gen.var <- lapply(X = experiment.sub.results, FUN = function(set) 
-      lapply(X = set, FUN = function(rep) 
-        lapply(X = rep$sim.result, FUN = function(cycle) 
+    candidate.gen.var <- lapply(X = experiment.sub.results, FUN = function(set)
+      lapply(X = set, FUN = function(rep)
+        lapply(X = rep$sim.result, FUN = function(cycle)
           return(cycle$candidate.values$true.var.components$V_g) ))) %>%
       unlist() %>%
       GSsim.TPUpdate:::nv_df(change = change)
-    
+
     # Genotypic value of candidates
     candidate.gen.val <- lapply(X = experiment.sub.results, FUN = function(set) {
       lapply(X = set, FUN = function(rep) {
@@ -62,8 +62,8 @@ parse.results <- function(files, filename) {
           return(cycle$candidate.values$mu.g) })})}) %>%
       unlist() %>%
       GSsim.TPUpdate:::nv_df(change = change)
-    
-    
+
+
     # Variance components of the selections
     selection.gen.var <- lapply(X = experiment.sub.results, FUN = function(set) {
       lapply(X = set, FUN = function(rep) {
@@ -71,7 +71,7 @@ parse.results <- function(files, filename) {
           return(cycle$selection.values$V_g) })})}) %>%
       unlist() %>%
       GSsim.TPUpdate:::nv_df(change = change)
-    
+
     # Genotypic value of the selections
     selection.gen.val <- lapply(X = experiment.sub.results, FUN = function(set) {
       lapply(X = set, FUN = function(rep) {
@@ -79,7 +79,7 @@ parse.results <- function(files, filename) {
           return(cycle$selection.values$mu.g) })})}) %>%
       unlist() %>%
       GSsim.TPUpdate:::nv_df(change = change)
-    
+
     # Allele frequencies
     candidate.allele.freq <- lapply(X = experiment.sub.results, FUN = function(set) {
       lapply(X = set, FUN = function(rep) {
@@ -87,56 +87,80 @@ parse.results <- function(files, filename) {
           return(cycle$geno.summary.stats$candidate.maf) })})}) %>%
       unlist() %>%
       GSsim.TPUpdate:::nv_df(change = change)
-    
+
     TP.allele.freq <- lapply(X = experiment.sub.results, FUN = function(set) {
       lapply(X = set, FUN = function(rep) {
         lapply(X = rep$sim.result, FUN = function(cycle) {
           return(cycle$geno.summary.stats$TP.maf) })})}) %>%
       unlist() %>%
       GSsim.TPUpdate:::nv_df(change = change)
-    
+
     # Pairwise LD
-    qtl.marker.LD <- lapply(X = experiment.sub.results, FUN = function(set) 
-      lapply(X = set, FUN = function(rep) 
+    qtl.marker.LD <- lapply(X = experiment.sub.results, FUN = function(set)
+      lapply(X = set, FUN = function(rep)
         lapply(X = rep$sim.result, FUN = function(cycle)
           list(mean_window = cycle$geno.summary.stats$qtl.marker.LD$mean.window,
                mean_max_window = cycle$geno.summary.stats$qtl.marker.LD$mean.max.window,
                mean_genome = cycle$geno.summary.stats$qtl.marker.LD$mean.genome,
-               mean_max_genome = cycle$geno.summary.stats$qtl.marker.LD$mean.max.genome, 
+               mean_max_genome = cycle$geno.summary.stats$qtl.marker.LD$mean.max.genome,
                persistence = cycle$geno.summary.stats$qtl.marker.LD$persistance.of.phase )))) %>%
       unlist() %>%
-      GSsim.TPUpdate:::nv_df(change = change) 
-    
-    
+      GSsim.TPUpdate:::nv_df(change = change)
+
+
     # Relationship of TP to the candidates
     relationship <- lapply(X = experiment.sub.results, FUN = function(set) {
       lapply(X = set, FUN = function(rep) {
         lapply(X = rep$sim.result, FUN = function(cycle) {
           return(cycle$geno.summary.stats$mu.TP.candidate.rel) })})}) %>%
       unlist() %>%
-      GSsim.TPUpdate:::nv_df(change = change) 
-    
+      GSsim.TPUpdate:::nv_df(change = change)
+
     # Marker effects
-    marker.effects <- lapply(X = experiment.sub.results, FUN = function(set) 
-      lapply(X = set, FUN = function(rep) 
-        lapply(X = rep$sim.result, FUN = function(cycle) 
+    marker.effects <- lapply(X = experiment.sub.results, FUN = function(set)
+      lapply(X = set, FUN = function(rep)
+        lapply(X = rep$sim.result, FUN = function(cycle)
           return(cycle$MM.solve$u) ))) %>%
       unlist() %>%
-      GSsim.TPUpdate:::nv_df(change = change) 
-    
+      GSsim.TPUpdate:::nv_df(change = change)
+
     # Prediction accuracy results
     validation.results <- lapply(X = experiment.sub.results, FUN = function(set) {
       lapply(X = set, FUN = function(rep) {
         lapply(X = rep$sim.result, FUN = function(cycle) {
           return(cycle$prediction.accuracy$pred.r) })})}) %>%
       unlist() %>%
-      GSsim.TPUpdate:::nv_df(change = change) 
-    
+      GSsim.TPUpdate:::nv_df(change = change)
+
     # Training population updating - expected heterozygosity
     tp.update.exp.het <- lapply(X = experiment.sub.results, FUN = function(set) {
       lapply(X = set, FUN = function(rep) {
         lapply(X = rep$sim.result, FUN = function(cycle) {
           return(cycle$tp.update$Exp.het) })})}) %>%
+      unlist() %>%
+      GSsim.TPUpdate:::nv_df(change = change)
+    
+    # QTL allele frequency - proportion of fixed QTL
+    candidate.prop.fixed <- lapply(X = experiment.sub.results, FUN = function(set) {
+      lapply(X = set, FUN = function(rep) {
+        # Pull out the position of qtl
+        pos.qtl <- GSsim.TPUpdate:::find.pos(genome = rep$genome)$pos.qtl
+        
+        lapply(X = rep$sim.result, FUN = function(cycle) {
+          freq.qtl <- cycle$geno.summary.stats$candidate.maf[pos.qtl]
+          (freq.qtl == 0 | freq.qtl == 1) %>% sum() / length(freq.qtl) }) })}) %>%
+      unlist() %>%
+      GSsim.TPUpdate:::nv_df(change = change)
+    
+    # Same thing for the training population
+    TP.prop.fixed <- lapply(X = experiment.sub.results, FUN = function(set)
+      lapply(X = set, FUN = function(rep) {
+        # Pull out the position of qtl
+        pos.qtl <- GSsim.TPUpdate:::find.pos(genome = rep$genome)$pos.qtl
+        
+        lapply(X = rep$sim.result, FUN = function(cycle) {
+          freq.qtl <- cycle$geno.summary.stats$TP.maf[pos.qtl]
+          (freq.qtl == 0 | freq.qtl == 1) %>% sum() / length(freq.qtl) }) })) %>%
       unlist() %>%
       GSsim.TPUpdate:::nv_df(change = change)
     
@@ -159,7 +183,8 @@ parse.results <- function(files, filename) {
       validation.results = validation.results,
       validation.results = validation.results,
       tp.update.exp.het = tp.update.exp.het,
-      genome = genome
+      candidate.prop.fixed = candidate.prop.fixed,
+      TP.prop.fixed = TP.prop.fixed
     )
     
     # Build a list

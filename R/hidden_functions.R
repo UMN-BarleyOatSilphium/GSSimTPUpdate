@@ -79,15 +79,15 @@ make.contrast <- function(unphenotyped.index, n.total) {
 #' Finds the whole genome positions of QTL and markers
 #' 
 #' @param genome The list of hypred genomes.
-#' @param genos The n x m matrix of genotypes for n entries across m loci.
 #' 
 #' @import dplyr
 #' 
-find.pos <- function(genome, genos) {
+find.pos <- function(genome) {
   
   # Return all the loci (this is easy - just the index of the number of columns)
-  pos.loci <- genos %>%
-    ncol() %>%
+  pos.loci <- sapply(genome, function(chr) 
+    length(chr@pos.snp)) %>% 
+    sum() %>%
     seq()
   
   # Number of chromosomes

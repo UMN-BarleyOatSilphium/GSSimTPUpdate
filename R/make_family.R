@@ -21,6 +21,7 @@
 #' 
 #' @export
 #' 
+#' 
 make.family <- function(genome, parent1.genome, parent2.genome, N, generations, 
                         pop.type = "random", cycle.number, family.number, mutate = TRUE,
                         mutation.rate.snp, mutation.rate.qtl) {
