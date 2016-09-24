@@ -107,15 +107,6 @@ parse.results <- function(files, filename) {
       unlist() %>%
       GSsim.TPUpdate:::nv_df(change = change)
 
-
-    # Relationship of TP to the candidates
-    relationship <- lapply(X = experiment.sub.results, FUN = function(set) {
-      lapply(X = set, FUN = function(rep) {
-        lapply(X = rep$sim.result, FUN = function(cycle) {
-          return(cycle$geno.summary.stats$mu.TP.candidate.rel) })})}) %>%
-      unlist() %>%
-      GSsim.TPUpdate:::nv_df(change = change)
-
     # Marker effects
     marker.effects <- lapply(X = experiment.sub.results, FUN = function(set)
       lapply(X = set, FUN = function(rep)
@@ -164,6 +155,53 @@ parse.results <- function(files, filename) {
       unlist() %>%
       GSsim.TPUpdate:::nv_df(change = change)
     
+    ## Inbreeding
+    sc.inbreeding <- lapply(X = experiment.sub.results, FUN = function(set) {
+      lapply(X = set, FUN = function(rep) {
+        lapply(X = rep$sim.result, FUN = function(cycle) {
+          return(cycle$inbreeding$candidates) })})}) %>%
+      unlist() %>%
+      GSsim.TPUpdate:::nv_df(change = change)
+    
+    tp.additions.inbreeding <- lapply(X = experiment.sub.results, FUN = function(set) {
+      lapply(X = set, FUN = function(rep) {
+        lapply(X = rep$sim.result, FUN = function(cycle) {
+          return(cycle$inbreeding$TP.additions) })})}) %>%
+      unlist() %>%
+      GSsim.TPUpdate:::nv_df(change = change)
+    
+    parent.inbreeding <- lapply(X = experiment.sub.results, FUN = function(set) {
+      lapply(X = set, FUN = function(rep) {
+        lapply(X = rep$sim.result, FUN = function(cycle) {
+          return(cycle$inbreeding$parents) })})}) %>%
+      unlist() %>%
+      GSsim.TPUpdate:::nv_df(change = change)
+    
+    ## Relationships
+    tp.sc.relationship <- lapply(X = experiment.sub.results, FUN = function(set) {
+      lapply(X = set, FUN = function(rep) {
+        lapply(X = rep$sim.result, FUN = function(cycle) {
+          return(cycle$relationship$TP.candidates) })})}) %>%
+      unlist() %>%
+      GSsim.TPUpdate:::nv_df(change = change)
+    
+    parent.relationship <- lapply(X = experiment.sub.results, FUN = function(set) {
+      lapply(X = set, FUN = function(rep) {
+        lapply(X = rep$sim.result, FUN = function(cycle) {
+          return(cycle$relationship$parents) })})}) %>%
+      unlist() %>%
+      GSsim.TPUpdate:::nv_df(change = change)
+    
+    tp.additions.relationship <- lapply(X = experiment.sub.results, FUN = function(set) {
+      lapply(X = set, FUN = function(rep) {
+        lapply(X = rep$sim.result, FUN = function(cycle) {
+          return(cycle$relationship$TP.additions) })})}) %>%
+      unlist() %>%
+      GSsim.TPUpdate:::nv_df(change = change)
+    
+    
+    
+    
     # The genome
     genome <- lapply(X = experiment.sub.results, FUN = function(set) {
       lapply(X = set, FUN = function(rep) {
@@ -178,13 +216,18 @@ parse.results <- function(files, filename) {
       candidate.allele.freq = candidate.allele.freq,
       TP.allele.freq = TP.allele.freq,
       qtl.marker.LD = qtl.marker.LD,
-      relationship = relationship,
       marker.effects = marker.effects,
       validation.results = validation.results,
       validation.results = validation.results,
       tp.update.exp.het = tp.update.exp.het,
       candidate.prop.fixed = candidate.prop.fixed,
-      TP.prop.fixed = TP.prop.fixed
+      TP.prop.fixed = TP.prop.fixed,
+      sc.inbreeding = sc.inbreeding,
+      tp.additions.inbreeding = tp.additions.inbreeding,
+      parent.inbreeding = parent.inbreeding,
+      tp.sc.relationship = tp.sc.relationship,
+      tp.additions.relationship = tp.additions.relationship,
+      parent.relationship = parent.relationship
     )
     
     # Build a list

@@ -573,7 +573,7 @@ for (change in tp.change) {
       } # Close the per-cycle loop
       
       # Rep number
-      rep.name <- paste("rep", r, sep = "")
+      # rep.name <- paste("rep", r, sep = "")
       
       # Add the simulation results to the set results
       # rep.results[[rep.name]] <- list(sim.results = simulation.results, genome = hv.genome)

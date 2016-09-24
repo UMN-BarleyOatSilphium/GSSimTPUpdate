@@ -37,11 +37,6 @@ n.cycles <- collective.abbreviated.results[[1]][[1]] %>%
   unique() %>% 
   nrow()
 
-n.iter = collective.abbreviated.results[[1]][[1]] %>% 
-  select(iter) %>% 
-  unique() %>% 
-  nrow()
-
 # The different updating methods
 collective.abbreviated.results %>%
   names()
@@ -115,10 +110,6 @@ ggsave(filename = file.path(figures.dir, paste("figure_", pop.makeup, "_", tp.fo
 
 
 ### Change in mean genotypic value of the selection candidates
-
-# Calculate the maximum genotypic value possible
-max.geno.value <- ((100 - 1) / (100 + 1)) ^ seq(100) %>% sum()
-
 
 df <- lapply(X = collective.abbreviated.results, FUN = function(tpc) tpc$candidate.gen.val) %>%
   bind_rows()
