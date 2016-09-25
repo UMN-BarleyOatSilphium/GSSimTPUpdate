@@ -133,13 +133,13 @@ hv.genome <- make.genome( n.chr = length(chr.len),
 # Iterate over the different tp.change types
 for (change in tp.change) {
   
-    # Split iterations into cores
-  if (n.cores > 1) {
-    iters.per.core <- split(x = 1:n.iterations, factor(cut(x = 1:n.iterations, breaks = n.cores)))
-    names(iters.per.core) <- paste("set", seq_along(iters.per.core), sep = "")
-  } else {
-    iters.per.core <- 1:n.iterations
-  }    
+  #   # Split iterations into cores
+  # if (n.cores > 1) {
+  #   iters.per.core <- split(x = 1:n.iterations, factor(cut(x = 1:n.iterations, breaks = n.cores)))
+  #   names(iters.per.core) <- paste("set", seq_along(iters.per.core), sep = "")
+  # } else {
+  #   iters.per.core <- 1:n.iterations
+  # }    
 
   # Apply the iterations over cores
   # experiment.sub.results <- mclapply(X = iters.per.core,  FUN = function(iter.set) {
