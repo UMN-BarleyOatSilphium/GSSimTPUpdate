@@ -51,7 +51,12 @@ tp.change.factors <- c(best = "Best", CDmean = "CDmean", nochange = "No Change",
 # df - a data.frame of the update method, cycle number, and parameter value.
 sim.summarize <- function(df) {
   
-  df1 <- df.test %>%
+  # Remove duplicated change-iter-cycle pairs
+  df1 <- df %>% 
+    group_by(change, iter, cycle) %>% 
+    filter(row_number() == 1)
+  
+  df2 <- df1 %>%
     group_by(change, cycle) %>%
     summarize(mean = mean(value, na.rm = T), 
               sd = sd(value, na.rm = T),
@@ -60,9 +65,9 @@ sim.summarize <- function(df) {
            ci = qt(p = 1 - (0.05 / 2), df = n - 1) * se)
   
   # Add in an offset to the cycles
-  df1$cycle.offset <- df1$cycle + (as.numeric(as.factor(df1$change)) - 1) * 0.1
+  df2$cycle.offset <- df2$cycle + (as.numeric(as.factor(df2$change)) - 1) * 0.1
   
-  return(df1)
+  return(df2)
 }
 
 
@@ -127,10 +132,11 @@ ggsave(filename = file.path(figures.dir, paste("figure_", pop.makeup, "_", tp.fo
 ## Alternatively, the true response to selection
 
 df1 <- df %>% 
-  group_by(change, iter) %>% 
+  group_by(change, iter, cycle) %>% 
+  filter(row_number() == 1) %>%
+  group_by(change, iter) %>%
   mutate(value = c(NA, diff(value))) %>% 
   na.omit() %>%
-  ungroup() %>%
   sim.summarize()
 
 sim.ggplot(df.summary = df1, main = "Response to Selection Across Cycles", 
@@ -232,6 +238,27 @@ ggsave(filename = file.path(figures.dir, paste("figure_", pop.makeup, "_", tp.fo
                                                "_sc_inbreeding.jpg", sep = "")),
        height = 5, width = 6.5)
 
+
+## Rate of inbreeding
+df1 <- df %>% 
+  group_by(change, iter, cycle) %>% 
+  filter(row_number() == 1) %>%
+  group_by(change, iter) %>%
+  mutate(value = c(NA, diff(value))) %>% 
+  na.omit() %>%
+  sim.summarize()
+
+sim.ggplot(df.summary = df1, 
+           main = "Rate of Inbreeding\nAmong Selection Candidates", 
+           ylab = "Rate of Inbreeding (delta F)", 
+           ylim = c(0, 0.3), tp.change.factors = tp.change.factors)
+
+ggsave(filename = file.path(figures.dir, paste("figure_", pop.makeup, "_", tp.formation, 
+                                               "_sc_inbreeding_rate.jpg", sep = "")),
+       height = 5, width = 6.5)
+
+
+
 ## TP additions
 
 df <- lapply(X = collective.abbreviated.results, FUN = function(tpc) tpc$tp.additions.inbreeding) %>%
@@ -288,6 +315,10 @@ sim.ggplot(df.summary = df1,
            main = "Proportion of QTL Fixed for an Allele in the Selection Candidates", 
            ylab = "Proportion", ylim = c(0,1), 
            tp.change.factors = tp.change.factors)
+
+ggsave(filename = file.path(figures.dir, paste("figure_", pop.makeup, "_", tp.formation, 
+                                               "_fixed_qtl.jpg", sep = "")),
+       height = 5, width = 6.5)
 
 
 # # Save data lists to a file

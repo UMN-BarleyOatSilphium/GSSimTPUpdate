@@ -88,7 +88,7 @@ cycle.candidate.size = n.crosses * ind.per.cross
 std.sel.intensity = parents.sel.intensity / cycle.candidate.size
 
 # Computation parameters
-n.iterations = 500
+n.iterations = 250
 
 date <- format(Sys.time(), "%d%m%y-%H%M%S")
 
