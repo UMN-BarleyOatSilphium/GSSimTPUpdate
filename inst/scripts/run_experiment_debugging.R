@@ -144,7 +144,7 @@ for (change in tp.change) {
   # Apply the iterations over cores
   # experiment.sub.results <- mclapply(X = iters.per.core,  FUN = function(iter.set) {
     
-  for (iter in n.iterations) {
+  for (iter in seq_len(n.iterations)) {
 
     # # Create an empty list to store repetition results
     # rep.results <- list()
