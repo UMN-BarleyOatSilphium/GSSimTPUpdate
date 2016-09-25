@@ -51,10 +51,10 @@ tp.change.factors <- c(best = "Best", CDmean = "CDmean", nochange = "No Change",
 # df - a data.frame of the update method, cycle number, and parameter value.
 sim.summarize <- function(df) {
   
-  df1 <- df %>%
+  df1 <- df.test %>%
     group_by(change, cycle) %>%
-    summarize(mean = mean(value), 
-              sd = sd(value),
+    summarize(mean = mean(value, na.rm = T), 
+              sd = sd(value, na.rm = T),
               n = n()) %>%
     mutate(se = sd / sqrt(n),
            ci = qt(p = 1 - (0.05 / 2), df = n - 1) * se)
@@ -126,6 +126,16 @@ ggsave(filename = file.path(figures.dir, paste("figure_", pop.makeup, "_", tp.fo
 
 ## Alternatively, the true response to selection
 
+df1 <- df %>% 
+  group_by(change, iter) %>% 
+  mutate(value = c(NA, diff(value))) %>% 
+  na.omit() %>%
+  ungroup() %>%
+  sim.summarize()
+
+sim.ggplot(df.summary = df1, main = "Response to Selection Across Cycles", 
+           ylab = "Response to Selection", ylim = c(-1,5), 
+           tp.change.factors = tp.change.factors)
 
 
 ### Change in the prediction accuracy over cycles
@@ -185,11 +195,11 @@ ggsave(filename = file.path(figures.dir, paste("figure_", pop.makeup, "_", tp.fo
                                                "_persistence_of_phase.jpg", sep = "")),
        height = 5, width = 6.5)
 
-### Change in the average relationship between TP and candidates
-
+### Relationship
+## TP - SC
 
 # Plot
-df <- lapply(X = collective.abbreviated.results, FUN = function(tpc) tpc$relationship) %>%
+df <- lapply(X = collective.abbreviated.results, FUN = function(tpc) tpc$tp.sc.relationship) %>%
   bind_rows()
 
 df1 <- sim.summarize(df)
@@ -204,6 +214,47 @@ ggsave(filename = file.path(figures.dir, paste("figure_", pop.makeup, "_", tp.fo
                                                "_average_relationship.jpg", sep = "")),
        height = 5, width = 6.5)
 
+
+### Change in inbreeding coefficient
+## Selection candidates
+
+df <- lapply(X = collective.abbreviated.results, FUN = function(tpc) tpc$sc.inbreeding) %>%
+  bind_rows()
+
+df1 <- sim.summarize(df)
+
+sim.ggplot(df.summary = df1, 
+           main = "Average Inbreeding Coefficient\nAmong Selection Candidates", 
+           ylab = "", 
+           ylim = c(0, 2.5), tp.change.factors = tp.change.factors)
+
+ggsave(filename = file.path(figures.dir, paste("figure_", pop.makeup, "_", tp.formation, 
+                                               "_sc_inbreeding.jpg", sep = "")),
+       height = 5, width = 6.5)
+
+## TP additions
+
+df <- lapply(X = collective.abbreviated.results, FUN = function(tpc) tpc$tp.additions.inbreeding) %>%
+  bind_rows()
+
+df1 <- sim.summarize(df)
+
+sim.ggplot(df.summary = df1, 
+           main = "Average Inbreeding Coefficient\nAmong Training Population Additions", 
+           ylab = "", 
+           ylim = c(0, 2.5), tp.change.factors = tp.change.factors)
+
+## Parents
+
+df <- lapply(X = collective.abbreviated.results, FUN = function(tpc) tpc$parent.inbreeding) %>%
+  bind_rows()
+
+df1 <- sim.summarize(df)
+
+sim.ggplot(df.summary = df1, 
+           main = "Average Inbreeding Coefficient\nAmong Breeding Cycle Parents", 
+           ylab = "", 
+           ylim = c(0, 2.5), tp.change.factors = tp.change.factors)
 
 ### Change in the Expected Heterozygosity Among TP Additions
 
@@ -229,17 +280,6 @@ ggsave(filename = file.path(figures.dir, paste("figure_", pop.makeup, "_", tp.fo
 
 # Proportion of fixed QTL in the SC
 df <- lapply(X = collective.abbreviated.results, FUN = function(tpc) tpc$candidate.prop.fixed) %>%
-  bind_rows()
-
-df1 <- sim.summarize(df)
-
-sim.ggplot(df.summary = df1, 
-           main = "Proportion of QTL Fixed for an Allele in the Selection Candidates", 
-           ylab = "Proportion", ylim = c(0,1), 
-           tp.change.factors = tp.change.factors)
-
-# Proportion of fixed QTL in the TP
-df <- lapply(X = collective.abbreviated.results, FUN = function(tpc) tpc$TP.prop.fixed) %>%
   bind_rows()
 
 df1 <- sim.summarize(df)
