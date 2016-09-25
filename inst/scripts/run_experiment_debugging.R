@@ -581,7 +581,7 @@ for (change in tp.change) {
     } # Close the iteration loop
     
     # Return the rep list
-    return(rep.results)
+    # return(rep.results)
     
   # End parlapply
   # }, mc.cores = n.cores)
