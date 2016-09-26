@@ -155,6 +155,26 @@ parse.results <- function(files, filename) {
       unlist() %>%
       GSsim.TPUpdate:::nv_df(change = change)
     
+    
+    ## Time to fixation
+    fixed.qtl.per.cycle <- lapply(X = experiment.sub.results, FUN = function(set)
+      lapply(X = set, FUN = function(rep) {
+        
+        # Pull out the position of qtl
+        pos.qtl <- GSsim.TPUpdate:::find.pos(genome = rep$genome)$pos.qtl
+        
+        fixed.qtl <- lapply(X = rep$sim.result, FUN = function(cycle) {
+          freq.qtl <- cycle$geno.summary.stats$candidate.maf[pos.qtl]
+          names(freq.qtl)[(freq.qtl == 0 | freq.qtl == 1)] })
+        # Reorder into data.frames
+        fixed.qtl <- lapply(X = names(fixed.qtl), FUN = function(cyc) 
+          data.frame(cycle = cyc, fixed.qtl = fixed.qtl[[cyc]] ) ) %>%
+          bind_rows()
+        # Remove duplicates to get the QTL fixed at each cycle
+        fixed.qtl %>% 
+          filter(!duplicated(.$fixed.qtl)) }))
+        
+    
     ## Inbreeding
     sc.inbreeding <- lapply(X = experiment.sub.results, FUN = function(set) {
       lapply(X = set, FUN = function(rep) {
@@ -199,13 +219,19 @@ parse.results <- function(files, filename) {
       unlist() %>%
       GSsim.TPUpdate:::nv_df(change = change)
     
-    
-    
-    
-    # The genome
-    genome <- lapply(X = experiment.sub.results, FUN = function(set) {
+    ## QTL allele effect
+    qtl.eff <- lapply(X = experiment.sub.results, FUN = function(set)
       lapply(X = set, FUN = function(rep) {
-        return(rep$genome) })})
+        # Get positions of QTL
+        pos.qtl <- GSsim.TPUpdate:::find.pos(rep$genome)$pos.qtl
+        # Names of QTL
+        names.qtl <- names(rep$sim.results$cycle1$geno.summary.stats$candidate.maf)[pos.qtl]
+        # QTL allele effects
+        eff.qtl <- lapply(X = rep$genome, FUN = function(chr) chr@add.and.dom.eff$add) %>% 
+          do.call("c", .)
+        names(eff.qtl) <- names.qtl
+        return(eff.qtl) }) )
+  
     
     # Gather the data.frames / tibbles
     save.list <- list(
@@ -227,7 +253,9 @@ parse.results <- function(files, filename) {
       parent.inbreeding = parent.inbreeding,
       tp.sc.relationship = tp.sc.relationship,
       tp.additions.relationship = tp.additions.relationship,
-      parent.relationship = parent.relationship
+      parent.relationship = parent.relationship,
+      qtl.eff = qtl.eff,
+      fixed.qtl.per.cycle = fixed.qtl.per.cycle
     )
     
     # Build a list
