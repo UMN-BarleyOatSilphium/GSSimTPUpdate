@@ -9,6 +9,7 @@
 #' @param filename A filepath to save the parsed, collective results
 #' 
 #' @import dplyr
+#' @import tidyr
 #' 
 #' @export
 #' 
