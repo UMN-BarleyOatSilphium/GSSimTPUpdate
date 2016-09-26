@@ -157,24 +157,33 @@ parse.results <- function(files, filename) {
     
     
     ## Time to fixation
-    fixed.qtl.per.cycle <- lapply(X = experiment.sub.results, FUN = function(set)
+    qtl.tf <- lapply(X = experiment.sub.results, FUN = function(set)
       lapply(X = set, FUN = function(rep) {
         
         # Pull out the position of qtl
         pos.qtl <- GSsim.TPUpdate:::find.pos(genome = rep$genome)$pos.qtl
         
-        fixed.qtl <- lapply(X = rep$sim.result, FUN = function(cycle) {
-          freq.qtl <- cycle$geno.summary.stats$candidate.maf[pos.qtl]
-          names(freq.qtl)[(freq.qtl == 0 | freq.qtl == 1)] })
-        # Reorder into data.frames
-        fixed.qtl <- lapply(X = names(fixed.qtl), FUN = function(cyc) 
-          data.frame(cycle = cyc, fixed.qtl = fixed.qtl[[cyc]] ) ) %>%
-          bind_rows()
-        # Remove duplicates to get the QTL fixed at each cycle
-        fixed.qtl %>% 
-          filter(!duplicated(.$fixed.qtl)) }))
-        
+        lapply(X = rep$sim.result, FUN = function(cycle) {
+            freq.qtl <- cycle$geno.summary.stats$candidate.maf[pos.qtl]
+            freq.qtl[(freq.qtl == 0 | freq.qtl == 1)] }) %>% 
+          unlist() %>% 
+          # Combined to data.frame
+          data.frame(obs = names(.), value = .) %>% 
+          separate(obs, c("cycle", "marker"), sep = "\\.") %>% 
+          # Remove duplicated markers (i.e. find cycle when a marker is fixed)
+          filter(!duplicated(.$marker)) })) %>%
+      unlist(recursive = F)
     
+    # Convert the list names to integers
+    qtl.tf <- names(qtl.tf) %>% 
+      as.factor() %>% 
+      as.integer() %>%
+    lapply(FUN = function(ind) 
+      qtl.tf[[ind]] %>% 
+        mutate(iter = ind, change = change) %>% 
+        select(change, iter, cycle, marker) ) %>%
+      bind_rows()
+      
     ## Inbreeding
     sc.inbreeding <- lapply(X = experiment.sub.results, FUN = function(set) {
       lapply(X = set, FUN = function(rep) {
@@ -230,7 +239,9 @@ parse.results <- function(files, filename) {
         eff.qtl <- lapply(X = rep$genome, FUN = function(chr) chr@add.and.dom.eff$add) %>% 
           do.call("c", .)
         names(eff.qtl) <- names.qtl
-        return(eff.qtl) }) )
+        return(eff.qtl) }) ) %>%
+      unlist() %>%
+      GSsim.TPUpdate:::nv_df(change = change)
   
     
     # Gather the data.frames / tibbles
@@ -255,7 +266,7 @@ parse.results <- function(files, filename) {
       tp.additions.relationship = tp.additions.relationship,
       parent.relationship = parent.relationship,
       qtl.eff = qtl.eff,
-      fixed.qtl.per.cycle = fixed.qtl.per.cycle
+      qtl.tf = qtl.tf
     )
     
     # Build a list

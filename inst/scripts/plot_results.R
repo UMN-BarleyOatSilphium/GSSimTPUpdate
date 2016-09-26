@@ -20,7 +20,7 @@ all.files <- list.files(results.dir, full.names = T) %>%
 # Just MNxND files
 filename <- all.files %>%
   str_subset(pattern = "MNxND") %>%
-  str_subset(pattern = "window")
+  str_subset(pattern = "cumulative")
 
 load(filename)
 
@@ -210,6 +210,15 @@ sim.ggplot(df.summary = df1,
 ggsave(filename = file.path(figures.dir, paste("figure_", pop.makeup, "_", tp.formation, 
                                                "_persistence_of_phase.jpg", sep = "")),
        height = 5, width = 6.5)
+
+
+# Time to fixation versus allele effect
+df <- lapply(X = collective.abbreviated.results, FUN = function(tpc) tpc$qtl.marker.LD) %>%
+  bind_rows()
+
+
+
+
 
 ### Relationship
 ## TP - SC
