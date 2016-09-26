@@ -15,12 +15,12 @@ figures.dir <- file.path(results.dir, "Figures")
 # Load data from the allele frequency experiment
 all.files <- list.files(results.dir, full.names = T) %>%
   str_subset(pattern = "simulation_results") %>%
-  str_subset(pattern = "collective")
+  str_subset(pattern = "collective.RData")
 
 # Just MNxND files
 filename <- all.files %>%
   str_subset(pattern = "MNxND") %>%
-  .[1]
+  str_subset(pattern = "window")
 
 load(filename)
 
@@ -75,8 +75,18 @@ sim.summarize <- function(df) {
 
 ## Define a function to plot the summary data.frame using ggplot2
 
-sim.ggplot <- function(df.summary, main, ylab, xlab = "Breeding Cycle", ylim, 
+sim.ggplot <- function(df.summary, main, ylab, xlab = "Breeding Cycle", ylim = NULL, 
                        xlim = c(1, n.cycles + 1), tp.change.factors) {
+  
+  # Set the range in ylim
+  if (is.null(ylim)) {
+    ylim <- df1 %>% 
+      summarize(max = max(mean + ci, na.rm = T), min = min(mean - ci, na.rm = T)) %>% 
+      summarize(max = max(max, na.rm = T), min = min(min, na.rm = T)) %>% 
+      pretty() %>% 
+      range()
+    
+  }
   
   gp <- ggplot(data = df.summary, aes(x = cycle.offset, y = mean, col = change, 
                                       shape = change)) +
@@ -107,7 +117,7 @@ df <- lapply(X = collective.abbreviated.results, FUN = function(tpc) tpc$candida
 df1 <- sim.summarize(df)
 
 sim.ggplot(df.summary = df1, main = "Genetic Variance", ylab = "Genetic Variance",
-           ylim = c(0,8), tp.change.factors = tp.change.factors)
+           tp.change.factors = tp.change.factors)
 
 ggsave(filename = file.path(figures.dir, paste("figure_", pop.makeup, "_", tp.formation, 
                                                "_gen_var.jpg", sep = "")),
@@ -123,7 +133,7 @@ df <- lapply(X = collective.abbreviated.results, FUN = function(tpc) tpc$candida
 df1 <- sim.summarize(df)
 
 sim.ggplot(df.summary = df1, main = "Genotypic Value of the Selection Candidates", 
-           ylab = "Genotypic Value", ylim = c(0,25), tp.change.factors = tp.change.factors)
+           ylab = "Genotypic Value", tp.change.factors = tp.change.factors)
 
 ggsave(filename = file.path(figures.dir, paste("figure_", pop.makeup, "_", tp.formation, 
                                                "_geno_value.jpg", sep = "")),
@@ -140,7 +150,7 @@ df1 <- df %>%
   sim.summarize()
 
 sim.ggplot(df.summary = df1, main = "Response to Selection Across Cycles", 
-           ylab = "Response to Selection", ylim = c(-1,5), 
+           ylab = "Response to Selection", 
            tp.change.factors = tp.change.factors)
 
 
@@ -153,7 +163,7 @@ df <- lapply(X = collective.abbreviated.results, FUN = function(tpc) tpc$validat
 df1 <- sim.summarize(df)
 
 sim.ggplot(df.summary = df1, main = "Realized Prediction Accuracy", 
-           ylab = "Prediction Accuracy (r)", ylim = c(0,0.75), 
+           ylab = "Prediction Accuracy (r)", 
            tp.change.factors = tp.change.factors)
 
 ggsave(filename = file.path(figures.dir, paste("figure_", pop.makeup, "_", tp.formation, 
@@ -176,7 +186,7 @@ df1 <- sim.summarize(df %>% filter(extra == "mean_max_genome"))
   
 
 sim.ggplot(df.summary = df1, main = "Mean LD Between QTL and Marker in Highest LD", 
-           ylab = "Linkage Disequilibrum (r)", ylim = c(0.6, 0.9), 
+           ylab = "Linkage Disequilibrum (r)", 
            tp.change.factors = tp.change.factors)
 
 
@@ -193,7 +203,7 @@ df1 <- sim.summarize(df %>% filter(extra == "persistence"))
 
 sim.ggplot(df.summary = df1, 
            main = "Persistence of LD Phase Between Training Population\nand Selection Candidates", 
-           ylab = "Persistence of Phase (cor of r)", ylim = c(0,0.65), 
+           ylab = "Persistence of Phase (cor of r)", 
            tp.change.factors = tp.change.factors)
 
 
@@ -213,7 +223,7 @@ df1 <- sim.summarize(df)
 sim.ggplot(df.summary = df1, 
            main = "Additive Genomic Relationship Between Training Population\nand Selection Candidates", 
            ylab = "Additive Genomic Relationship\n(Scaled to Base Population)", 
-           ylim = c(-0.1,1.25), tp.change.factors = tp.change.factors)
+           tp.change.factors = tp.change.factors)
 
 
 ggsave(filename = file.path(figures.dir, paste("figure_", pop.makeup, "_", tp.formation, 
@@ -231,8 +241,7 @@ df1 <- sim.summarize(df)
 
 sim.ggplot(df.summary = df1, 
            main = "Average Inbreeding Coefficient\nAmong Selection Candidates", 
-           ylab = "", 
-           ylim = c(0, 2.5), tp.change.factors = tp.change.factors)
+           ylab = "Inbreeding Coefficient", tp.change.factors = tp.change.factors)
 
 ggsave(filename = file.path(figures.dir, paste("figure_", pop.makeup, "_", tp.formation, 
                                                "_sc_inbreeding.jpg", sep = "")),
@@ -250,38 +259,12 @@ df1 <- df %>%
 
 sim.ggplot(df.summary = df1, 
            main = "Rate of Inbreeding\nAmong Selection Candidates", 
-           ylab = "Rate of Inbreeding (delta F)", 
-           ylim = c(0, 0.3), tp.change.factors = tp.change.factors)
+           ylab = "Rate of Inbreeding (delta F)", tp.change.factors = tp.change.factors)
 
 ggsave(filename = file.path(figures.dir, paste("figure_", pop.makeup, "_", tp.formation, 
                                                "_sc_inbreeding_rate.jpg", sep = "")),
        height = 5, width = 6.5)
 
-
-
-## TP additions
-
-df <- lapply(X = collective.abbreviated.results, FUN = function(tpc) tpc$tp.additions.inbreeding) %>%
-  bind_rows()
-
-df1 <- sim.summarize(df)
-
-sim.ggplot(df.summary = df1, 
-           main = "Average Inbreeding Coefficient\nAmong Training Population Additions", 
-           ylab = "", 
-           ylim = c(0, 2.5), tp.change.factors = tp.change.factors)
-
-## Parents
-
-df <- lapply(X = collective.abbreviated.results, FUN = function(tpc) tpc$parent.inbreeding) %>%
-  bind_rows()
-
-df1 <- sim.summarize(df)
-
-sim.ggplot(df.summary = df1, 
-           main = "Average Inbreeding Coefficient\nAmong Breeding Cycle Parents", 
-           ylab = "", 
-           ylim = c(0, 2.5), tp.change.factors = tp.change.factors)
 
 ### Change in the Expected Heterozygosity Among TP Additions
 
@@ -293,7 +276,7 @@ df1 <- sim.summarize(df)
 
 sim.ggplot(df.summary = df1, 
            main = "Expected Heterozygosity of Training Population Additions", 
-           ylab = "Expected Heterozygosity", ylim = c(0,0.25), 
+           ylab = "Expected Heterozygosity", 
            tp.change.factors = tp.change.factors)
 
 
@@ -313,21 +296,10 @@ df1 <- sim.summarize(df)
 
 sim.ggplot(df.summary = df1, 
            main = "Proportion of QTL Fixed for an Allele in the Selection Candidates", 
-           ylab = "Proportion", ylim = c(0,1), 
+           ylab = "Proportion", 
            tp.change.factors = tp.change.factors)
 
 ggsave(filename = file.path(figures.dir, paste("figure_", pop.makeup, "_", tp.formation, 
                                                "_fixed_qtl.jpg", sep = "")),
        height = 5, width = 6.5)
 
-
-# # Save data lists to a file
-# # Gather the lists
-# data.lists <- neyhart::find('\\.list$', class = "list")
-# 
-# # Create a new filename
-# save.file <- filename %>%
-#   str_replace(pattern = "simulation_results", replacement = "plot_data")
-# 
-# # Save the data
-# save(list = data.lists, file = save.file)
