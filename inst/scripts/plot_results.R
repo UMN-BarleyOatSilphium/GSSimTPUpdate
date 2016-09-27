@@ -217,6 +217,8 @@ df <- lapply(X = collective.abbreviated.results, FUN = function(tpc) tpc$qtl.mar
   bind_rows()
 
 
+### Time to fixation versus effect
+
 
 
 

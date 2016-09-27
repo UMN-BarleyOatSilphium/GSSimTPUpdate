@@ -176,14 +176,13 @@ parse.results <- function(files, filename) {
       unlist(recursive = F)
     
     # Convert the list names to integers
-    qtl.tf <- names(qtl.tf) %>% 
-      as.factor() %>% 
-      as.integer() %>%
-    lapply(FUN = function(ind) 
-      qtl.tf[[ind]] %>% 
-        mutate(iter = ind, change = change) %>% 
-        select(change, iter, cycle, marker) ) %>%
-      bind_rows()
+    qtl.tf <- names(qtl.tf) %>%
+      lapply(FUN = function(ind) 
+        qtl.tf[[ind]] %>% 
+          mutate(iter = str_replace(string = ind, pattern = "\\.", replacement = "_"), 
+                 change = change) %>% 
+          select(change, iter, cycle, marker) ) %>%
+      bind_rows() %>% tbl_df()
       
     ## Inbreeding
     sc.inbreeding <- lapply(X = experiment.sub.results, FUN = function(set) {
@@ -241,8 +240,13 @@ parse.results <- function(files, filename) {
           do.call("c", .)
         names(eff.qtl) <- names.qtl
         return(eff.qtl) }) ) %>%
-      unlist() %>%
-      GSsim.TPUpdate:::nv_df(change = change)
+      unlist() %>% 
+      # Convert to a data.frame
+      data.frame(obs = names(.), values = .) %>% 
+      tbl_df() %>% 
+      separate(obs, c("set", "rep", "marker"), sep = "\\.") %>%
+      # Re-unite to make an integer out of the set-rep combos
+      unite(iter, set, rep)
   
     
     # Gather the data.frames / tibbles
