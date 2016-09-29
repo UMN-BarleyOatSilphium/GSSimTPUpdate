@@ -14,7 +14,7 @@
 #' 
 genotypic.value <- function(genome, haploid.genos) {
   
-  # Deal with inpute
+  # Deal with input
   if(!is.list(haploid.genos)) {
     haploid.mat <- as.matrix(haploid.genos)
   } else {

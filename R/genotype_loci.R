@@ -2,8 +2,7 @@
 #' 
 #' @description 
 #' Creates a loci design matrix given a haploid matrix or a list of haploid 
-#' matricies. This function essentially "genotypes" the individuals with
-#' 100% accuracy.
+#' matricies. 
 #' 
 #' @param genome The hypred genome.
 #' @param haploid.genos A 2n x m matrix of haploid alleles at m loci for n

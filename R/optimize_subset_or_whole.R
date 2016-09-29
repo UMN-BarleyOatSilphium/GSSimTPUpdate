@@ -12,7 +12,7 @@
 #' develop an optimized training population.
 #' @param unphenotyped.index The index of "unphenotyped" entries
 #' 
-#' @import MASS
+#' @importFrom MASS ginv
 #' 
 #' @export
 #' 
@@ -140,7 +140,7 @@ optimize.subset <- function(method, A, n.training, phenotyped.index,
 #' 
 #' @describeIn optimize.subset
 #' 
-#' @import MASS
+#' @importFrom MASS ginv
 #' 
 #' @export
 #' 

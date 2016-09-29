@@ -28,7 +28,6 @@ proportion.}
 }
 \description{
 Creates a loci design matrix given a haploid matrix or a list of haploid 
-matricies. This function essentially "genotypes" the individuals with
-100% accuracy.
+matricies.
 }
 

@@ -166,8 +166,11 @@ for (change in tp.change) {
       # Convert the gametes to genotypes
       TP.genos <- genotype.loci(haploid.genos = TP.haploids.i, genome = hv.genome)
       
-      # Find the MAF of all marker snps
-      marker.maf <- measure.maf(TP.genos)
+      # Find the allele freq of all marker snps
+      marker.af <- measure.af(genome = hv.genome, haploid.genos = TP.haploids.i)$snp
+      # Calculate maf
+      marker.maf <- sapply(marker.af, FUN = function(freq) min(freq, 1 - freq))
+      
       # Determine which are below 
       markers.below.maf <- which(marker.maf < min.maf)
       
@@ -265,11 +268,13 @@ for (change in tp.change) {
         
         
         ##### Step 3 - Genotypic Summary Statistics
-        # Measure the minor allele frequency of all loci
-        candidate.genos.maf.i <- measure.maf(genos = candidate.genos.i)
-        # Measure the maf of just the markers
-        candidate.marker.maf.i <- measure.maf(genos = candidate.marker.genos.i)
-        TP.genos.maf.i <- measure.maf(genos = TP.genos.i)
+        # Measure the frequency of the 1 allele in each of the haploids set
+        candidate.af.i <- measure.af(genome = hv.genome, 
+                                     haploid.genos = candidate.haploid.i)
+        
+        TP.af.i <- measure.af(genome = hv.genome, 
+                              haploid.genos = TP.haploids.i)
+        
         
         ### LD measures
         # Candidates
@@ -281,28 +286,11 @@ for (change in tp.change) {
         candidate.LD.genome <- measure.LD(genome = hv.genome,
                                           genos = candidate.genos.i)
         
-        # Per QTL, find the LD of the marker (within the window) with which the 
-        ## QTL has the highest LD then find the mean of those values across 
-        ## polymorphic qtl
-        candidate.mean.max.LD.window <- lapply(X = candidate.LD.window, FUN = function(chr)
-          lapply(X = chr, FUN = function(qtl) max(qtl^2)) ) %>%
-          unlist() %>%
-          mean(na.rm = T)
-        
-        # Now just find the mean of LD across the whole window
-        candidate.mean.LD.window <- candidate.LD.window %>% 
-          unlist() %>% 
-          .^2 %>% 
-          mean(na.rm = T)
-        
         # For the whole genome, find the mean LD value across those
         ## max LD values per QTL
         candidate.mean.max.LD.genome <- apply(X = candidate.LD.genome, MARGIN = 1, FUN = function(qtl)
           max(qtl^2) ) %>%
           mean(na.rm = T)
-        
-        # For the whole, genome, find the mean LD across all QTL-marker pairs
-        candidate.mean.LD.genome <- mean(candidate.LD.genome ^ 2, na.rm = T)
         
         # Measure genomic LD on the TP
         TP.LD.genome <- measure.LD(genome = hv.genome, 
@@ -315,21 +303,39 @@ for (change in tp.change) {
         common.poly.QTL <- intersect( row.names(TP.LD.genome), row.names(candidate.LD.genome) )
         common.poly.markers <- intersect( colnames(TP.LD.genome), colnames(candidate.LD.genome) )
         
-        # Subset the TP and candidates for those markers and QTL, then vectorize
-        TP.LD.vector <- TP.LD.genome[common.poly.QTL, common.poly.markers] %>%
-          as.vector()
-        candidate.LD.vector <- candidate.LD.genome[common.poly.QTL, common.poly.markers] %>%
-          as.vector()
+        # Subset the TP and candidates for those markers and QTL, then create a
+        # data.frame
+        TP.candidate.LD <- data.frame(TP = TP.LD.genome[common.poly.QTL, common.poly.markers] %>%
+                                        as.vector(),
+                                      candidates = candidate.LD.genome[common.poly.QTL, common.poly.markers] %>%
+                                        as.vector())
+        
         
         # Correlate
-        TP.candidate.persistance.of.phase <- cor(TP.LD.vector, candidate.LD.vector)
+        TP.candidate.persistance.of.phase <- cor(TP.candidate.LD) %>% 
+          .[upper.tri(.)]
+        
+        # Determine the number of loci used to calculate LD
+        n.marker.LD <- min(ncol(TP.LD.genome), ncol(candidate.LD.genome))
+        n.qtl.LD <- min(nrow(TP.LD.genome), nrow(candidate.LD.genome))
+        
+        # Copy
+        TP.candidate.LD.perm <- TP.candidate.LD
+        
+        # Run a permutation test to randomize the candidate QTL-marker pair
+        # LD and run a correlation
+        persistence.perm.results <- replicate(n = 500, expr = {
+          TP.candidate.LD.perm$candidates <- sample(TP.candidate.LD.perm$candidates)
+          cor(TP.candidate.LD.perm) %>% 
+            .[upper.tri(.)] })
+          
           
         # Create a list to save
-        qtl.marker.LD.i <- list(mean.max.window = candidate.mean.max.LD.window,
-                                mean.window = candidate.mean.LD.window,
-                                mean.max.genome = candidate.mean.max.LD.genome,
-                                mean.genome = candidate.mean.LD.genome,
-                                persistance.of.phase = TP.candidate.persistance.of.phase)
+        qtl.marker.LD.i <- list(mean.max.genome = candidate.mean.max.LD.genome,
+                                persistance.of.phase = TP.candidate.persistance.of.phase,
+                                persistence.perm.results = persistence.perm.results,
+                                n.qtl.LD = n.qtl.LD,
+                                n.marker.LD = n.marker.LD)
         
         ### Measure the average relationship between the TP and the candidates
         # Assign M
@@ -356,8 +362,8 @@ for (change in tp.change) {
         ##### Step 4 - Prediction
         # Remove the markers with maf below the threshold (set at the start of the sim)
         ## also remove monomorphic markers
-        markers.to.remove <- c( which(candidate.marker.maf.i == 0), 
-                                which(TP.genos.maf.i == 0),
+        markers.to.remove <- c( which(candidate.af.i$snp == 0), 
+                                which(TP.af.i$snp == 0),
                                 markers.below.maf ) %>%
           unique() %>%
           sort()
@@ -387,8 +393,9 @@ for (change in tp.change) {
         
         # Validate the predictions
         # Find the correlation between the GEBVs and the true genotypic value
-        pred.validation.i <- validate.predictions(predicted.values = predictions.out$GEBV,
-                                                  observed.values = candidate.values.i$geno.values)
+        pred.accuracy.i <- cor(candidate.values.i$geno.values,
+                               predictions.out$GEBV) %>%
+          as.numeric()
 
 
         
@@ -400,7 +407,8 @@ for (change in tp.change) {
                                                  sel.intensity = parents.sel.intensity, 
                                                  selection = "best")
         
-        parent.lines.list <- list(p1 = parent.selections.i$lines.sel, p2 = parent.selections.i$lines.sel)
+        parent.lines.list <- list(p1 = parent.selections.i$lines.sel, 
+                                  p2 = parent.selections.i$lines.sel)
         
         # The parents are selected and crossed at the F3 stage, so subset the haploid genotpyes from the F1:3
         parent.haploids <- select.haploids(haploid.genos = candidate.haploid.i,
@@ -408,18 +416,6 @@ for (change in tp.change) {
         
         parent.values <- select.values(pheno.values.list = candidate.values.i, 
                                        line.names = parent.selections.i$lines.sel)
-        
-        # Calculate the mean relationship among the parents
-        parents.mu.relationship <- A[parent.lines.list$p1, parent.lines.list$p1] %>%
-          .[upper.tri(.)] %>% 
-          mean()
-        
-        # Calculat the mean inbreeding coefficient among the parents
-        parents.inbreeding <- A[parent.lines.list$p1, parent.lines.list$p1] %>%
-          diag() %>%
-          - 1 %>%
-          mean()
-        
         
         ##### Step 7 - Update the TP
         
@@ -455,7 +451,7 @@ for (change in tp.change) {
                                             n.training = tp.update.increment,
                                             phenotyped.index = phenotyped.index,
                                             unphenotyped.index = unphenotyped.index,
-                                            V_a = V_a.i, V_e = V_e.i, max.iter = 200)
+                                            V_a = V_a.i, V_e = V_e.i, max.iter = 500)
             
             # Using the optimized index of "phenotyped" entries, determine
             # which candidates should be added to the TP
@@ -474,8 +470,7 @@ for (change in tp.change) {
           
           # Subset the geno matrix for these lines
           TP.addition.genos <- candidate.marker.genos.i[TP.addition.lines,]
-          TP.addition.genos.qtl <- candidate.genos.i[TP.addition.lines,]
-          
+
           # Gather genotypic and phenotypic values of the TP additions
           TP.addition.values <- select.values(pheno.values.list = candidate.values.i, 
                                               line.names = TP.addition.lines)
@@ -501,7 +496,8 @@ for (change in tp.change) {
           ## Measure the expected heterozygosity of the additions, using all
           ## loci including QTL
           TP.addition.list[["Exp.het"]] <- 
-            measure.expected.het(genos = TP.addition.genos.qtl)
+            measure.expected.het(genome = hv.genome, 
+                                 haploid.genos = TP.addition.haploids)
           
           
           # If the TP formation calls for a sliding window, use only the ~750 most recent training individuals
@@ -548,24 +544,19 @@ for (change in tp.change) {
         
         # Gather data for analysis
         simulation.results[[cycle.name]] <- 
-          list(geno.summary.stats = list(candidate.maf = candidate.genos.maf.i,
-                                         TP.maf = TP.genos.maf.i,
+          list(geno.summary.stats = list(candidate.af = candidate.af.i,
+                                         TP.af = TP.af.i,
                                          qtl.marker.LD = qtl.marker.LD.i,
                                          mu.TP.candidate.rel = mu.relationship),
                MM.solve = predictions.out$solve.out,
-               candidate.GEBV = predictions.out$GEBV,
                candidate.values = candidate.values.i,
-               selection.values = parent.values,
-               prediction.accuracy = pred.validation.i,
+               prediction.accuracy = pred.accuracy.i,
                parents <- parent.lines.list,
                tp.update = TP.addition.list,
                inbreeding = list(candidates = candidate.inbreeding,
-                                 TP.additions = TP.addition.inbreeding,
-                                 parents = parents.inbreeding),
+                                 TP.additions = TP.addition.inbreeding),
                relationship = list(TP.candidates = mu.relationship,
-                                   TP.additions = TP.addition.mu.relationship,
-                                   parents = parents.mu.relationship))
-
+                                   TP.additions = TP.addition.mu.relationship))
                                    
         
       } # Close the per-cycle loop

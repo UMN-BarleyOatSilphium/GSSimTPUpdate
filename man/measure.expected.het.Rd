@@ -4,10 +4,13 @@
 \alias{measure.expected.het}
 \title{Measure expected heterozygosity}
 \usage{
-measure.expected.het(genos)
+measure.expected.het(genome, haploid.genos)
 }
 \arguments{
-\item{genos}{The n x m matrix of genotypes for n entries across m loci.}
+\item{genome}{The hypred genome}
+
+\item{haploid.genos}{The 2n x m matrix of haploid genotypes for n entries
+and m SNPs and QTL.}
 }
 \description{
 Calculated expected heterozygosity as the mean expected heterozygosity
