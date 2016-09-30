@@ -7,6 +7,8 @@
 #' @param x A matrix to be inverted.
 #' @param silent Logical whether to print the method of inversion used.
 #' 
+#' @export
+#' 
 #' @importFrom MASS ginv
 #' 
 invert.mat <- function(x, silent = FALSE) {
@@ -46,6 +48,8 @@ is.polymorphic <- function(x) {
 #' relationship matrix (A)
 #' @param n.total The size of the whole population
 #' 
+#' @export
+#' 
 #' @references 
 #' Rincent, R., Laloe, D., Nicolas, S., Altmann, T., Brunel, D., Revilla, P., 
 #' Moreau, L. (2012). Maximizing the Reliability of Genomic Selection by 
@@ -81,6 +85,8 @@ make.contrast <- function(unphenotyped.index, n.total) {
 #' @param genome The list of hypred genomes.
 #' 
 #' @import dplyr
+#' 
+#' @export
 #' 
 find.pos <- function(genome) {
   
@@ -129,10 +135,18 @@ find.pos <- function(genome) {
 
 #' 
 #' Round with a limit
-#'
+#' 
 #' @description 
 #' A convenience function to round a number down or up if it is outside a 
 #' lower or upper limit
+#' 
+#' @param x A vector of numbers to assess
+#' @param limit The upper or lower limit for rounding
+#' @param option Character vector of either \code{"upper"} or \code{"lower"}
+#' corresponding to whether the \code{limit} is an upper limit or a lower limit.
+#'
+#' 
+#' @export
 #' 
 round.limit <- function(x, limit, option) {
   if (option == "upper") {
@@ -154,6 +168,8 @@ round.limit <- function(x, limit, option) {
 #' Creates an M matrix, or the orthagonal projector
 #' 
 #' @param n The number of rows of matrix X
+#' 
+#' @export
 #' 
 #' @references 
 #' Rincent, R., Laloe, D., Nicolas, S., Altmann, T., Brunel, D., Revilla, P., 
@@ -185,54 +201,69 @@ design.M <- function(n) {
 #' 
 #' @import stringr
 #' @import dplyr
+#' @import tidyr
+#' 
+#' @export
 #' 
 nv_df <- function(x, change) {
   
-  # Number of observations
-  n.obs <- length(x)
+  # Convert x to a tibble
+  x.tbl <- tbl_df(x) %>%
+    mutate(obs = names(x))
   
-  # Subset the names
-  names.x <- names(x)
+  # New columns names for separation
+  # Extract the first name as an example
+  name.eg <- names(x[1])
+  # Find the number of period-separated elements
+  n.cols <- str_count(string = name.eg, pattern = "\\.") + 1
   
-  # Extract all components of the names
-  names.components <- names.x %>%
-    str_split(pattern = '\\.', simplify = T)
+  # Create a vector of new column names
+  if (n.cols <= 3) {
+    new.cols <- c("set", "rep", "cycle")
+  } else {
+    new.cols <- c("set", "rep", "cycle", str_c("extra", seq_len(n.cols - 3)))
+  }
   
-  # Pull out the set-rep combinations
-  setrep <- names.x %>% 
-    str_extract('^[a-z]*[0-9]*\\.[a-z]*[0-9]*')
-
-  # Find the unique setreps and design replacement strings
-  setrep1 <- setrep %>%
-    unique()
+  # Create new columns based on the names of the values
+  x.tbl1 <- x.tbl %>% 
+    separate(obs, new.cols, sep = "\\.") %>%
+    unite(iter, set, rep) %>% 
+    mutate(iter = iter %>% as.factor() %>% as.numeric(),
+           cycle = cycle %>% str_replace("cycle", ""))
   
-  setrep.table <- cbind(setrep1,
-                        seq(length(setrep1)) )
+  # Rearrange columns and add the change
+  x.tbl2 <- x.tbl1 %>%
+    mutate(change = change) %>%
+    select(c((seq_len(n.cols) + 1), 1))
   
-  # Create the replacement vector with same length as n.obs
-  iter.nos <- setrep.table[match(x = setrep, table = setrep1), 2] %>%
-    as.numeric()
-  
-  # Number of extra parameters besides the cycles
-  n.extra <- ncol(names.components) - 3
-  
-  # Find the cycles in the names
-  cycle.nos <- names.x %>%
-    str_extract(pattern = "cycle[0-9]*") %>%
-    str_extract(pattern = '[0-9]*$') %>%
-    as.numeric()
-  
-  # Create a data.frame of the change, cycles, iterations, and the value
-  x.df <- data.frame(change = rep(change, n.obs),
-                     iter = iter.nos,
-                     cycle = cycle.nos,
-                     extra = names.components[,-c(1:3)],
-                     value = as.numeric(x) )
-  
-  # Convert to tibble and return
-  x.tbl <- tbl_df(x.df)
-  return(x.tbl)
+  return(x.tbl2)
   
 } # Close the function
 
+#'
+#' Retrieve QTL effects from a genome
+#' 
+#' @param genome A list of hypred genomes.
+#' 
+#' @export
+#' 
+qtl.eff <- function(genome) {
+  
+  # Make sure the genome is a list
+  if (!is.list(genome)) stop("genome must be a list.")
+  
+  # Iterate over chromosomes
+  eff.list <- lapply(X = genome, FUN = function(chr) chr@add.and.dom.eff)
+  
+  # Separate into addive and dominance
+  add.eff <- sapply(eff.list, FUN = function(i) i$add) %>%
+    unlist()
+  dom.eff <- sapply(eff.list, FUN = function(i) i$dom) %>%
+    unlist()
+  
+  # Return
+  list(add = add.eff, dom = dom.eff)
+  
+} # Close the function
+    
 

@@ -8,20 +8,22 @@ args <- commandArgs(trailingOnly = T)
 
 # First and only argument is the pop makeup (MN, ND, or MNxND)
 # Second argument is how the TP should be combined after each cycle (cumulative or window)
+# The remaining arguments a
 # If no arguments are given (i.e. it's being run locally), set defaults for testing
 if (all(is.na(args))) {
   pop.makeup <- "MNxND"
   tp.formation <- "cumulative"
-  parents.sel.intensity = 100
-  n.crosses = 50
-  MSI = F
+  tp.change <- c("best", "worst", "random", "nochange", "PEVmean", "CDmean")
+
+  MSI <- F
   
 } else {
   pop.makeup <- args[1]
   tp.formation <- args[2]
-  parents.sel.intensity <- as.numeric(args[3])
-  n.crosses = as.numeric(args[4])
-  MSI = T
+  # Remaining arguments are tp change factors
+  tp.change <- args[-1:-2]
+  MSI <- T
+  
 }
 
 # Other information and pre-processing
@@ -49,6 +51,10 @@ if (MSI) {
   
 }
 
+# Verify that the TP changes in the arguments are acceptable
+if (!all(tp.change %in% c("best", "worst", "random", "nochange", "PEVmean", "CDmean")) )
+  stop("The TP change arguments are not acceptable.")
+
 # Set the number of cores by detection
 n.cores <- detectCores()
 
@@ -73,7 +79,9 @@ min.maf = 0.03
 mutation.rate.snp = 7e-8
 mutation.rate.qtl = 7e-8
 
-tp.change = c("best", "worst", "random", "nochange", "PEVmean", "CDmean")
+# Selection intensity and the number of crosses
+parents.sel.intensity = 100
+n.crosses = 50
 
 # The number of lines to add the TP after each cycle
 tp.update.increment = 150
@@ -144,13 +152,14 @@ for (change in tp.change) {
   # Apply the iterations over cores
   experiment.sub.results <- mclapply(X = iters.per.core, FUN = function(iter.set) {
 
-    # Create an empty list to store repetition results
-    rep.results <- list()
+    # Create a vector of rep names
+    reps <- str_c("rep", iter.set)
     
-    # Loop over each iteration
-    for (r in seq_along(iter.set)) {
+    # Iterate over reps
+    sapply(X = reps, FUN = function(r) {
       
-      # All code below this line is variable in each iteration of the simulat
+      
+      # All code below this line is variable in each iteration of the simulation
 
       #### Define trait parameters ####
       hv.genome <- trait.architecture(genome = hv.genome,
@@ -375,9 +384,12 @@ for (change in tp.change) {
         
         
         # Estimate marker effects
-        predictions.out <- make.predictions(pheno.train = TP.phenos.i,
+        predictions.out <- try(make.predictions(pheno.train = TP.phenos.i,
                                             geno.train = TP.genos.use,
-                                            geno.pred = candidate.genos.use)
+                                            geno.pred = candidate.genos.use))
+        # If it errors out, just return NA for this iteration
+        if (class(predictions.out) == "try-error")
+          return(NA)
         
         ##### Step 5 - Phenotype the population
         # We use the haploid genotypes from the F1:3 generation to measure the
@@ -561,18 +573,13 @@ for (change in tp.change) {
         
       } # Close the per-cycle loop
       
-      # Rep number
-      rep.name <- paste("rep", r, sep = "")
+      # Return a list
+      list(sim.results = simulation.results, genome = hv.genome)
       
-      # Add the simulation results to the set results
-      rep.results[[rep.name]] <- list(sim.results = simulation.results, genome = hv.genome)
-      
-    } # Close the iteration loop
+      # Close the sapply over replications
+    }, simplify = F)
     
-    # Return the rep list
-    return(rep.results)
-    
-  # End parlapply
+  # End mclapply
   }, mc.cores = n.cores)
   
   # Save the tp.change data
