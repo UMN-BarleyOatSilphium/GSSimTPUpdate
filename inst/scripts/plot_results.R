@@ -3,148 +3,105 @@
 # Load packages
 library(tidyverse, quietly = T)
 library(stringr, quietly = T)
-library(GSsim.TPUpdate, quietly = T, verbose = F)
+library(GSsim.TPUpdate)
+library(gridExtra)
 
 
 # Set directory and grab the files
 results.dir <- "C:/Users/Jeff/Google Drive/Barley Lab/Projects/Side Projects/Simulations/GSsim.TPUpdate/Results/Base Experiment/"
 
 # File path for figures
-figures.dir <- file.path(results.dir, "Figures")
+figures.dir <- "C:/Users/Jeff/Google Drive/Barley Lab/Projects/Side Projects/Simulations/GSsim.TPUpdate/figures/"
 
 # Load data from the allele frequency experiment
 all.files <- list.files(results.dir, full.names = T) %>%
   str_subset(pattern = "simulation_results") %>%
   str_subset(pattern = "collective.RData")
 
-# Just MNxND files
-filename <- all.files %>%
-  str_subset(pattern = "MNxND") %>%
-  str_subset(pattern = "cumulative")
+# Create a list to store multiple collective data list
+total.collective.data <- list()
 
-load(filename)
-
-### Initial experimen settings
-# Experimental parameters
-pop.makeup <- str_extract(string = filename, pattern = 'results_[A-Za-z]{2,5}') %>%
-  str_extract(pattern = '[A-Za-z]{2,5}$')
-
-tp.formation <- 
-  str_extract(string = filename, pattern = paste0(c("cumulative", "window"), collapse = "|"))
-
-n.cycles <- collective.abbreviated.results[[1]][[1]] %>% 
-  select(cycle) %>% 
-  unique() %>% 
-  nrow()
-
-# The different updating methods
-collective.abbreviated.results %>%
-  names()
+# Iterate over files and assign data to designators
+for (file in all.files) {
+  # Grab some metadata
+  pop.type <- file %>% basename() %>% str_extract('MNxND|MN|ND')
+  # TP formation
+  tp.formation <- file %>% basename() %>% str_extract('cumulative|window')
+  
+  load(file)
+  
+  # Assign the data to a new object
+  assign.name <- str_c(pop.type, tp.formation, "collective_data", sep = "_")
+  total.collective.data[[assign.name]] <- collective.abbreviated.results
+  
+}
+  
+# Get rid of one list
+rm(collective.abbreviated.results)
 
 tp.change.factors <- c(best = "Best", CDmean = "CDmean", nochange = "No Change", 
                        PEVmean = "PEVmean", random = "Random", worst = "Worst") %>%
   as.factor()
 
+# Number of cycles
+n.cycles <- total.collective.data[[1]][[1]][[1]]$cycle %>% unique() %>% length()
 
-## Define a function for summarization and calculation of mean and confidence
-## interval
-# df - a data.frame of the update method, cycle number, and parameter value.
-sim.summarize <- function(df) {
   
-  # Remove duplicated change-iter-cycle pairs
-  df1 <- df %>% 
-    group_by(change, iter, cycle) %>% 
-    filter(row_number() == 1)
-  
-  df2 <- df1 %>%
-    group_by(change, cycle) %>%
-    summarize(mean = mean(value, na.rm = T), 
-              sd = sd(value, na.rm = T),
-              n = n()) %>%
-    mutate(se = sd / sqrt(n),
-           ci = qt(p = 1 - (0.05 / 2), df = n - 1) * se)
-  
-  # Add in an offset to the cycles
-  df2$cycle.offset <- df2$cycle + (as.numeric(as.factor(df2$change)) - 1) * 0.1
-  
-  return(df2)
-}
-
-
-
-
-## Define a function to plot the summary data.frame using ggplot2
-
-sim.ggplot <- function(df.summary, main, ylab, xlab = "Breeding Cycle", ylim = NULL, 
-                       xlim = c(1, n.cycles + 1), tp.change.factors) {
-  
-  # Set the range in ylim
-  if (is.null(ylim)) {
-    ylim <- df1 %>% 
-      summarize(max = max(mean + ci, na.rm = T), min = min(mean - ci, na.rm = T)) %>% 
-      summarize(max = max(max, na.rm = T), min = min(min, na.rm = T)) %>% 
-      pretty() %>% 
-      range()
-    
-  }
-  
-  gp <- ggplot(data = df.summary, aes(x = cycle.offset, y = mean, col = change, 
-                                      shape = change)) +
-    geom_errorbar(aes(ymin = mean - ci, ymax = mean + ci), col = "black", width = 0.10) +
-    geom_line(size = 1) +
-    geom_point(size = 2) +
-    ggtitle(main) + 
-    ylab(ylab) +
-    xlab(xlab) +
-    ylim(ylim) +
-    xlim(xlim) +
-    scale_color_discrete(name = "Update Method",
-                         labels = as.character(tp.change.factors)) +
-    scale_shape_discrete(name = "Update Method",
-                         labels = as.character(tp.change.factors))
-  
-  print(gp)
-  
-}
-  
+# Names of the larger list
+total.names <- names(total.collective.data)
 
 
 ### Change in Genetic Variance
-df <- lapply(X = collective.abbreviated.results, FUN = function(tpc) tpc$candidate.gen.var) %>%
+df <- lapply(X = total.names, FUN = function(coll.name) 
+  lapply(X = total.collective.data[[coll.name]], FUN = function(tpc) tpc$candidate.gen.var) %>%
+    bind_rows() %>%
+    mutate(exp_name = str_extract(string = coll.name, pattern = 'window|cumulative') %>% 
+             str_to_title()) ) %>%
   bind_rows()
 
 # Calculate mean and CI for each change-cycle combination over iterations
 df1 <- sim.summarize(df)
 
-sim.ggplot(df.summary = df1, main = "Genetic Variance", ylab = "Genetic Variance",
-           tp.change.factors = tp.change.factors)
+gp.gen.var <- sim.ggplot(df.summary = df1, main = "Genetic Variance of Selection Candidates", 
+                         ylab = "Genetic Variance", col.factors = tp.change.factors)
 
-ggsave(filename = file.path(figures.dir, paste("figure_", pop.makeup, "_", tp.formation, 
-                                               "_gen_var.jpg", sep = "")),
-       height = 5, width = 6.5)
+ggsave(filename = file.path(figures.dir, str_c(pop.type, "_gen_var_combined.jpg")),
+       height = 5, width = 9)
 
 
 ### Change in mean genotypic value of the selection candidates
 
-df <- lapply(X = collective.abbreviated.results, FUN = function(tpc) tpc$candidate.gen.val) %>%
+df <- df <- lapply(X = total.names, FUN = function(coll.name) 
+  lapply(X = total.collective.data[[coll.name]], FUN = function(tpc) tpc$candidate.gen.val) %>%
+    bind_rows() %>%
+    mutate(exp_name = str_extract(string = coll.name, pattern = 'window|cumulative') %>% 
+             str_to_title()) ) %>%
   bind_rows()
 
 # Calculate mean and CI for each change-cycle combination over iterations
 df1 <- sim.summarize(df)
 
-sim.ggplot(df.summary = df1, main = "Genotypic Value of the Selection Candidates", 
-           ylab = "Genotypic Value", tp.change.factors = tp.change.factors)
+gp.gen.val <- sim.ggplot(df.summary = df1, main = "Genotypic Value of the Selection Candidates", 
+                         ylab = "Genotypic Value", col.factors = tp.change.factors)
 
-ggsave(filename = file.path(figures.dir, paste("figure_", pop.makeup, "_", tp.formation, 
-                                               "_geno_value.jpg", sep = "")),
-       height = 5, width = 6.5)
+ggsave(filename = file.path(figures.dir, str_c(pop.type, "_gen_val_combined.jpg")),
+       height = 5, width = 9)
+
+
+# Create a figure with both plots
+gp.combine <- grid.arrange(gp.gen.var, gp.gen.val)
+
+ggsave(filename = file.path(figures.dir, str_c(pop.type, "_gen_val_gen_var_combined.jpg")),
+       plot = gp.combine, height = 10, width = 9)
+
+
 
 ## Alternatively, the true response to selection
 
 df1 <- df %>% 
-  group_by(change, iter, cycle) %>% 
+  group_by(exp_name, change, iter, cycle) %>% 
   filter(row_number() == 1) %>%
-  group_by(change, iter) %>%
+  group_by(exp_name, change, iter) %>%
   mutate(value = c(NA, diff(value))) %>% 
   na.omit() %>%
   sim.summarize()
@@ -157,7 +114,11 @@ sim.ggplot(df.summary = df1, main = "Response to Selection Across Cycles",
 ### Change in the prediction accuracy over cycles
 
 # Plot
-df <- lapply(X = collective.abbreviated.results, FUN = function(tpc) tpc$validation.results) %>%
+df <- df <- lapply(X = total.names, FUN = function(coll.name) 
+  lapply(X = total.collective.data[[coll.name]], FUN = function(tpc) tpc$validation.results) %>%
+    bind_rows() %>%
+    mutate(exp_name = str_extract(string = coll.name, pattern = 'window|cumulative') %>% 
+             str_to_title()) ) %>%
   bind_rows()
 
 df1 <- sim.summarize(df)
@@ -166,9 +127,8 @@ sim.ggplot(df.summary = df1, main = "Realized Prediction Accuracy",
            ylab = "Prediction Accuracy (r)", 
            tp.change.factors = tp.change.factors)
 
-ggsave(filename = file.path(figures.dir, paste("figure_", pop.makeup, "_", tp.formation, 
-                                               "_prediction_accuracy.jpg", sep = "")),
-       height = 5, width = 6.5)
+ggsave(filename = file.path(figures.dir, str_c(pop.type, "_pred_acc_combined.jpg")),
+       height = 5, width = 9)
 
 
 
@@ -179,7 +139,11 @@ ggsave(filename = file.path(figures.dir, paste("figure_", pop.makeup, "_", tp.fo
 
 # Each QTL's max LD
 # Plot
-df <- lapply(X = collective.abbreviated.results, FUN = function(tpc) tpc$qtl.marker.LD) %>%
+df <- lapply(X = total.names, FUN = function(coll.name) 
+  lapply(X = total.collective.data[[coll.name]], FUN = function(tpc) tpc$qtl.marker.LD) %>%
+    bind_rows() %>%
+    mutate(exp_name = str_extract(string = coll.name, pattern = 'window|cumulative') %>% 
+             str_to_title()) ) %>%
   bind_rows()
 
 df1 <- sim.summarize(df %>% filter(extra == "mean_max_genome"))
@@ -190,9 +154,8 @@ sim.ggplot(df.summary = df1, main = "Mean LD Between QTL and Marker in Highest L
            tp.change.factors = tp.change.factors)
 
 
-ggsave(filename = file.path(figures.dir, paste("figure_", pop.makeup, "_", tp.formation, 
-                                               "_mean_max_ld.jpg", sep = "")),
-       height = 5, width = 6.5)
+ggsave(filename = file.path(figures.dir, str_c(pop.type, "_mean_max_LD_combined.jpg")),
+       height = 5, width = 9)
 
 
 
@@ -201,51 +164,53 @@ ggsave(filename = file.path(figures.dir, paste("figure_", pop.makeup, "_", tp.fo
 df1 <- sim.summarize(df %>% filter(extra == "persistence"))
 
 
-sim.ggplot(df.summary = df1, 
-           main = "Persistence of LD Phase Between Training Population\nand Selection Candidates", 
-           ylab = "Persistence of Phase (cor of r)", 
-           tp.change.factors = tp.change.factors)
+gp.pers <- sim.ggplot(df.summary = df1, 
+                      main = "Persistence of LD Phase Between Training Population\nand Selection Candidates", 
+                      ylab = "Persistence of Phase (cor of r)", 
+                      col.factors = tp.change.factors)
 
 
-ggsave(filename = file.path(figures.dir, paste("figure_", pop.makeup, "_", tp.formation, 
-                                               "_persistence_of_phase.jpg", sep = "")),
-       height = 5, width = 6.5)
-
-
-# Time to fixation versus allele effect
-df <- lapply(X = collective.abbreviated.results, FUN = function(tpc) tpc$qtl.marker.LD) %>%
-  bind_rows()
-
-
-### Time to fixation versus effect
-
-
+ggsave(filename = file.path(figures.dir, str_c(pop.type, "_persistence_LD_combined.jpg")),
+       height = 5, width = 9)
 
 
 ### Relationship
 ## TP - SC
 
 # Plot
-df <- lapply(X = collective.abbreviated.results, FUN = function(tpc) tpc$tp.sc.relationship) %>%
+df <- lapply(X = total.names, FUN = function(coll.name) 
+  lapply(X = total.collective.data[[coll.name]], FUN = function(tpc) tpc$tp.sc.relationship) %>%
+    bind_rows() %>%
+    mutate(exp_name = str_extract(string = coll.name, pattern = 'window|cumulative') %>% 
+             str_to_title()) ) %>%
   bind_rows()
 
 df1 <- sim.summarize(df)
 
-sim.ggplot(df.summary = df1, 
-           main = "Additive Genomic Relationship Between Training Population\nand Selection Candidates", 
-           ylab = "Additive Genomic Relationship\n(Scaled to Base Population)", 
-           tp.change.factors = tp.change.factors)
+gp.rel <- sim.ggplot(df.summary = df1, 
+                     main = "Additive Genomic Relationship Between Training Population\nand Selection Candidates", 
+                     ylab = "Additive Genomic Relationship\n(Scaled to Base Population)", 
+                     col.factors = tp.change.factors)
 
 
-ggsave(filename = file.path(figures.dir, paste("figure_", pop.makeup, "_", tp.formation, 
-                                               "_average_relationship.jpg", sep = "")),
-       height = 5, width = 6.5)
+ggsave(filename = file.path(figures.dir, str_c(pop.type, "_avg_rel_combined.jpg")),
+       height = 5, width = 9)
+
+## Make a figure with both the persistence of phase and relationship graphs
+gp.combine <- grid.arrange(gp.rel, gp.pers)
+
+ggsave(filename = file.path(figures.dir, str_c(pop.type, "_LD_pers_rel_combined.jpg")),
+       plot = gp.combine, height = 10, width = 9)
 
 
 ### Change in inbreeding coefficient
 ## Selection candidates
 
-df <- lapply(X = collective.abbreviated.results, FUN = function(tpc) tpc$sc.inbreeding) %>%
+df <- df <- lapply(X = total.names, FUN = function(coll.name) 
+  lapply(X = total.collective.data[[coll.name]], FUN = function(tpc) tpc$sc.inbreeding) %>%
+    bind_rows() %>%
+    mutate(exp_name = str_extract(string = coll.name, pattern = 'window|cumulative') %>% 
+             str_to_title()) ) %>%
   bind_rows()
 
 df1 <- sim.summarize(df)
@@ -254,16 +219,15 @@ sim.ggplot(df.summary = df1,
            main = "Average Inbreeding Coefficient\nAmong Selection Candidates", 
            ylab = "Inbreeding Coefficient", tp.change.factors = tp.change.factors)
 
-ggsave(filename = file.path(figures.dir, paste("figure_", pop.makeup, "_", tp.formation, 
-                                               "_sc_inbreeding.jpg", sep = "")),
-       height = 5, width = 6.5)
+ggsave(filename = file.path(figures.dir, str_c(pop.type, "_inbreeding_combined.jpg")),
+       height = 5, width = 9)
 
 
 ## Rate of inbreeding
 df1 <- df %>% 
-  group_by(change, iter, cycle) %>% 
+  group_by(exp_name, change, iter, cycle) %>% 
   filter(row_number() == 1) %>%
-  group_by(change, iter) %>%
+  group_by(exp_name, change, iter) %>%
   mutate(value = c(NA, diff(value))) %>% 
   na.omit() %>%
   sim.summarize()
@@ -272,16 +236,20 @@ sim.ggplot(df.summary = df1,
            main = "Rate of Inbreeding\nAmong Selection Candidates", 
            ylab = "Rate of Inbreeding (delta F)", tp.change.factors = tp.change.factors)
 
-ggsave(filename = file.path(figures.dir, paste("figure_", pop.makeup, "_", tp.formation, 
-                                               "_sc_inbreeding_rate.jpg", sep = "")),
-       height = 5, width = 6.5)
+ggsave(filename = file.path(figures.dir, str_c(pop.type, "_inbreeding_rate_combined.jpg")),
+       height = 5, width = 9)
 
 
 ### Change in the Expected Heterozygosity Among TP Additions
 
 # Plot
-df <- lapply(X = collective.abbreviated.results, FUN = function(tpc) tpc$tp.update.exp.het) %>%
+df <- lapply(X = total.names, FUN = function(coll.name) 
+  lapply(X = total.collective.data[[coll.name]], FUN = function(tpc) tpc$tp.update.exp.het) %>%
+    bind_rows() %>%
+    mutate(exp_name = str_extract(string = coll.name, pattern = 'window|cumulative') %>% 
+             str_to_title()) ) %>%
   bind_rows()
+
 
 df1 <- sim.summarize(df)
 
@@ -291,16 +259,19 @@ sim.ggplot(df.summary = df1,
            tp.change.factors = tp.change.factors)
 
 
-ggsave(filename = file.path(figures.dir, paste("figure_", pop.makeup, "_", tp.formation, 
-                                               "_exp_het.jpg", sep = "")),
-       height = 5, width = 6.5)
+ggsave(filename = file.path(figures.dir, str_c(pop.type, "_exp_het_combined.jpg")),
+       height = 5, width = 9)
 
 
 
 ## Changes in QTL allele frequency
 
 # Proportion of fixed QTL in the SC
-df <- lapply(X = collective.abbreviated.results, FUN = function(tpc) tpc$candidate.prop.fixed) %>%
+df <- lapply(X = total.names, FUN = function(coll.name) 
+  lapply(X = total.collective.data[[coll.name]], FUN = function(tpc) tpc$candidate.prop.fixed) %>%
+    bind_rows() %>%
+    mutate(exp_name = str_extract(string = coll.name, pattern = 'window|cumulative') %>% 
+             str_to_title()) ) %>%
   bind_rows()
 
 df1 <- sim.summarize(df)
@@ -310,7 +281,6 @@ sim.ggplot(df.summary = df1,
            ylab = "Proportion", 
            tp.change.factors = tp.change.factors)
 
-ggsave(filename = file.path(figures.dir, paste("figure_", pop.makeup, "_", tp.formation, 
-                                               "_fixed_qtl.jpg", sep = "")),
-       height = 5, width = 6.5)
+ggsave(filename = file.path(figures.dir, str_c(pop.type, "_prop_fixed_combined.jpg")),
+       height = 5, width = 9)
 
