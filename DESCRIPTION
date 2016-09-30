@@ -14,8 +14,11 @@ Suggests:
     boot,
     parallel,
     testthat,
-    MASS
+    MASS,
+    knitr,
+    rmarkdown
 License: MIT
 Encoding: UTF-8
 LazyData: true
 RoxygenNote: 5.0.1
+VignetteBuilder: knitr
