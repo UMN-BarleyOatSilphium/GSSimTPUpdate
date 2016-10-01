@@ -16,7 +16,7 @@ figures.dir <- "C:/Users/Jeff/Google Drive/Barley Lab/Projects/Side Projects/Sim
 # Load data from the allele frequency experiment
 all.files <- list.files(results.dir, full.names = T) %>%
   str_subset(pattern = "simulation_results") %>%
-  str_subset(pattern = "collective.RData")
+  str_subset(pattern = "collective")
 
 # Create a list to store multiple collective data list
 total.collective.data <- list()
@@ -53,7 +53,7 @@ total.names <- names(total.collective.data)
 
 ### Change in Genetic Variance
 df <- lapply(X = total.names, FUN = function(coll.name) 
-  lapply(X = total.collective.data[[coll.name]], FUN = function(tpc) tpc$candidate.gen.var) %>%
+  lapply(X = total.collective.data[[coll.name]], FUN = function(tpc) tpc$sc.gen.var) %>%
     bind_rows() %>%
     mutate(exp_name = str_extract(string = coll.name, pattern = 'window|cumulative') %>% 
              str_to_title()) ) %>%
@@ -268,7 +268,7 @@ ggsave(filename = file.path(figures.dir, str_c(pop.type, "_exp_het_combined.jpg"
 
 # Proportion of fixed QTL in the SC
 df <- lapply(X = total.names, FUN = function(coll.name) 
-  lapply(X = total.collective.data[[coll.name]], FUN = function(tpc) tpc$candidate.prop.fixed) %>%
+  lapply(X = total.collective.data[[coll.name]], FUN = function(tpc) tpc$sc.allele.freq) %>%
     bind_rows() %>%
     mutate(exp_name = str_extract(string = coll.name, pattern = 'window|cumulative') %>% 
              str_to_title()) ) %>%

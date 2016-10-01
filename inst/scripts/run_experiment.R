@@ -328,15 +328,23 @@ for (change in tp.change) {
         n.marker.LD <- min(ncol(TP.LD.genome), ncol(candidate.LD.genome))
         n.qtl.LD <- min(nrow(TP.LD.genome), nrow(candidate.LD.genome))
         
-        # Copy
-        TP.candidate.LD.perm <- TP.candidate.LD
+        # Only run the permuation test on the 15th cycle
+        if (breeding.cycle == 15) {
         
-        # Run a permutation test to randomize the candidate QTL-marker pair
-        # LD and run a correlation
-        persistence.perm.results <- replicate(n = 500, expr = {
-          TP.candidate.LD.perm$candidates <- sample(TP.candidate.LD.perm$candidates)
-          cor(TP.candidate.LD.perm) %>% 
-            .[upper.tri(.)] })
+          # Copy
+          TP.candidate.LD.perm <- TP.candidate.LD
+          
+          # Run a permutation test to randomize the candidate QTL-marker pair
+          # LD and run a correlation
+          persistence.perm.results <- replicate(n = 500, expr = {
+            TP.candidate.LD.perm$candidates <- sample(TP.candidate.LD.perm$candidates)
+            cor(TP.candidate.LD.perm) %>% 
+              .[upper.tri(.)] })
+          
+        } else {
+          persistence.perm.results <- NA
+          
+        }
           
           
         # Create a list to save
