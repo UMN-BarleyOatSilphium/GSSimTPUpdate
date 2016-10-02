@@ -270,17 +270,53 @@ ggsave(filename = file.path(figures.dir, str_c(pop.type, "_exp_het_combined.jpg"
 df <- lapply(X = total.names, FUN = function(coll.name) 
   lapply(X = total.collective.data[[coll.name]], FUN = function(tpc) tpc$sc.allele.freq) %>%
     bind_rows() %>%
+    filter(extra1 == "qtl") %>% 
+    group_by(change, iter, cycle) %>% 
+    summarize(value = sum(value == 0 | value == 1)) %>%
     mutate(exp_name = str_extract(string = coll.name, pattern = 'window|cumulative') %>% 
              str_to_title()) ) %>%
   bind_rows()
 
-df1 <- sim.summarize(df)
+df1 <- sim.summarize(df %>% ungroup())
 
 sim.ggplot(df.summary = df1, 
-           main = "Proportion of QTL Fixed for an Allele in the Selection Candidates", 
-           ylab = "Proportion", 
-           tp.change.factors = tp.change.factors)
+           main = "Number of QTL Fixed for an Allele in the Selection Candidates", 
+           ylab = "Number of QTL", 
+           col.factors = tp.change.factors)
 
 ggsave(filename = file.path(figures.dir, str_c(pop.type, "_prop_fixed_combined.jpg")),
        height = 5, width = 9)
+
+
+## Combine QTL with their effect in each iteration
+## Find the proportion of QTL that are fixed for the
+## favorable allele
+df <- lapply(X = total.names, FUN = function(coll.name) 
+  lapply(X = total.collective.data[[coll.name]], FUN = function(tpc) {
+    # Gather the allele frequencies
+    freq <- tpc$sc.allele.freq %>%
+      filter(extra1 == "qtl")
+    # Gather the effects
+    eff <- tpc$qtl.effects
+    # Add the effects to the frequencies
+    freq$effect <- eff$value
+    return(freq) }) %>%
+    bind_rows() %>%
+    mutate(exp_name = str_extract(string = coll.name, pattern = 'window|cumulative') %>% 
+             str_to_title()) ) %>%
+
+  bind_rows() %>%
+  # Find QTL fixed for favorable allele
+  group_by(exp_name, change, iter, cycle) %>% 
+  filter((value == 0 & effect < 0) | (value == 1 & effect > 0) ) %>%
+  summarize(value = n())
+  
+df1 <- sim.summarize(df %>% ungroup())
+    
+sim.ggplot(df.summary = df1, 
+           main = "Number of QTL Fixed for the Favorable Allele in the Selection Candidates", 
+           ylab = "Number of QTL", 
+           col.factors = tp.change.factors)         
+         
+         
 
