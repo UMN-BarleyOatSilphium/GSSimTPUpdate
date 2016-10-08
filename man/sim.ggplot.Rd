@@ -4,8 +4,8 @@
 \alias{sim.ggplot}
 \title{Plot data from a data frame summary}
 \usage{
-sim.ggplot(df.summary, main, ylab, xlab = "Breeding Cycle", ylim = NULL,
-  xlim = c(1, n.cycles + 1), col.factors, print.plot = TRUE)
+sim.ggplot(df.summary, main, ylab, xlab = "Breeding Cycle", col.factors,
+  text.y.scaling = 1.05, print.plot = TRUE)
 }
 \arguments{
 \item{df.summary}{The summary data frame produced by the \code{sim.summarize}
@@ -17,11 +17,12 @@ function.}
 
 \item{xlab}{The x-axis title. Defaults to "Breeding Cycle."}
 
-\item{ylim}{The y-axis scale range.}
-
-\item{xlim}{The x-axis scale range. Defaults to \code{c(1, (n.cycles + 1))}.}
-
 \item{col.factors}{The factors used in coloring the points / lines on the plot.}
+
+\item{text.y.scaling}{The scale by which to alter the maximum y value. This
+new y value will be used to position text denoting the subplot in a larger
+ggplot (e.g. A, B, C, etc.). Defaults to 1.05, meaning that the new y value
+will be 5% higher than the max.}
 
 \item{print.plot}{Logical. Should the plot be displayed?}
 }

@@ -1,27 +1,30 @@
 ## Genomic selection simulations
-# This code runs iterations of long-term genomic selection simulations to 
-## test the usefulness of updating a training population and how it impacts
-## prediction accuracy, genetic variance, and selection potential
+
+## This iteration of the experiment uses a completely simulated population 
+## in order to reduce the apparent LD structure. This aims to address the
+## questions of persistence of LD phase.
 
 # Arguments
 args <- commandArgs(trailingOnly = T)
 
 # First and only argument is the pop makeup (MN, ND, or MNxND)
 # Second argument is how the TP should be combined after each cycle (cumulative or window)
+# The remaining arguments a
 # If no arguments are given (i.e. it's being run locally), set defaults for testing
 if (all(is.na(args))) {
   pop.makeup <- "MNxND"
   tp.formation <- "cumulative"
-  parents.sel.intensity = 100
-  n.crosses = 50
-  MSI = F
+  tp.change <- c("best", "worst", "random", "nochange", "PEVmean", "CDmean")
+  
+  MSI <- F
   
 } else {
   pop.makeup <- args[1]
   tp.formation <- args[2]
-  parents.sel.intensity <- as.numeric(args[3])
-  n.crosses = as.numeric(args[4])
-  MSI = T
+  # Remaining arguments are tp change factors
+  tp.change <- args[-1:-2]
+  MSI <- T
+  
 }
 
 # Other information and pre-processing
@@ -49,6 +52,10 @@ if (MSI) {
   
 }
 
+# Verify that the TP changes in the arguments are acceptable
+if (!all(tp.change %in% c("best", "worst", "random", "nochange", "PEVmean", "CDmean")) )
+  stop("The TP change arguments are not acceptable.")
+
 # Set the number of cores by detection
 n.cores <- detectCores()
 
@@ -73,7 +80,9 @@ min.maf = 0.03
 mutation.rate.snp = 7e-8
 mutation.rate.qtl = 7e-8
 
-tp.change = c("best", "worst", "random", "nochange", "PEVmean", "CDmean")
+# Selection intensity and the number of crosses
+parents.sel.intensity = 100
+n.crosses = 50
 
 # The number of lines to add the TP after each cycle
 tp.update.increment = 150
@@ -88,7 +97,7 @@ cycle.candidate.size = n.crosses * ind.per.cross
 std.sel.intensity = parents.sel.intensity / cycle.candidate.size
 
 # Computation parameters
-n.iterations = 500
+n.iterations = 250
 
 date <- format(Sys.time(), "%d%m%y-%H%M%S")
 
@@ -133,27 +142,26 @@ hv.genome <- make.genome( n.chr = length(chr.len),
 # Iterate over the different tp.change types
 for (change in tp.change) {
   
-  #   # Split iterations into cores
-  # if (n.cores > 1) {
-  #   iters.per.core <- split(x = 1:n.iterations, factor(cut(x = 1:n.iterations, breaks = n.cores)))
-  #   names(iters.per.core) <- paste("set", seq_along(iters.per.core), sep = "")
-  # } else {
-  #   iters.per.core <- 1:n.iterations
-  # }    
-
+  # Split iterations into cores
+  if (n.cores > 1) {
+    iters.per.core <- split(x = 1:n.iterations, factor(cut(x = 1:n.iterations, breaks = n.cores)))
+    names(iters.per.core) <- paste("set", seq_along(iters.per.core), sep = "")
+  } else {
+    iters.per.core <- 1:n.iterations
+  }    
+  
   # Apply the iterations over cores
-  # experiment.sub.results <- mclapply(X = iters.per.core,  FUN = function(iter.set) {
+  experiment.sub.results <- mclapply(X = iters.per.core, FUN = function(iter.set) {
     
-  for (iter in seq_len(n.iterations)) {
-
-    # # Create an empty list to store repetition results
-    # rep.results <- list()
-    # 
-    # # Loop over each iteration
-    # for (r in seq_along(iter.set)) {
+    # Create a vector of rep names
+    reps <- str_c("rep", iter.set)
+    
+    # Iterate over reps
+    sapply(X = reps, FUN = function(r) {
+      
       
       # All code below this line is variable in each iteration of the simulation
-
+      
       #### Define trait parameters ####
       hv.genome <- trait.architecture(genome = hv.genome,
                                       n.QTL = n.QTL, 
@@ -163,13 +171,48 @@ for (change in tp.change) {
                                       qtl.add.eff = "geometric", 
                                       qtl.dom.eff = NULL)
       
-
-      TP.haploids.i <- CAP.haploids
+      ### Create the founders
+      founder1 <- rep(c(1,0), length.out = sum(n.chr.snps))
+      founder2 <- abs(1 - founder1)
+      
+      # Force to diploid matrix
+      founder1 <- rbind(founder1, founder1)
+      founder2 <- rbind(founder2, founder2)
+      
+      
+      # To create F_2-derived doubled haploids, we will simply generate haploids
+      # of F_3 plants and randomly choose either haploid1 or haploid2 to convert
+      # to make homozygous
+      F_2.gametes <- make.family(genome = hv.genome, parent1.genome = founder1,
+                         parent2.genome = founder2, N = tp.size, generations = 2,
+                         pop.type = "inbred", cycle.number = 1, family.number = 1,
+                         mutate = T, mutation.rate.snp = mutation.rate.snp,
+                         mutation.rate.qtl =  mutation.rate.qtl)
+      
+      # Add marker names
+      colnames(F_2.gametes) <- colnames(CAP.haploids)
+      
+      n.F_2 <- nrow(F_2.gametes) / 2
+      
+      # Randomly choose haploid 1 or 2 from each F_3 plant
+      sampled.haploids <- row.names(F_2.gametes) %>% 
+        split(rep(seq_len(n.F_2), each = 2)) %>%
+        sapply(FUN = sample, size = 1) %>%
+        rep(each = 2)
+      
+      # Create the doubled haploid lines
+      DH.haploids <- F_2.gametes[sampled.haploids,]
+      
+      # Reassign to the TP
+      TP.haploids.i <- DH.haploids
       # Convert the gametes to genotypes
       TP.genos <- genotype.loci(haploid.genos = TP.haploids.i, genome = hv.genome)
       
-      # Find the MAF of all marker snps
-      marker.maf <- measure.maf(TP.genos)
+      # Find the allele freq of all marker snps
+      marker.af <- measure.af(genome = hv.genome, haploid.genos = TP.haploids.i)$snp
+      # Calculate maf
+      marker.maf <- sapply(marker.af, FUN = function(freq) min(freq, 1 - freq))
+      
       # Determine which are below 
       markers.below.maf <- which(marker.maf < min.maf)
       
@@ -180,12 +223,6 @@ for (change in tp.change) {
       P = matrix(2 * (p_i - 0.5))
       # Calculate the normalization constant
       c = 2 * sum(p_i * (1 - p_i))
-      
-      ## Select the TP lines for use as parents
-      # First separate MN and ND lines
-      line.names <- row.names(TP.genos)
-      ND.lines <- str_subset(string = line.names, pattern = "^ND")
-      MN.lines <- setdiff(x = line.names, y = ND.lines)
       
       ## Set the inital variances for the heritability
       # True genetic variance
@@ -208,20 +245,20 @@ for (change in tp.change) {
       
       TP.phenos <- TP.values$mean.pheno.values
       
-      # Next select the top MN and top ND
-      top.MN.lines <- names(sort(TP.phenos[MN.lines,], decreasing = T)[1:parents.sel.intensity])
-      top.ND.lines <- names(sort(TP.phenos[ND.lines,], decreasing = T)[1:parents.sel.intensity])
+      # Next select the top lines
+      line.names <- row.names(TP.genos)
       
-      # Create a list to store the line names
-      pop.makeup.list <- list(
-        MN = list(p1 = top.MN.lines, p2 = top.MN.lines),
-        ND = list(p1 = top.ND.lines, p2 = top.ND.lines),
-        MNxND = list(p1 = top.MN.lines[seq(parents.sel.intensity / 2)], p2 = top.ND.lines[seq(parents.sel.intensity / 2)])
-      )
+      top.lines <- TP.phenos %>% 
+        order(decreasing = T) %>% 
+        .[seq_len(parents.sel.intensity)] %>% 
+        line.names[.]
       
+      # Create a list of parent lines
+      parent.lines.list <- list(p1 = top.lines, p2 = top.lines)
+
       # Set the parent gamete data input
-      parent.lines.list <- pop.makeup.list[[pop.makeup]]
-      parent.haploids <- select.haploids(haploid.genos = TP.haploids.i, line.names = unique(unlist(parent.lines.list)))
+      parent.haploids <- select.haploids(haploid.genos = TP.haploids.i, 
+                                         line.names = top.lines)
       
       # Set dummy variables for the phenos and genos
       TP.phenos.i <- TP.phenos
@@ -232,9 +269,9 @@ for (change in tp.change) {
       
       # Loop over the number of cycles
       for (breeding.cycle in seq(n.cycles)) {
-
+        
         ##### Start the Cycle Executions #####
-
+        
         ##### Step 1 - Crossing and inbreeding
         # Make a crossing block
         crossing.block.i <- make.crossing.block(parent1.lines = parent.lines.list$p1, 
@@ -267,35 +304,20 @@ for (change in tp.change) {
         
         
         ##### Step 3 - Genotypic Summary Statistics
-        # Measure the minor allele frequency of all loci
-        candidate.genos.maf.i <- measure.maf(genos = candidate.genos.i)
-        # Measure the maf of just the markers
-        candidate.marker.maf.i <- measure.maf(genos = candidate.marker.genos.i)
-        TP.genos.maf.i <- measure.maf(genos = TP.genos.i)
+        # Measure the frequency of the 1 allele in each of the haploids set
+        candidate.af.i <- measure.af(genome = hv.genome, 
+                                     haploid.genos = candidate.haploid.i)
+        
+        TP.af.i <- measure.af(genome = hv.genome, 
+                              haploid.genos = TP.haploids.i)
+        
         
         ### LD measures
-        # Candidates
-        candidate.LD.window <- measure.LD(genome = hv.genome, 
-                                          genos = candidate.genos.i, 
-                                          Morgan.window = 0.25)
+        ### Candidates
         
         # No window
         candidate.LD.genome <- measure.LD(genome = hv.genome,
                                           genos = candidate.genos.i)
-        
-        # Per QTL, find the LD of the marker (within the window) with which the 
-        ## QTL has the highest LD then find the mean of those values across 
-        ## polymorphic qtl
-        candidate.mean.max.LD.window <- lapply(X = candidate.LD.window, FUN = function(chr)
-          lapply(X = chr, FUN = function(qtl) max(qtl^2)) ) %>%
-          unlist() %>%
-          mean(na.rm = T)
-        
-        # Now just find the mean of LD across the whole window
-        candidate.mean.LD.window <- candidate.LD.window %>% 
-          unlist() %>% 
-          .^2 %>% 
-          mean(na.rm = T)
         
         # For the whole genome, find the mean LD value across those
         ## max LD values per QTL
@@ -303,35 +325,64 @@ for (change in tp.change) {
           max(qtl^2) ) %>%
           mean(na.rm = T)
         
-        # For the whole, genome, find the mean LD across all QTL-marker pairs
-        candidate.mean.LD.genome <- mean(candidate.LD.genome ^ 2, na.rm = T)
-        
         # Measure genomic LD on the TP
         TP.LD.genome <- measure.LD(genome = hv.genome, 
                                    genos = genotype.loci(haploid.genos = TP.haploids.i,
                                                          genome = hv.genome,
                                                          include.QTL = T) )
         
+        # Measure the mean LD value across those
+        ## max LD values per QTL in the TP
+        TP.mean.max.LD.genome <- apply(X = TP.LD.genome, MARGIN = 1, FUN = function(qtl)
+          max(qtl^2) ) %>%
+          mean(na.rm = T)
+        
         ## Persistance of LD phase
         # First find the common polymorphic QTL
         common.poly.QTL <- intersect( row.names(TP.LD.genome), row.names(candidate.LD.genome) )
         common.poly.markers <- intersect( colnames(TP.LD.genome), colnames(candidate.LD.genome) )
         
-        # Subset the TP and candidates for those markers and QTL, then vectorize
-        TP.LD.vector <- TP.LD.genome[common.poly.QTL, common.poly.markers] %>%
-          as.vector()
-        candidate.LD.vector <- candidate.LD.genome[common.poly.QTL, common.poly.markers] %>%
-          as.vector()
+        # Subset the TP and candidates for those markers and QTL, then create a
+        # data.frame
+        TP.candidate.LD <- data.frame(TP = TP.LD.genome[common.poly.QTL, common.poly.markers] %>%
+                                        as.vector(),
+                                      candidates = candidate.LD.genome[common.poly.QTL, common.poly.markers] %>%
+                                        as.vector())
+        
         
         # Correlate
-        TP.candidate.persistance.of.phase <- cor(TP.LD.vector, candidate.LD.vector)
+        TP.candidate.persistance.of.phase <- cor(TP.candidate.LD) %>% 
+          .[upper.tri(.)]
+        
+        # Determine the number of loci used to calculate LD
+        n.marker.LD <- min(ncol(TP.LD.genome), ncol(candidate.LD.genome))
+        n.qtl.LD <- min(nrow(TP.LD.genome), nrow(candidate.LD.genome))
+        
+        # Only run the permuation test on the 15th cycle
+        if (breeding.cycle == 15) {
           
+          # Copy
+          TP.candidate.LD.perm <- TP.candidate.LD
+          
+          # Run a permutation test to randomize the candidate QTL-marker pair
+          # LD and run a correlation
+          persistence.perm.results <- replicate(n = 500, expr = {
+            TP.candidate.LD.perm$candidates <- sample(TP.candidate.LD.perm$candidates)
+            cor(TP.candidate.LD.perm) %>% 
+              .[upper.tri(.)] })
+          
+        } else {
+          persistence.perm.results <- NA
+          
+        }
+        
+        
         # Create a list to save
-        qtl.marker.LD.i <- list(mean.max.window = candidate.mean.max.LD.window,
-                                mean.window = candidate.mean.LD.window,
-                                mean.max.genome = candidate.mean.max.LD.genome,
-                                mean.genome = candidate.mean.LD.genome,
-                                persistance.of.phase = TP.candidate.persistance.of.phase)
+        qtl.marker.LD.i <- list(mean.max.genome = candidate.mean.max.LD.genome,
+                                persistance.of.phase = TP.candidate.persistance.of.phase,
+                                persistence.perm.results = persistence.perm.results,
+                                n.qtl.LD = n.qtl.LD,
+                                n.marker.LD = n.marker.LD)
         
         ### Measure the average relationship between the TP and the candidates
         # Assign M
@@ -358,12 +409,12 @@ for (change in tp.change) {
         ##### Step 4 - Prediction
         # Remove the markers with maf below the threshold (set at the start of the sim)
         ## also remove monomorphic markers
-        markers.to.remove <- c( which(candidate.marker.maf.i == 0), 
-                                which(TP.genos.maf.i == 0),
+        markers.to.remove <- c( which(candidate.af.i$snp == 0), 
+                                which(TP.af.i$snp == 0),
                                 markers.below.maf ) %>%
           unique() %>%
           sort()
-
+        
         
         # Filter the TP and candidate marker matrices for those markers
         TP.genos.use <- TP.genos.i[,-markers.to.remove]
@@ -371,9 +422,12 @@ for (change in tp.change) {
         
         
         # Estimate marker effects
-        predictions.out <- make.predictions(pheno.train = TP.phenos.i,
-                                            geno.train = TP.genos.use,
-                                            geno.pred = candidate.genos.use)
+        predictions.out <- try(make.predictions(pheno.train = TP.phenos.i,
+                                                geno.train = TP.genos.use,
+                                                geno.pred = candidate.genos.use))
+        # If it errors out, just return NA for this iteration
+        if (class(predictions.out) == "try-error")
+          return(NA)
         
         ##### Step 5 - Phenotype the population
         # We use the haploid genotypes from the F1:3 generation to measure the
@@ -389,10 +443,11 @@ for (change in tp.change) {
         
         # Validate the predictions
         # Find the correlation between the GEBVs and the true genotypic value
-        pred.validation.i <- validate.predictions(predicted.values = predictions.out$GEBV,
-                                                  observed.values = candidate.values.i$geno.values)
-
-
+        pred.accuracy.i <- cor(candidate.values.i$geno.values,
+                               predictions.out$GEBV) %>%
+          as.numeric()
+        
+        
         
         ##### Step 6 - Select the parents of the next generation
         
@@ -402,26 +457,15 @@ for (change in tp.change) {
                                                  sel.intensity = parents.sel.intensity, 
                                                  selection = "best")
         
-        parent.lines.list <- list(p1 = parent.selections.i$lines.sel, p2 = parent.selections.i$lines.sel)
+        parent.lines.list <- list(p1 = parent.selections.i$lines.sel, 
+                                  p2 = parent.selections.i$lines.sel)
         
         # The parents are selected and crossed at the F3 stage, so subset the haploid genotpyes from the F1:3
         parent.haploids <- select.haploids(haploid.genos = candidate.haploid.i,
-                                          line.names = parent.selections.i$lines.sel)
+                                           line.names = parent.selections.i$lines.sel)
         
         parent.values <- select.values(pheno.values.list = candidate.values.i, 
                                        line.names = parent.selections.i$lines.sel)
-        
-        # Calculate the mean relationship among the parents
-        parents.mu.relationship <- A[parent.lines.list$p1, parent.lines.list$p1] %>%
-          .[upper.tri(.)] %>% 
-          mean()
-        
-        # Calculat the mean inbreeding coefficient among the parents
-        parents.inbreeding <- A[parent.lines.list$p1, parent.lines.list$p1] %>%
-          diag() %>%
-          - 1 %>%
-          mean()
-        
         
         ##### Step 7 - Update the TP
         
@@ -436,7 +480,7 @@ for (change in tp.change) {
                                                          sel.intensity = tp.update.increment,
                                                          selection = change)$lines.sel )
           }
-
+          
           if (change %in% c("PEVmean", "CDmean")) {
             
             # Analyze using PEVmean or CDmean
@@ -446,7 +490,7 @@ for (change in tp.change) {
                                          row.names(A.sc) )
             unphenotyped.index <- which( parent.selections.i$lines.sel %in%
                                            row.names(A.sc) )
-
+            
             # V_e is estimated from maximum likelihood
             V_e.i <- predictions.out$solve.out$Ve
             # V_a is estimated as the variance among marker effects * the number of markers
@@ -457,7 +501,7 @@ for (change in tp.change) {
                                             n.training = tp.update.increment,
                                             phenotyped.index = phenotyped.index,
                                             unphenotyped.index = unphenotyped.index,
-                                            V_a = V_a.i, V_e = V_e.i, max.iter = 200)
+                                            V_a = V_a.i, V_e = V_e.i, max.iter = 500)
             
             # Using the optimized index of "phenotyped" entries, determine
             # which candidates should be added to the TP
@@ -476,7 +520,6 @@ for (change in tp.change) {
           
           # Subset the geno matrix for these lines
           TP.addition.genos <- candidate.marker.genos.i[TP.addition.lines,]
-          TP.addition.genos.qtl <- candidate.genos.i[TP.addition.lines,]
           
           # Gather genotypic and phenotypic values of the TP additions
           TP.addition.values <- select.values(pheno.values.list = candidate.values.i, 
@@ -503,7 +546,8 @@ for (change in tp.change) {
           ## Measure the expected heterozygosity of the additions, using all
           ## loci including QTL
           TP.addition.list[["Exp.het"]] <- 
-            measure.expected.het(genos = TP.addition.genos.qtl)
+            measure.expected.het(genome = hv.genome, 
+                                 haploid.genos = TP.addition.haploids)
           
           
           # If the TP formation calls for a sliding window, use only the ~750 most recent training individuals
@@ -525,11 +569,11 @@ for (change in tp.change) {
               tp.keep.index <- tail(1:nrow(TP.genos.i), tp.size)
               
             }
-              # Set the TP.pheno and TP.genos
-              TP.phenos.i <- as.matrix(TP.phenos.i[tp.keep.index,])
-              TP.genos.i <- as.matrix(TP.genos.i[tp.keep.index,])
-              TP.haploids.i <- select.haploids(haploid.genos = TP.haploids.i,
-                                               line.names = row.names(TP.genos.i))
+            # Set the TP.pheno and TP.genos
+            TP.phenos.i <- as.matrix(TP.phenos.i[tp.keep.index,])
+            TP.genos.i <- as.matrix(TP.genos.i[tp.keep.index,])
+            TP.haploids.i <- select.haploids(haploid.genos = TP.haploids.i,
+                                             line.names = row.names(TP.genos.i))
           }
           
         } else {
@@ -542,7 +586,7 @@ for (change in tp.change) {
           
           
         } # Close the tp.change if statement
-                              
+        
         
         print( paste("Cycle", breeding.cycle, "complete.") )
         
@@ -550,46 +594,36 @@ for (change in tp.change) {
         
         # Gather data for analysis
         simulation.results[[cycle.name]] <- 
-          list(geno.summary.stats = list(candidate.maf = candidate.genos.maf.i,
-                                         TP.maf = TP.genos.maf.i,
+          list(geno.summary.stats = list(candidate.af = candidate.af.i,
+                                         TP.af = TP.af.i,
                                          qtl.marker.LD = qtl.marker.LD.i,
                                          mu.TP.candidate.rel = mu.relationship),
                MM.solve = predictions.out$solve.out,
-               candidate.GEBV = predictions.out$GEBV,
                candidate.values = candidate.values.i,
-               selection.values = parent.values,
-               prediction.accuracy = pred.validation.i,
+               prediction.accuracy = pred.accuracy.i,
                parents <- parent.lines.list,
                tp.update = TP.addition.list,
                inbreeding = list(candidates = candidate.inbreeding,
-                                 TP.additions = TP.addition.inbreeding,
-                                 parents = parents.inbreeding),
+                                 TP.additions = TP.addition.inbreeding),
                relationship = list(TP.candidates = mu.relationship,
-                                   TP.additions = TP.addition.mu.relationship,
-                                   parents = parents.mu.relationship))
-
-                                   
+                                   TP.additions = TP.addition.mu.relationship))
+        
         
       } # Close the per-cycle loop
       
-      # Rep number
-      # rep.name <- paste("rep", r, sep = "")
+      # Return a list
+      list(sim.results = simulation.results, genome = hv.genome)
       
-      # Add the simulation results to the set results
-      # rep.results[[rep.name]] <- list(sim.results = simulation.results, genome = hv.genome)
-      
-    } # Close the iteration loop
+      # Close the sapply over replications
+    }, simplify = F)
     
-    # Return the rep list
-    # return(rep.results)
-    
-  # End parlapply
-  # }, mc.cores = n.cores)
+    # End mclapply
+  }, mc.cores = n.cores)
   
   # Save the tp.change data
   filename <- file.path(save.dir, paste("simulation_results_", pop.makeup, "_", change, "_", 
                                         tp.formation, "_", date, ".RData", sep = "") )
-                        
+  
   save(list = c("experiment.sub.results", "change", "metadata"), file = filename)
   
   
@@ -605,6 +639,6 @@ filename <- file.path(save.dir, paste("simulation_results_", pop.makeup, "_",
 files <- list.files(save.dir, full.names = T) %>% 
   str_subset(pattern = paste("simulation_results_", pop.makeup, "_[A-Za-z]*_", 
                              tp.formation, "_[0-9]*-[0-9]*.RData", sep = ""))
-  
+
 # Parse
 parse.results(files = files, filename = filename)

@@ -5,7 +5,7 @@ library(qtl)
 library(simcross)
 library(GSsim.TPUpdate)
 library(dplyr)
-library(mpMap2)
+library(stringr)
 
 data("CAP.markers")
 data("CAP.haploids")
@@ -36,6 +36,8 @@ founder1 <- CAP.haploids[c(1,2),] %>%
 founder2 <- CAP.haploids[c(1471, 1472),] %>%
   apply(MARGIN = 2, FUN = sum) + 1
 
+founders <- rbind(founder1, founder2) %>% t()
+
 map <- CAP.marker.map
 
 n.self.gen <- 2
@@ -46,24 +48,51 @@ p = 0
 
 parent.genos <- CAP.genos
 
-ped1 <- ped2 <- make.pedigree(n.self.gen = n.self.gen, n.ind = n.ind)
+ped <- make.pedigree(n.self.gen = n.self.gen, n.ind = n.ind)
 
-ped1 <- ped1 %>% 
-  mutate(id = str_c(1,id) %>% as.numeric()) %>%
-  mutate(mom = str_c(1,mom) %>% as.numeric()) %>%
-  mutate(dad = str_c(1,dad) %>% as.numeric())
-ped1[1:2,2:3] <- 0
+# IDs to extract
+prog.ids <- which(ped$gen == (n.self.gen + 1))
 
-ped2 <- ped2 %>% 
-  mutate(id = str_c(2,id) %>% as.numeric()) %>%
-  mutate(mom = str_c(2,mom) %>% as.numeric()) %>%
-  mutate(dad = str_c(2,dad) %>% as.numeric())
-ped2[1:2,2:3] <- 0
 
-ped <- rbind(ped1, ped2) %>%
-  arrange(id)
+# Iterate over the crossing block
+prog.genos <- apply(X = crossing.block, MARGIN = 1, FUN = function(cross) {
+  
+  # Extract the parent names
+  p1 <- cross[1] %>% as.matrix() %>% as.character()
+  p2 <- cross[2] %>% as.matrix() %>% as.character()
+  
+  # Extract the parent genos
+  cross.genos <- parent.genos[c(p1, p2),] %>%
+    t()
+  
+  # Simulate cross-over data
+  xo.data <- sim_from_pedigree_allchr(pedigree = ped, map = map, m = 0)
+  
+  # Generate genotypes
+  convert2geno_allchr(xodat = xo.data, map = map, 
+                      founder_geno = cross.genos, return.matrix = T,
+                      id = prog.ids) 
+})
 
-xo.data <- sim_from_pedigree_allchr(pedigree = ped, map = map, m = 0)
+
+
+
+## Make the population
+pop1 <- make.population1(map = map, crossing.block = crossing.block, 
+                         parent.genos = CAP.genos, n.ind = n.ind, 
+                         n.self.gen = n.self.gen, m = 0)
+                         
+
+
+
+
+xo.data <- sim_from_pedigree_allchr(pedigree = ped1, map = map, m = 0)
+
+
+
+
+
+
 
 # Extract info for 1st ped
 xo.data1 <- lapply(xo.data, FUN = function(chr) {
@@ -87,7 +116,7 @@ progeny <- make.family2(map = CAP.map, parent1.genome = founder1,
 
 
 
-founders <- rbind(founder1, founder2) %>% t()
+
 
 check_pedigree(ped.all, ignore_sex = T)
 

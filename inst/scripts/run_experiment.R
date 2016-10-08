@@ -13,6 +13,8 @@ args <- commandArgs(trailingOnly = T)
 if (all(is.na(args))) {
   pop.makeup <- "MNxND"
   tp.formation <- "cumulative"
+  n.QTL <- 100
+  h2 <- 0.5
   tp.change <- c("best", "worst", "random", "nochange", "PEVmean", "CDmean")
 
   MSI <- F
@@ -20,8 +22,10 @@ if (all(is.na(args))) {
 } else {
   pop.makeup <- args[1]
   tp.formation <- args[2]
+  n.QTL <- args[3]
+  h2 <- args[4]
   # Remaining arguments are tp change factors
-  tp.change <- args[-1:-2]
+  tp.change <- args[-1:-4]
   MSI <- T
   
 }
@@ -59,14 +63,9 @@ if (!all(tp.change %in% c("best", "worst", "random", "nochange", "PEVmean", "CDm
 n.cores <- detectCores()
 
 # Other simulation parameters
-# Entry-mean heritability in the base population
-h2 = 0.5
 
 # How many cycles?
 n.cycles = 15
-
-# Number of QTL underlying trait
-n.QTL = 100
 
 # Number of phenotyping environments and reps
 n.env = 3
@@ -307,6 +306,12 @@ for (change in tp.change) {
                                                          genome = hv.genome,
                                                          include.QTL = T) )
         
+        # Measure the mean LD value across those
+        ## max LD values per QTL in the TP
+        TP.mean.max.LD.genome <- apply(X = TP.LD.genome, MARGIN = 1, FUN = function(qtl)
+          max(qtl^2) ) %>%
+          mean(na.rm = T)
+        
         ## Persistance of LD phase
         # First find the common polymorphic QTL
         common.poly.QTL <- intersect( row.names(TP.LD.genome), row.names(candidate.LD.genome) )
@@ -348,7 +353,8 @@ for (change in tp.change) {
           
           
         # Create a list to save
-        qtl.marker.LD.i <- list(mean.max.genome = candidate.mean.max.LD.genome,
+        qtl.marker.LD.i <- list(sc.mean.max.genome = candidate.mean.max.LD.genome,
+                                tp.mean.max.genome = TP.mean.max.LD.genome,
                                 persistance.of.phase = TP.candidate.persistance.of.phase,
                                 persistence.perm.results = persistence.perm.results,
                                 n.qtl.LD = n.qtl.LD,
@@ -390,11 +396,11 @@ for (change in tp.change) {
         TP.genos.use <- TP.genos.i[,-markers.to.remove]
         candidate.genos.use <- candidate.marker.genos.i[,-markers.to.remove]
         
-        
         # Estimate marker effects
         predictions.out <- try(make.predictions(pheno.train = TP.phenos.i,
                                             geno.train = TP.genos.use,
                                             geno.pred = candidate.genos.use))
+                                            
         # If it errors out, just return NA for this iteration
         if (class(predictions.out) == "try-error")
           return(NA)

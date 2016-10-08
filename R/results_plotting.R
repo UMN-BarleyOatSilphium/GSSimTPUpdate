@@ -47,25 +47,23 @@ sim.summarize <- function(df) {
 #' @param main The plot title.
 #' @param ylab The y-axis title.
 #' @param xlab The x-axis title. Defaults to "Breeding Cycle."
-#' @param ylim The y-axis scale range.
-#' @param xlim The x-axis scale range. Defaults to \code{c(1, (n.cycles + 1))}.
 #' @param col.factors The factors used in coloring the points / lines on the plot.
+#' @param text.y.scaling The scale by which to alter the maximum y value. This
+#' new y value will be used to position text denoting the subplot in a larger
+#' ggplot (e.g. A, B, C, etc.). Defaults to 1.05, meaning that the new y value
+#' will be 5% higher than the max.
 #' @param print.plot Logical. Should the plot be displayed?
 #' 
 #' @export
 #' 
-sim.ggplot <- function(df.summary, main, ylab, xlab = "Breeding Cycle", ylim = NULL, 
-                       xlim = c(1, n.cycles + 1), col.factors, print.plot = TRUE) {
+sim.ggplot <- function(df.summary, main, ylab, xlab = "Breeding Cycle", 
+                       col.factors, text.y.scaling = 1.05, print.plot = TRUE) {
   
-  # Set the range in ylim
-  if (is.null(ylim)) {
-    ylim <- df.summary %>% 
-      summarize(max = max(mean + ci, na.rm = T), min = min(mean - ci, na.rm = T)) %>% 
-      summarize(max = max(max, na.rm = T), min = min(min, na.rm = T)) %>% 
-      pretty() %>% 
-      range()
-    
-  }
+  # Designate labels for the individual plots within facets
+  n.facets <- df.summary %>% 
+    select(exp_name, variable) %>% 
+    distinct() %>% 
+    nrow()
   
   gp <- ggplot(data = df.summary, aes(x = cycle.offset, y = mean, col = change, 
                                       shape = change)) +
@@ -75,18 +73,56 @@ sim.ggplot <- function(df.summary, main, ylab, xlab = "Breeding Cycle", ylim = N
     ggtitle(main) + 
     ylab(ylab) +
     xlab(xlab) +
-    ylim(ylim) +
-    xlim(xlim) +
+    # ylim(ylim) +
+    # xlim(xlim) +
     scale_color_discrete(name = "Update Method",
                          labels = as.character(col.factors)) +
     scale_shape_discrete(name = "Update Method",
                          labels = as.character(col.factors)) +
-    facet_grid(~ exp_name)
+    scale_x_continuous(breaks = seq(1, n.cycles + 1, 3))
   
+  # Determine how to map the facets
+  if (n.facets == 2) {
+    gp1 <- gp + facet_grid(~ exp_name)
+  }
+  
+  if (n.facets > 2) {
+    gp1 <- gp + facet_grid(variable ~ exp_name, scales = "free_y", switch = "y")
+  }
+  
+  gp.build <- ggplot_build(gp1)
+  
+  # Find the y-ranges
+  facet.df <- sapply(X = gp.build$panel$ranges, FUN = function(rangei) 
+    rangei$y.range %>% max() ) %>%
+    # convert to df
+    tbl_df() %>%
+    # Add 10%
+    mutate(value = value * text.y.scaling)
+  
+    # Add variable name
+  facet.df$variable <- gp.build$panel$layout$variable
+  facet.df$exp_name <- gp.build$panel$layout$exp_name
+  
+  # Determine annotation locations
+  facet.df1 <- facet.df %>%
+    mutate(x = 1, label = LETTERS[seq_len(n.facets)]) %>%
+    rename(y = value)
+  
+  
+  
+  # Modify fonts
+  gp2 <- gp1 + theme(
+    strip.text.x = element_text(face = "bold"),
+    strip.text.y = element_text(face = "bold")
+  ) + 
+    geom_text(data = facet.df1, aes(x = x, y = y, label = label, fontface = 2), 
+              inherit.aes = FALSE)
+    
   # Print the plot
-  if (print.plot) print(gp)
+  if (print.plot) print(gp2)
   
   # Return the plot
-  return(gp)
+  return(gp2)
   
 }

@@ -4,7 +4,6 @@
 library(tidyverse, quietly = T)
 library(stringr, quietly = T)
 library(GSsim.TPUpdate)
-library(gridExtra)
 
 
 # Set directory and grab the files
@@ -60,9 +59,10 @@ df <- lapply(X = total.names, FUN = function(coll.name)
   bind_rows()
 
 # Calculate mean and CI for each change-cycle combination over iterations
-df1 <- sim.summarize(df)
+df1.genvar <- sim.summarize(df) %>%
+  mutate(variable = "Genetic Variance")
 
-gp.gen.var <- sim.ggplot(df.summary = df1, main = "Genetic Variance of Selection Candidates", 
+gp.gen.var <- sim.ggplot(df.summary = df1.genvar, main = "Genetic Variance of Selection Candidates", 
                          ylab = "Genetic Variance", col.factors = tp.change.factors)
 
 ggsave(filename = file.path(figures.dir, str_c(pop.type, "_gen_var_combined.jpg")),
@@ -71,28 +71,33 @@ ggsave(filename = file.path(figures.dir, str_c(pop.type, "_gen_var_combined.jpg"
 
 ### Change in mean genotypic value of the selection candidates
 
-df <- df <- lapply(X = total.names, FUN = function(coll.name) 
-  lapply(X = total.collective.data[[coll.name]], FUN = function(tpc) tpc$candidate.gen.val) %>%
+df <- lapply(X = total.names, FUN = function(coll.name) 
+  lapply(X = total.collective.data[[coll.name]], FUN = function(tpc) tpc$sc.gen.val) %>%
     bind_rows() %>%
     mutate(exp_name = str_extract(string = coll.name, pattern = 'window|cumulative') %>% 
              str_to_title()) ) %>%
   bind_rows()
 
 # Calculate mean and CI for each change-cycle combination over iterations
-df1 <- sim.summarize(df)
+df1.genval <- sim.summarize(df) %>%
+  mutate(variable = "Genotypic Value")
 
-gp.gen.val <- sim.ggplot(df.summary = df1, main = "Genotypic Value of the Selection Candidates", 
+gp.gen.val <- sim.ggplot(df.summary = df1.genval, main = "Genotypic Value of the Selection Candidates", 
                          ylab = "Genotypic Value", col.factors = tp.change.factors)
 
 ggsave(filename = file.path(figures.dir, str_c(pop.type, "_gen_val_combined.jpg")),
        height = 5, width = 9)
 
 
-# Create a figure with both plots
-gp.combine <- grid.arrange(gp.gen.var, gp.gen.val)
+### Create a figure with both plots
+
+df1 <- bind_rows(df1.genval, df1.genvar)
+
+# Plot
+sim.ggplot(df.summary = df1, main = "", ylab = "", col.factors = tp.change.factors)
 
 ggsave(filename = file.path(figures.dir, str_c(pop.type, "_gen_val_gen_var_combined.jpg")),
-       plot = gp.combine, height = 10, width = 9)
+       height = 8, width = 9)
 
 
 
@@ -104,28 +109,32 @@ df1 <- df %>%
   group_by(exp_name, change, iter) %>%
   mutate(value = c(NA, diff(value))) %>% 
   na.omit() %>%
-  sim.summarize()
+  ungroup() %>%
+  sim.summarize() %>%
+  # Add the variable designator
+  mutate(variable = "Response to Selection")
 
 sim.ggplot(df.summary = df1, main = "Response to Selection Across Cycles", 
            ylab = "Response to Selection", 
-           tp.change.factors = tp.change.factors)
+           col.factors = tp.change.factors)
 
 
 ### Change in the prediction accuracy over cycles
 
 # Plot
-df <- df <- lapply(X = total.names, FUN = function(coll.name) 
+df <- lapply(X = total.names, FUN = function(coll.name) 
   lapply(X = total.collective.data[[coll.name]], FUN = function(tpc) tpc$validation.results) %>%
     bind_rows() %>%
     mutate(exp_name = str_extract(string = coll.name, pattern = 'window|cumulative') %>% 
              str_to_title()) ) %>%
   bind_rows()
 
-df1 <- sim.summarize(df)
+df1 <- sim.summarize(df) %>%
+  mutate(variable = "Prediction Accuracy")
 
 sim.ggplot(df.summary = df1, main = "Realized Prediction Accuracy", 
-           ylab = "Prediction Accuracy (r)", 
-           tp.change.factors = tp.change.factors)
+           ylab = expression(Prediction~Accuracy~(italic(r[MG]))), 
+           col.factors = tp.change.factors)
 
 ggsave(filename = file.path(figures.dir, str_c(pop.type, "_pred_acc_combined.jpg")),
        height = 5, width = 9)
@@ -146,12 +155,14 @@ df <- lapply(X = total.names, FUN = function(coll.name)
              str_to_title()) ) %>%
   bind_rows()
 
-df1 <- sim.summarize(df %>% filter(extra == "mean_max_genome"))
+df1.mean.max <- sim.summarize(df %>% filter(extra1 == "mean_max_genome")) %>%
+  mutate(variable = "Mean Max LD")
   
 
-sim.ggplot(df.summary = df1, main = "Mean LD Between QTL and Marker in Highest LD", 
-           ylab = "Linkage Disequilibrum (r)", 
-           tp.change.factors = tp.change.factors)
+gp.max.LD <- sim.ggplot(df.summary = df1.mean.max, main = "Mean LD Between QTL and Marker in Highest LD", 
+           ylab = expression(Linkage~Disequilibrium~(r^2)), text.y.scaling = 1.01,
+           col.factors = tp.change.factors)
+
 
 
 ggsave(filename = file.path(figures.dir, str_c(pop.type, "_mean_max_LD_combined.jpg")),
@@ -161,13 +172,14 @@ ggsave(filename = file.path(figures.dir, str_c(pop.type, "_mean_max_LD_combined.
 
 ## Persistence of phase - use the same df
 
-df1 <- sim.summarize(df %>% filter(extra == "persistence"))
+df1.persistence <- sim.summarize(df %>% filter(extra1 == "persistence")) %>%
+  mutate(variable = "Persistence of\nLD Phase")
 
 
-gp.pers <- sim.ggplot(df.summary = df1, 
+gp.pers <- sim.ggplot(df.summary = df1.persistence, 
                       main = "Persistence of LD Phase Between Training Population\nand Selection Candidates", 
-                      ylab = "Persistence of Phase (cor of r)", 
-                      col.factors = tp.change.factors)
+                      ylab = expression(Persistence~of~Phase~(cor~of~italic(r))), 
+                      text.y.scaling = 1.01, col.factors = tp.change.factors)
 
 
 ggsave(filename = file.path(figures.dir, str_c(pop.type, "_persistence_LD_combined.jpg")),
@@ -185,28 +197,35 @@ df <- lapply(X = total.names, FUN = function(coll.name)
              str_to_title()) ) %>%
   bind_rows()
 
-df1 <- sim.summarize(df)
+df1.relatioship <- sim.summarize(df) %>%
+  mutate(variable = "Average Relationship")
 
-gp.rel <- sim.ggplot(df.summary = df1, 
+gp.rel <- sim.ggplot(df.summary = df1.relatioship, 
                      main = "Additive Genomic Relationship Between Training Population\nand Selection Candidates", 
                      ylab = "Additive Genomic Relationship\n(Scaled to Base Population)", 
-                     col.factors = tp.change.factors)
+                     col.factors = tp.change.factors, text.y.scaling = 1.01)
 
 
 ggsave(filename = file.path(figures.dir, str_c(pop.type, "_avg_rel_combined.jpg")),
        height = 5, width = 9)
 
 ## Make a figure with both the persistence of phase and relationship graphs
-gp.combine <- grid.arrange(gp.rel, gp.pers)
 
-ggsave(filename = file.path(figures.dir, str_c(pop.type, "_LD_pers_rel_combined.jpg")),
-       plot = gp.combine, height = 10, width = 9)
+df1 <- bind_rows(df1.mean.max, df1.persistence, df1.relatioship)
+
+gp.combined <- sim.ggplot(df.summary = df1, 
+                          main = "", 
+                          ylab = "", 
+                          col.factors = tp.change.factors, text.y.scaling = 1.01)
+
+ggsave(filename = file.path(figures.dir, str_c(pop.type, "_LD_pers_max_rel_combined.jpg")),
+       plot = gp.combined, height = 12, width = 9)
 
 
 ### Change in inbreeding coefficient
 ## Selection candidates
 
-df <- df <- lapply(X = total.names, FUN = function(coll.name) 
+df <- lapply(X = total.names, FUN = function(coll.name) 
   lapply(X = total.collective.data[[coll.name]], FUN = function(tpc) tpc$sc.inbreeding) %>%
     bind_rows() %>%
     mutate(exp_name = str_extract(string = coll.name, pattern = 'window|cumulative') %>% 
@@ -217,7 +236,7 @@ df1 <- sim.summarize(df)
 
 sim.ggplot(df.summary = df1, 
            main = "Average Inbreeding Coefficient\nAmong Selection Candidates", 
-           ylab = "Inbreeding Coefficient", tp.change.factors = tp.change.factors)
+           ylab = "Inbreeding Coefficient", col.factors = tp.change.factors)
 
 ggsave(filename = file.path(figures.dir, str_c(pop.type, "_inbreeding_combined.jpg")),
        height = 5, width = 9)
@@ -230,11 +249,12 @@ df1 <- df %>%
   group_by(exp_name, change, iter) %>%
   mutate(value = c(NA, diff(value))) %>% 
   na.omit() %>%
+  ungroup() %>%
   sim.summarize()
 
 sim.ggplot(df.summary = df1, 
            main = "Rate of Inbreeding\nAmong Selection Candidates", 
-           ylab = "Rate of Inbreeding (delta F)", tp.change.factors = tp.change.factors)
+           ylab = "Rate of Inbreeding (delta F)", col.factors = tp.change.factors)
 
 ggsave(filename = file.path(figures.dir, str_c(pop.type, "_inbreeding_rate_combined.jpg")),
        height = 5, width = 9)
@@ -256,7 +276,7 @@ df1 <- sim.summarize(df)
 sim.ggplot(df.summary = df1, 
            main = "Expected Heterozygosity of Training Population Additions", 
            ylab = "Expected Heterozygosity", 
-           tp.change.factors = tp.change.factors)
+           col.factors = tp.change.factors)
 
 
 ggsave(filename = file.path(figures.dir, str_c(pop.type, "_exp_het_combined.jpg")),
