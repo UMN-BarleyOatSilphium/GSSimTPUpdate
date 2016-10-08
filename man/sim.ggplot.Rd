@@ -19,10 +19,8 @@ function.}
 
 \item{col.factors}{The factors used in coloring the points / lines on the plot.}
 
-\item{text.y.scaling}{The scale by which to alter the maximum y value. This
-new y value will be used to position text denoting the subplot in a larger
-ggplot (e.g. A, B, C, etc.). Defaults to 1.05, meaning that the new y value
-will be 5% higher than the max.}
+\item{text.y.scaling}{The scale by which to increase the maximum y value in
+the data in order to add annotations. Defaults to 1.05 (or 5 per-cent).}
 
 \item{print.plot}{Logical. Should the plot be displayed?}
 }
