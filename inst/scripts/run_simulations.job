@@ -14,12 +14,8 @@ module load R/3.3.1
 
 ## Run the regular simulation
 
-#Rscript inst/scripts/run_experiment.R MN cumulative 100 50
-#Rscript inst/scripts/run_experiment.R ND cumulative 100 50
-#Rscript inst/scripts/run_experiment.R MNxND cumulative best worst random nochange PEVmean CDmean
-#Rscript inst/scripts/run_experiment.R MNxND cumulative CDmean
+#Rscript inst/scripts/run_experiment.R MNxND cumulative 0.5 best worst random nochange PEVmean CDmean
+#Rscript inst/scripts/run_experiment.R MNxND cumulative 0.2 best worst random nochange PEVmean CDmean
 
-#Rscript Code/run_experiment.R MN window 100 50
-#Rscript Code/run_experiment.R ND window 100 50
-Rscript inst/scripts/run_experiment.R MNxND window best worst random nochange PEVmean CDmean
-
+#Rscript inst/scripts/run_experiment.R MNxND window 0.5 best worst random nochange PEVmean CDmean
+#Rscript inst/scripts/run_experiment.R MNxND window 0.2 best worst random nochange PEVmean CDmean

@@ -8,12 +8,10 @@ args <- commandArgs(trailingOnly = T)
 
 # First and only argument is the pop makeup (MN, ND, or MNxND)
 # Second argument is how the TP should be combined after each cycle (cumulative or window)
-# The remaining arguments a
-# If no arguments are given (i.e. it's being run locally), set defaults for testing
+# Third argument is the number of QTL and the heritability
 if (all(is.na(args))) {
   pop.makeup <- "MNxND"
   tp.formation <- "cumulative"
-  n.QTL <- 100
   h2 <- 0.5
   tp.change <- c("best", "worst", "random", "nochange", "PEVmean", "CDmean")
 
@@ -22,10 +20,9 @@ if (all(is.na(args))) {
 } else {
   pop.makeup <- args[1]
   tp.formation <- args[2]
-  n.QTL <- args[3]
-  h2 <- args[4]
+  h2 <- args[3]
   # Remaining arguments are tp change factors
-  tp.change <- args[-1:-4]
+  tp.change <- args[-1:-3]
   MSI <- T
   
 }
@@ -63,6 +60,7 @@ if (!all(tp.change %in% c("best", "worst", "random", "nochange", "PEVmean", "CDm
 n.cores <- detectCores()
 
 # Other simulation parameters
+n.QTL <- 100
 
 # How many cycles?
 n.cycles = 15
@@ -75,8 +73,8 @@ n.rep = 1
 min.maf = 0.03
 
 # Barley population genetics data (citation!)
-mutation.rate.snp = 7e-8
-mutation.rate.qtl = 7e-8
+mutation.rate.snp = 0
+mutation.rate.qtl = 0
 
 # Selection intensity and the number of crosses
 parents.sel.intensity = 100
@@ -95,7 +93,7 @@ cycle.candidate.size = n.crosses * ind.per.cross
 std.sel.intensity = parents.sel.intensity / cycle.candidate.size
 
 # Computation parameters
-n.iterations = 250
+n.iterations = 275
 
 date <- format(Sys.time(), "%d%m%y-%H%M%S")
 
