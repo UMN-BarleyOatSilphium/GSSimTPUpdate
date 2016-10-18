@@ -4,13 +4,16 @@
 \alias{parse.results}
 \title{Parse the results of the simulation}
 \usage{
-parse.results(files, filename)
+parse.results(files, filename, max.reps)
 }
 \arguments{
 \item{files}{A \code{character} vector of file paths. These files should be
 \code{.RData} files.}
 
 \item{filename}{A filepath to save the parsed, collective results}
+
+\item{max.reps}{The maximum number of replications to keep. Takes the first
+\code{max.reps} replications.}
 }
 \description{
 This function prases the R Data files created in interations

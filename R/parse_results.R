@@ -7,6 +7,8 @@
 #' @param files A \code{character} vector of file paths. These files should be
 #' \code{.RData} files.
 #' @param filename A filepath to save the parsed, collective results
+#' @param max.reps The maximum number of replications to keep. Takes the first
+#' \code{max.reps} replications.
 #' 
 #' @import dplyr
 #' @import tidyr
@@ -14,7 +16,7 @@
 #' @export
 #' 
 #' 
-parse.results <- function(files, filename) {
+parse.results <- function(files, filename, max.reps) {
   
   # Create an empty list
   collective.abbreviated.results <- list()
@@ -46,6 +48,13 @@ parse.results <- function(files, filename) {
     n.cycles <- experiment.sub.results[[1]]$sim.results %>%
       length()
     
+    # Determine if the max.iters are greater than the total number of replications
+    if (max.reps > length(experiment.sub.results))
+      stop("The max.reps arguments is greater than the total number of replications.")
+    
+    # Subet the first 'max.reps' replication
+    experiment.sub.results <- experiment.sub.results[seq_len(max.reps)]
+    
     # Create an empty list to save
     save.list <- list()
     
@@ -63,7 +72,6 @@ parse.results <- function(files, filename) {
           return(cycle$candidate.values$mu.g) )) %>%
       unlist() %>%
       GSsim.TPUpdate:::nv_df(change = change)
-
 
 
     # Allele frequencies
@@ -145,11 +153,12 @@ parse.results <- function(files, filename) {
       unlist() %>%
       GSsim.TPUpdate:::nv_df(change = change)
     
-    # Results of the persistence of LD permutation tests
-    save.list[["permutation.results"]] <- lapply(X = experiment.sub.results, FUN = function(rep)
-      lapply(X = rep$sim.result, FUN = function(cycle)
-          return(cycle$geno.summary.stats$qtl.marker.LD$persistence.perm.results) ))
+    # # Results of the persistence of LD permutation tests
+    # save.list[["permutation.results"]] <- lapply(X = experiment.sub.results, FUN = function(rep)
+    #   lapply(X = rep$sim.result, FUN = function(cycle)
+    #       return(cycle$geno.summary.stats$qtl.marker.LD$persistence.perm.results) ))
   
+
     # Build a list
     collective.abbreviated.results[[change]] <- save.list
     

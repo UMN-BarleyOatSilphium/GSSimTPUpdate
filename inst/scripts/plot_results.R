@@ -15,7 +15,8 @@ figures.dir <- "C:/Users/Jeff/Google Drive/Barley Lab/Projects/Side Projects/Sim
 # Load data from the allele frequency experiment
 all.files <- list.files(results.dir, full.names = T) %>%
   str_subset(pattern = "simulation_results") %>%
-  str_subset(pattern = "collective")
+  str_subset(pattern = "collective") %>%
+  str_subset(pattern = "h2-0.5")
 
 # Create a list to store multiple collective data list
 total.collective.data <- list()
@@ -29,6 +30,15 @@ for (file in all.files) {
   
   load(file)
   
+    # Take the first 250 replicates
+  iters <- collective.abbreviated.results[[1]][[1]]$iter %>%
+    unique() %>% .[1:250]
+  collective.abbreviated.results <- lapply(X = collective.abbreviated.results, FUN = function(tpc)
+     lapply(X = tpc[-14], FUN = function(param) 
+       param %>% filter(iter %in% iters)))
+  
+  
+  
   # Assign the data to a new object
   assign.name <- str_c(pop.type, tp.formation, "collective_data", sep = "_")
   total.collective.data[[assign.name]] <- collective.abbreviated.results
@@ -38,8 +48,8 @@ for (file in all.files) {
 # Get rid of one list
 rm(collective.abbreviated.results)
 
-tp.change.factors <- c(best = "Best", CDmean = "CDmean", nochange = "No Change", 
-                       PEVmean = "PEVmean", random = "Random", worst = "Worst") %>%
+tp.change.factors <- c(best = "Top", CDmean = "CDmean", nochange = "No Change", 
+                       PEVmean = "PEVmean", random = "Random", worst = "Bottom") %>%
   as.factor()
 
 # Number of cycles
