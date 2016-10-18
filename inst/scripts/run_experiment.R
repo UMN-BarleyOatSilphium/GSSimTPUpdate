@@ -61,6 +61,8 @@ n.cores <- detectCores()
 
 # Other simulation parameters
 n.QTL <- 100
+# Make sure heritability is numeric
+h2 <- as.numeric(h2)
 
 # How many cycles?
 n.cycles = 15
