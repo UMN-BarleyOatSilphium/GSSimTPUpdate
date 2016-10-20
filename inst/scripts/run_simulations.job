@@ -1,7 +1,7 @@
 #!/bin/bash
 
-#PBS -l walltime=48:00:00,mem=24gb,nodes=1:ppn=24
-#PBS -N GS_simulations_window_MNxND_0.2
+#PBS -l walltime=24:00:00,mem=24gb,nodes=1:ppn=16
+#PBS -N GS_simulations_cumulative_redo_0.5
 #PBS -M neyha001@umn.edu
 #PBS -m abe
 #PBS -r n
@@ -17,5 +17,10 @@ module load R/3.3.1
 #Rscript inst/scripts/run_experiment.R MNxND cumulative 0.5 best worst random nochange PEVmean CDmean
 #Rscript inst/scripts/run_experiment.R MNxND cumulative 0.2 best worst random nochange PEVmean CDmean
 
+# Redo
+Rscript inst/scripts/run_experiment.R MNxND cumulative 0.5 CDmean
+#Rscript inst/scripts/run_experiment.R MNxND cumulative 0.2 CDmean
+
+
 #Rscript inst/scripts/run_experiment.R MNxND window 0.5 best worst random nochange PEVmean CDmean
-Rscript inst/scripts/run_experiment.R MNxND window 0.2 best worst random nochange PEVmean CDmean
+#Rscript inst/scripts/run_experiment.R MNxND window 0.2 best worst random nochange PEVmean CDmean
