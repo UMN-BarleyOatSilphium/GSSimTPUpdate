@@ -18,8 +18,8 @@ module load R/3.3.1
 #Rscript inst/scripts/run_experiment.R MNxND cumulative 0.2 best worst random nochange PEVmean CDmean
 
 # Redo
-Rscript inst/scripts/run_experiment.R MNxND cumulative 0.5 CDmean
-#Rscript inst/scripts/run_experiment.R MNxND cumulative 0.2 CDmean
+#Rscript inst/scripts/run_experiment.R MNxND cumulative 0.5 PEVmean
+Rscript inst/scripts/run_experiment.R MNxND cumulative 0.2 PEVmean
 
 
 #Rscript inst/scripts/run_experiment.R MNxND window 0.5 best worst random nochange PEVmean CDmean
