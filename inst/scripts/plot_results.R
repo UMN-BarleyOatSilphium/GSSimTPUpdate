@@ -15,10 +15,10 @@ figures.dir <- "C:/Users/Jeff/Google Drive/Barley Lab/Projects/Side Projects/Sim
 # Load data from the allele frequency experiment
 all.files <- list.files(results.dir, full.names = T) %>%
   str_subset(pattern = "simulation_results") %>%
-  str_subset(pattern = "collective") 
+  str_subset(pattern = "collective")
 
 all.files <- all.files %>% 
-  .[!str_detect(string = ., pattern = "h2")]
+  .[str_detect(string = ., pattern = "h205")]
 
 # Create a list to store multiple collective data list
 total.collective.data <- list()
@@ -132,7 +132,7 @@ df <- lapply(X = total.names, FUN = function(coll.name)
              str_to_title()) ) %>%
   bind_rows()
 
-df1 <- sim.summarize(df) %>%
+df1.acc <- sim.summarize(df) %>%
   mutate(variable = "Prediction Accuracy")
 
 sim.ggplot(df.summary = df1, main = "Realized Prediction Accuracy", 
@@ -235,9 +235,10 @@ df <- lapply(X = total.names, FUN = function(coll.name)
              str_to_title()) ) %>%
   bind_rows()
 
-df1 <- sim.summarize(df)
+df1.inbreeding <- sim.summarize(df) %>%
+  mutate(variable = "Inbreeding")
 
-sim.ggplot(df.summary = df1, 
+sim.ggplot(df.summary = df1.inbreeding, 
            main = "Average Inbreeding Coefficient\nAmong Selection Candidates", 
            ylab = "Inbreeding Coefficient", col.factors = tp.change.factors)
 
@@ -253,7 +254,8 @@ df1 <- df %>%
   mutate(value = c(NA, diff(value))) %>% 
   na.omit() %>%
   ungroup() %>%
-  sim.summarize()
+  sim.summarize() %>%
+  mutate(variable = "Rate of Inbreeding")
 
 sim.ggplot(df.summary = df1, 
            main = "Rate of Inbreeding\nAmong Selection Candidates", 
@@ -274,9 +276,10 @@ df <- lapply(X = total.names, FUN = function(coll.name)
   bind_rows()
 
 
-df1 <- sim.summarize(df)
+df1.exphet <- sim.summarize(df) %>%
+  mutate(variable = "Expected Heterozygosity")
 
-sim.ggplot(df.summary = df1, 
+sim.ggplot(df.summary = df1.exphet, 
            main = "Expected Heterozygosity of Training Population Additions", 
            ylab = "Expected Heterozygosity", 
            col.factors = tp.change.factors)
@@ -300,7 +303,7 @@ df <- lapply(X = total.names, FUN = function(coll.name)
              str_to_title()) ) %>%
   bind_rows()
 
-df1 <- sim.summarize(df %>% ungroup())
+df1.qtlfreq <- sim.summarize(df %>% ungroup())
 
 sim.ggplot(df.summary = df1, 
            main = "Number of QTL Fixed for an Allele in the Selection Candidates", 
