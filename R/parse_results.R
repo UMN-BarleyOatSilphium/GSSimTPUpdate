@@ -92,8 +92,9 @@ parse.results <- function(files, filename, max.reps) {
     # Pairwise LD
     save.list[["qtl.marker.LD"]] <- lapply(X = experiment.sub.results, FUN = function(rep)
       lapply(X = rep$sim.result, FUN = function(cycle)
-          list(mean_max_genome = cycle$geno.summary.stats$qtl.marker.LD$mean.max.genome,
-               persistence = cycle$geno.summary.stats$qtl.marker.LD ))) %>%
+          list(sc_mean_max_genome = cycle$geno.summary.stats$qtl.marker.LD$sc.mean.max.genome,
+               tp_mean_max_genoms = cycle$geno.summary.stats$qtl.marker.LD$tp.mean.max.genome,
+               persistence = cycle$geno.summary.stats$qtl.marker.LD$persistence ))) %>%
       unlist() %>%
       GSsim.TPUpdate:::nv_df(change = change)
     
