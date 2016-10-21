@@ -94,7 +94,7 @@ parse.results <- function(files, filename, max.reps) {
       lapply(X = rep$sim.result, FUN = function(cycle)
           list(sc_mean_max_genome = cycle$geno.summary.stats$qtl.marker.LD$sc.mean.max.genome,
                tp_mean_max_genoms = cycle$geno.summary.stats$qtl.marker.LD$tp.mean.max.genome,
-               persistence = cycle$geno.summary.stats$qtl.marker.LD$persistence ))) %>%
+               persistence = cycle$geno.summary.stats$qtl.marker.LD$persistance.of.phase ))) %>%
       unlist() %>%
       GSsim.TPUpdate:::nv_df(change = change)
     

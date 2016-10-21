@@ -121,6 +121,9 @@ sim.ggplot(df.summary = df1, main = "Response to Selection Across Cycles",
            ylab = "Response to Selection", 
            col.factors = tp.change.factors)
 
+ggsave(filename = file.path(figures.dir, str_c(pop.type, "_resp_sel.jpg")),
+       height = 5, width = 9)
+
 
 ### Change in the prediction accuracy over cycles
 
@@ -135,7 +138,7 @@ df <- lapply(X = total.names, FUN = function(coll.name)
 df1.acc <- sim.summarize(df) %>%
   mutate(variable = "Prediction Accuracy")
 
-sim.ggplot(df.summary = df1, main = "Realized Prediction Accuracy", 
+sim.ggplot(df.summary = df1.acc, main = "Realized Prediction Accuracy", 
            ylab = expression(Prediction~Accuracy~(italic(r[MG]))), 
            col.factors = tp.change.factors)
 
@@ -150,7 +153,8 @@ ggsave(filename = file.path(figures.dir, str_c(pop.type, "_pred_acc_combined.jpg
 ### Change in QTL-marker LD over cycles
 
 # Each QTL's max LD
-# Plot
+
+## In the TP
 df <- lapply(X = total.names, FUN = function(coll.name) 
   lapply(X = total.collective.data[[coll.name]], FUN = function(tpc) tpc$qtl.marker.LD) %>%
     bind_rows() %>%
@@ -158,18 +162,30 @@ df <- lapply(X = total.names, FUN = function(coll.name)
              str_to_title()) ) %>%
   bind_rows()
 
-df1.mean.max <- sim.summarize(df %>% filter(extra1 == "mean_max_genome")) %>%
-  mutate(variable = "Mean Max LD")
+df1.mean.max <- sim.summarize(df %>% filter(extra1 == "tp_mean_max_genoms")) %>%
+  mutate(variable = "Mean Max LD in Training Population")
   
 
-gp.max.LD <- sim.ggplot(df.summary = df1.mean.max, main = "Mean LD Between QTL and Marker in Highest LD", 
+gp.max.LD.tp <- sim.ggplot(df.summary = df1.mean.max, main = "Mean LD Between QTL and Marker in Highest LD", 
            ylab = expression(Linkage~Disequilibrium~(r^2)), text.y.scaling = 1.01,
            col.factors = tp.change.factors)
 
-
-
-ggsave(filename = file.path(figures.dir, str_c(pop.type, "_mean_max_LD_combined.jpg")),
+ggsave(filename = file.path(figures.dir, str_c(pop.type, "_tp_mean_max_LD.jpg")),
        height = 5, width = 9)
+
+
+# In the candidates
+df1.mean.max <- sim.summarize(df %>% filter(extra1 == "sc_mean_max_genome")) %>%
+  mutate(variable = "Mean Max LD in Selection Candidates")
+
+
+gp.max.LD.sc <- sim.ggplot(df.summary = df1.mean.max, main = "Mean LD Between QTL and Marker in Highest LD", 
+                        ylab = expression(Linkage~Disequilibrium~(r^2)), text.y.scaling = 1.01,
+                        col.factors = tp.change.factors)
+
+ggsave(filename = file.path(figures.dir, str_c(pop.type, "_sc_mean_max_LD.jpg")),
+       height = 5, width = 9)
+
 
 
 
