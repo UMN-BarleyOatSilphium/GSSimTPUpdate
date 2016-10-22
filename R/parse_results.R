@@ -129,11 +129,11 @@ parse.results <- function(files, filename, max.reps) {
     
     # Determine the effect of the 1 allele for each QTL over iterations
     save.list[["qtl.effects"]] <- lapply(X = experiment.sub.results, FUN = function(rep)
-      qtl.eff(rep$genome)$add ) %>%
+      qtl.eff(rep$genome)$add) %>%
       as.data.frame() %>%
       tbl_df() %>%
       gather(iter, value) %>%
-      mutate(iter = iter %>% as.factor() %>% as.numeric())
+      mutate(iter = iter %>% as.factor() %>% as.numeric() ) 
       
     ## Inbreeding
     save.list[["sc.inbreeding"]] <- lapply(X = experiment.sub.results, FUN = function(rep)
@@ -226,7 +226,7 @@ parse.results <- function(files, filename, max.reps) {
     tpc$qtl.marker.LD %>%
       bind_rows() %>%
       mutate(exp_name = tp.formation) ) %>%
-    bind_rows() %>%
+    bind_rows()
 
   # Mean max LD in TP
   plot.list[["df.tpmeanmax"]] <- sim.summarize(df %>% filter(extra1 == "tp_mean_max_genome")) %>%
@@ -302,7 +302,9 @@ parse.results <- function(files, filename, max.reps) {
     # Find QTL fixed for favorable allele
     group_by(exp_name, change, iter, cycle) %>% 
     filter((value == 0 & effect < 0) | (value == 1 & effect > 0) ) %>%
-    summarize(value = n())
+    summarize(value = n()) %>%
+    ungroup() %>%
+    sim.summarize()
   
   filename2 <- sub(pattern = ".RData", replacement = "_plotdata.RData", x = filename)
   # Save the files
