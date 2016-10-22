@@ -55,11 +55,12 @@ sim.summarize <- function(df) {
 #' @export
 #' 
 sim.ggplot <- function(df.summary, main, ylab, xlab = "Breeding Cycle", 
-                       col.factors, text.y.scaling = 1.05, print.plot = TRUE) {
+                       col.factors, text.y.scaling = 1.05, print.plot = TRUE,
+                       facet.vars = c("exp_name")) {
   
   # Designate labels for the individual plots within facets
   n.facets <- df.summary %>% 
-    select(exp_name, variable) %>% 
+    select_(.dots = c(facet.vars, "variable")) %>%
     distinct() %>% 
     nrow()
   
@@ -81,11 +82,12 @@ sim.ggplot <- function(df.summary, main, ylab, xlab = "Breeding Cycle",
   
   # Determine how to map the facets
   if (n.facets <= 2) {
-    gp1 <- gp + facet_grid(~ exp_name)
+    gp1 <- gp + facet_grid(as.formula(c("~", str_c(facet.vars, collapse = " + "))))
   }
   
   if (n.facets > 2) {
-    gp1 <- gp + facet_grid(variable ~ exp_name, scales = "free_y", switch = "y")
+    gp1 <- gp + facet_grid(as.formula(c("variable ~", str_c(facet.vars, collapse = " + "))), 
+                           scales = "free_y", switch = "y")
   }
   
   gp.build <- ggplot_build(gp1)
@@ -98,23 +100,20 @@ sim.ggplot <- function(df.summary, main, ylab, xlab = "Breeding Cycle",
     # Add 10%
     mutate(value = value * text.y.scaling)
   
-    # Add variable name
-  facet.df$variable <- gp.build$panel$layout$variable
-  facet.df$exp_name <- gp.build$panel$layout$exp_name
+  facet.df1 <- cbind(facet.df, 
+                     gp.build$panel$layout %>% select_(.dots = c(facet.vars, "variable")))
   
   # Determine annotation locations
-  facet.df1 <- facet.df %>%
+  facet.df2 <- facet.df1 %>%
     mutate(x = 1, label = LETTERS[seq_len(n.facets)]) %>%
     rename(y = value)
-  
-  
   
   # Modify fonts
   gp2 <- gp1 + theme(
     strip.text.x = element_text(face = "bold"),
     strip.text.y = element_text(face = "bold")
   ) + 
-    geom_text(data = facet.df1, aes(x = x, y = y, label = label, fontface = 2), 
+    geom_text(data = facet.df2, aes(x = x, y = y, label = label, fontface = 2), 
               inherit.aes = FALSE)
     
   # Print the plot

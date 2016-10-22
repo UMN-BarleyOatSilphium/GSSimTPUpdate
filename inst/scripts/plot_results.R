@@ -12,13 +12,8 @@ results.dir <- "C:/Users/Jeff/Google Drive/Barley Lab/Projects/Side Projects/Sim
 # File path for figures
 figures.dir <- "C:/Users/Jeff/Google Drive/Barley Lab/Projects/Side Projects/Simulations/GSsim.TPUpdate/figures/"
 
-# Load data from the allele frequency experiment
-all.files <- list.files(results.dir, full.names = T) %>%
-  str_subset(pattern = "simulation_results") %>%
-  str_subset(pattern = "collective")
-
-all.files <- all.files %>% 
-  .[str_detect(string = ., pattern = "h205")]
+# Load data
+all.files <- list.files(results.dir, full.names = T, pattern = "collective")
 
 # Create a list to store multiple collective data list
 total.collective.data <- list()
@@ -29,11 +24,13 @@ for (file in all.files) {
   pop.type <- file %>% basename() %>% str_extract('MNxND|MN|ND')
   # TP formation
   tp.formation <- file %>% basename() %>% str_extract('cumulative|window')
+  # Heritability
+  h2 <- file %>% basename %>% str_extract('05|02')
   
   load(file)
   
   # Assign the data to a new object
-  assign.name <- str_c(pop.type, tp.formation, "collective_data", sep = "_")
+  assign.name <- str_c(pop.type, tp.formation, h2, sep = "_")
   total.collective.data[[assign.name]] <- collective.abbreviated.results
   
 }
@@ -58,8 +55,8 @@ total.names <- names(total.collective.data)
 df <- lapply(X = total.names, FUN = function(coll.name) 
   lapply(X = total.collective.data[[coll.name]], FUN = function(tpc) tpc$validation.results) %>%
     bind_rows() %>%
-    mutate(exp_name = str_extract(string = coll.name, pattern = 'window|cumulative') %>% 
-             str_to_title()) ) %>%
+    mutate(exp_name = str_extract(coll.name, 'window|cumulative') %>% str_to_title(),
+           heritability = str_extract(coll.name, '05|02') %>% str_replace("0", "0.")) ) %>%
   bind_rows()
 
 df1.acc <- sim.summarize(df) %>%
@@ -166,7 +163,8 @@ df1.mean.max <- sim.summarize(df %>% filter(extra1 == "sc_mean_max_genome")) %>%
   mutate(variable = "Mean Max LD in Selection Candidates")
 
 
-gp.max.LD.sc <- sim.ggplot(df.summary = df1.mean.max, main = "Mean LD Between QTL and Marker in Highest LD", 
+gp.max.LD.sc <- sim.ggplot(df.summary = df1.mean.max, 
+                           main = "Mean LD Between QTL and Marker in Highest LD", 
                         ylab = expression(Linkage~Disequilibrium~(r^2)), text.y.scaling = 1.01,
                         col.factors = tp.change.factors)
 
@@ -178,8 +176,8 @@ ggsave(filename = file.path(figures.dir, str_c(pop.type, "_sc_mean_max_LD.jpg"))
 
 ## Persistence of phase - use the same df
 
-df1.persistence <- 
-
+df1.persistence <- sim.summarize(df %>% filter(extra1 == "persistence")) %>%
+  mutate(variable = "Persistence of LD Phase")
 
 
 ### Relationship
@@ -219,19 +217,20 @@ df <- lapply(X = total.names, FUN = function(coll.name)
              str_to_title()) ) %>%
   bind_rows()
 
-df1.qtlfreq <- sim.summarize(df %>% ungroup())
+df1.qtlfreq <- sim.summarize(df %>% ungroup()) %>%
+  mutate(variable = "Number of Fixed QTL")
 
 
 
 
-df1 <- bind_rows(df1.mean.max, df1.persistence, df1.relatioship)
+df1 <- bind_rows(df1.persistence, df1.relatioship, df1.inbreeding, df1.qtlfreq)
 
 gp.combined <- sim.ggplot(df.summary = df1, 
                           main = "", 
                           ylab = "", 
                           col.factors = tp.change.factors, text.y.scaling = 1.01)
 
-ggsave(filename = file.path(figures.dir, str_c(pop.type, "_LD_pers_max_rel_combined.jpg")),
+ggsave(filename = file.path(figures.dir, str_c(pop.type, "_explan_vars.jpg")),
        plot = gp.combined, height = 12, width = 9)
 
 
