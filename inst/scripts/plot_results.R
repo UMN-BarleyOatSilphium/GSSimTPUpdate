@@ -7,7 +7,7 @@ library(GSsim.TPUpdate)
 
 
 # Set directory and grab the files
-results.dir <- "C:/Users/Jeff/Google Drive/Barley Lab/Projects/Side Projects/Simulations/GSsim.TPUpdate/Results/Base Experiment/"
+results.dir <- "C:/Users/Jeff/Google Drive/Barley Lab/Projects/Side Projects/Simulations/GSsim.TPUpdate/Results"
 
 # File path for figures
 figures.dir <- "C:/Users/Jeff/Google Drive/Barley Lab/Projects/Side Projects/Simulations/GSsim.TPUpdate/figures/"
@@ -53,6 +53,28 @@ n.cycles <- total.collective.data[[1]][[1]][[1]]$cycle %>% unique() %>% length()
 total.names <- names(total.collective.data)
 
 
+### Figure 3 is the change in prediction accuracy
+
+df <- lapply(X = total.names, FUN = function(coll.name) 
+  lapply(X = total.collective.data[[coll.name]], FUN = function(tpc) tpc$validation.results) %>%
+    bind_rows() %>%
+    mutate(exp_name = str_extract(string = coll.name, pattern = 'window|cumulative') %>% 
+             str_to_title()) ) %>%
+  bind_rows()
+
+df1.acc <- sim.summarize(df) %>%
+  mutate(variable = "Prediction Accuracy")
+
+sim.ggplot(df.summary = df1.acc, main = "Realized Prediction Accuracy", 
+           ylab = expression(Prediction~Accuracy~(italic(r[MG]))), 
+           col.factors = tp.change.factors)
+
+ggsave(filename = file.path(figures.dir, str_c(pop.type, "_pred_acc_combined.jpg")),
+       height = 5, width = 9)
+
+
+### Figure 4 is the change in genetic variance and genetic value
+
 ### Change in Genetic Variance
 df <- lapply(X = total.names, FUN = function(coll.name) 
   lapply(X = total.collective.data[[coll.name]], FUN = function(tpc) tpc$sc.gen.var) %>%
@@ -64,13 +86,6 @@ df <- lapply(X = total.names, FUN = function(coll.name)
 # Calculate mean and CI for each change-cycle combination over iterations
 df1.genvar <- sim.summarize(df) %>%
   mutate(variable = "Genetic Variance")
-
-gp.gen.var <- sim.ggplot(df.summary = df1.genvar, main = "Genetic Variance of Selection Candidates", 
-                         ylab = "Genetic Variance", col.factors = tp.change.factors)
-
-ggsave(filename = file.path(figures.dir, str_c(pop.type, "_gen_var_combined.jpg")),
-       height = 5, width = 9)
-
 
 ### Change in mean genotypic value of the selection candidates
 
@@ -85,15 +100,8 @@ df <- lapply(X = total.names, FUN = function(coll.name)
 df1.genval <- sim.summarize(df) %>%
   mutate(variable = "Genotypic Value")
 
-gp.gen.val <- sim.ggplot(df.summary = df1.genval, main = "Genotypic Value of the Selection Candidates", 
-                         ylab = "Genotypic Value", col.factors = tp.change.factors)
-
-ggsave(filename = file.path(figures.dir, str_c(pop.type, "_gen_val_combined.jpg")),
-       height = 5, width = 9)
-
 
 ### Create a figure with both plots
-
 df1 <- bind_rows(df1.genval, df1.genvar)
 
 # Plot
@@ -125,30 +133,9 @@ ggsave(filename = file.path(figures.dir, str_c(pop.type, "_resp_sel.jpg")),
        height = 5, width = 9)
 
 
-### Change in the prediction accuracy over cycles
 
-# Plot
-df <- lapply(X = total.names, FUN = function(coll.name) 
-  lapply(X = total.collective.data[[coll.name]], FUN = function(tpc) tpc$validation.results) %>%
-    bind_rows() %>%
-    mutate(exp_name = str_extract(string = coll.name, pattern = 'window|cumulative') %>% 
-             str_to_title()) ) %>%
-  bind_rows()
-
-df1.acc <- sim.summarize(df) %>%
-  mutate(variable = "Prediction Accuracy")
-
-sim.ggplot(df.summary = df1.acc, main = "Realized Prediction Accuracy", 
-           ylab = expression(Prediction~Accuracy~(italic(r[MG]))), 
-           col.factors = tp.change.factors)
-
-ggsave(filename = file.path(figures.dir, str_c(pop.type, "_pred_acc_combined.jpg")),
-       height = 5, width = 9)
-
-
-
-## Potential Explanatory Variables
-
+### Figure 5 will have the genomic relationship, persistence of phase, inbreeding,
+### and number of QTL fixed for an allele
 
 ### Change in QTL-marker LD over cycles
 
@@ -191,18 +178,8 @@ ggsave(filename = file.path(figures.dir, str_c(pop.type, "_sc_mean_max_LD.jpg"))
 
 ## Persistence of phase - use the same df
 
-df1.persistence <- sim.summarize(df %>% filter(extra1 == "persistence")) %>%
-  mutate(variable = "Persistence of\nLD Phase")
+df1.persistence <- 
 
-
-gp.pers <- sim.ggplot(df.summary = df1.persistence, 
-                      main = "Persistence of LD Phase Between Training Population\nand Selection Candidates", 
-                      ylab = expression(Persistence~of~Phase~(cor~of~italic(r))), 
-                      text.y.scaling = 1.01, col.factors = tp.change.factors)
-
-
-ggsave(filename = file.path(figures.dir, str_c(pop.type, "_persistence_LD_combined.jpg")),
-       height = 5, width = 9)
 
 
 ### Relationship
@@ -219,16 +196,33 @@ df <- lapply(X = total.names, FUN = function(coll.name)
 df1.relatioship <- sim.summarize(df) %>%
   mutate(variable = "Average Relationship")
 
-gp.rel <- sim.ggplot(df.summary = df1.relatioship, 
-                     main = "Additive Genomic Relationship Between Training Population\nand Selection Candidates", 
-                     ylab = "Additive Genomic Relationship\n(Scaled to Base Population)", 
-                     col.factors = tp.change.factors, text.y.scaling = 1.01)
+
+# Inbreeding
+df <- lapply(X = total.names, FUN = function(coll.name) 
+  lapply(X = total.collective.data[[coll.name]], FUN = function(tpc) tpc$sc.inbreeding) %>%
+    bind_rows() %>%
+    mutate(exp_name = str_extract(string = coll.name, pattern = 'window|cumulative') %>% 
+             str_to_title()) ) %>%
+  bind_rows()
+
+df1.inbreeding <- sim.summarize(df) %>%
+  mutate(variable = "Inbreeding")
+
+# Fixed QTL
+df <- lapply(X = total.names, FUN = function(coll.name) 
+  lapply(X = total.collective.data[[coll.name]], FUN = function(tpc) tpc$sc.allele.freq) %>%
+    bind_rows() %>%
+    filter(extra1 == "qtl") %>% 
+    group_by(change, iter, cycle) %>% 
+    summarize(value = sum(value == 0 | value == 1)) %>%
+    mutate(exp_name = str_extract(string = coll.name, pattern = 'window|cumulative') %>% 
+             str_to_title()) ) %>%
+  bind_rows()
+
+df1.qtlfreq <- sim.summarize(df %>% ungroup())
 
 
-ggsave(filename = file.path(figures.dir, str_c(pop.type, "_avg_rel_combined.jpg")),
-       height = 5, width = 9)
 
-## Make a figure with both the persistence of phase and relationship graphs
 
 df1 <- bind_rows(df1.mean.max, df1.persistence, df1.relatioship)
 

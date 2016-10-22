@@ -80,11 +80,11 @@ sim.ggplot <- function(df.summary, main, ylab, xlab = "Breeding Cycle",
     scale_x_continuous(breaks = seq(1, n.cycles + 1, 3))
   
   # Determine how to map the facets
-  if (n.facets < 2) {
+  if (n.facets <= 2) {
     gp1 <- gp + facet_grid(~ exp_name)
   }
   
-  if (n.facets >= 2) {
+  if (n.facets > 2) {
     gp1 <- gp + facet_grid(variable ~ exp_name, scales = "free_y", switch = "y")
   }
   
