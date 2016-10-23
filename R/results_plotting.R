@@ -51,12 +51,13 @@ sim.summarize <- function(df) {
 #' @param text.y.scaling The scale by which to increase the maximum y value in
 #' the data in order to add annotations. Defaults to 1.05 (or 5 per-cent).
 #' @param print.plot Logical. Should the plot be displayed?
+#' @param facet.vars The names of the variables used for faceting
 #' 
 #' @export
 #' 
 sim.ggplot <- function(df.summary, main, ylab, xlab = "Breeding Cycle", 
                        col.factors, text.y.scaling = 1.05, print.plot = TRUE,
-                       facet.vars = c("exp_name")) {
+                       facet.vars = "exp_name") {
   
   # Designate labels for the individual plots within facets
   n.facets <- df.summary %>% 
@@ -88,6 +89,7 @@ sim.ggplot <- function(df.summary, main, ylab, xlab = "Breeding Cycle",
   if (n.facets > 2) {
     gp1 <- gp + facet_grid(as.formula(c("variable ~", str_c(facet.vars, collapse = " + "))), 
                            scales = "free_y", switch = "y")
+    facet.vars <- c(facet.vars, "variable")
   }
   
   gp.build <- ggplot_build(gp1)
@@ -101,7 +103,7 @@ sim.ggplot <- function(df.summary, main, ylab, xlab = "Breeding Cycle",
     mutate(value = value * text.y.scaling)
   
   facet.df1 <- cbind(facet.df, 
-                     gp.build$panel$layout %>% select_(.dots = c(facet.vars, "variable")))
+                     gp.build$panel$layout %>% select_(.dots = facet.vars))
   
   # Determine annotation locations
   facet.df2 <- facet.df1 %>%

@@ -88,7 +88,6 @@ parse.results <- function(files, filename, max.reps) {
                markers = cycle$geno.summary.stats$candidate.af$snp) )) %>%
       unlist() %>%
       GSsim.TPUpdate:::nv_df(change = change)
-    
 
     save.list[["TP.allele.freq"]] <- lapply(X = experiment.sub.results, FUN = function(rep)
       lapply(X = rep$sim.result, FUN = function(cycle)
@@ -176,8 +175,140 @@ parse.results <- function(files, filename, max.reps) {
     
     
   } # Close the for loop
+  
+  ## Create data.frames for plotting
+  
+  # Change in accuracy
+  plot.list[["df.acc"]] <- lapply(X = collective.abbreviated.results, FUN = function(tpc) 
+    tpc$validation.results %>%
+      bind_rows() %>%
+      mutate(exp_name = tp.formation) ) %>%
+    bind_rows() %>%
+    sim.summarize() %>%
+    mutate(variable = "Prediction Accuracy")
+  
+  # Change in Genetic Variance
+  plot.list[["df.genvar"]] <- lapply(X = collective.abbreviated.results, FUN = function(tpc) 
+    tpc$sc.gen.var %>%
+      bind_rows() %>%
+      mutate(exp_name = tp.formation) ) %>%
+    bind_rows() %>%
+    sim.summarize() %>%
+    mutate(variable = "Prediction Accuracy")
+    
+  # Change in mean genotypic value of the selection candidates
+  plot.list[["df.genval"]] <- lapply(X = collective.abbreviated.results, FUN = function(tpc) 
+    tpc$sc.gen.val %>%
+      bind_rows() %>%
+      mutate(exp_name = tp.formation) ) %>%
+    bind_rows() %>%
+    sim.summarize() %>%
+    mutate(variable = "Prediction Accuracy")
+  
+  # Response to selection
+  plot.list[["df.resp"]] <- lapply(X = collective.abbreviated.results, FUN = function(tpc) 
+    tpc$sc.gen.val %>%
+      bind_rows() %>%
+      mutate(exp_name = tp.formation) ) %>%
+    bind_rows() %>%
+    group_by(exp_name, change, iter, cycle) %>% 
+    filter(row_number() == 1) %>%
+    group_by(exp_name, change, iter) %>%
+    mutate(value = c(NA, diff(value))) %>% 
+    na.omit() %>%
+    ungroup() %>%
+    sim.summarize() %>%
+    # Add the variable designator
+    mutate(variable = "Response to Selection")
+  
+  # LD
+  df <- lapply(X = collective.abbreviated.results, FUN = function(tpc) 
+    tpc$qtl.marker.LD %>%
+      bind_rows() %>%
+      mutate(exp_name = tp.formation) ) %>%
+    bind_rows()
 
+  # Mean max LD in TP
+  plot.list[["df.tpmeanmax"]] <- sim.summarize(df %>% filter(extra1 == "tp_mean_max_genome")) %>%
+    mutate(variable = "Mean Max LD in Training Population")
+  
+  # Mean max LD in SC
+  plot.list[["df.scmeanmax"]] <- sim.summarize(df %>% filter(extra1 == "sc_mean_max_genome")) %>%
+    mutate(variable = "Mean Max LD in Selection Candidates")
+  
+  # Persistence of phase
+  plot.list[["df.pers"]] <- sim.summarize(df %>% filter(extra1 == "persistence")) %>%
+    mutate(variable = "Persistence of\nLD Phase")
+  
+  
+  # Genomic relationship
+  plot.list[["df.rel"]] <- lapply(X = collective.abbreviated.results, FUN = function(tpc) 
+    tpc$tp.sc.relationship %>%
+      bind_rows() %>%
+      mutate(exp_name = tp.formation) ) %>%
+    bind_rows() %>%
+    sim.summarize() %>%
+    mutate(variable = "Prediction Accuracy")
+  
+  # Inbreeding
+  plot.list[["df.inbred"]] <- lapply(X = collective.abbreviated.results, FUN = function(tpc) 
+    tpc$sc.inbreeding %>%
+      bind_rows() %>%
+      mutate(exp_name = tp.formation) ) %>%
+    bind_rows() %>%
+    sim.summarize() %>%
+    mutate(variable = "Prediction Accuracy")
+  
+  # Rate of inbreeding
+  plot.list[["df.rateinbred"]] <- lapply(X = collective.abbreviated.results, FUN = function(tpc) 
+    tpc$sc.inbreeding %>%
+      bind_rows() %>%
+      mutate(exp_name = tp.formation) ) %>%
+    bind_rows() %>% 
+    group_by(exp_name, change, iter, cycle) %>% 
+    filter(row_number() == 1) %>%
+    group_by(exp_name, change, iter) %>%
+    mutate(value = c(NA, diff(value))) %>% 
+    na.omit() %>%
+    ungroup() %>%
+    sim.summarize() %>%
+    mutate(variable = "Rate of Inbreeding")
+  
+  
+  # QTL fixation
+  plot.list[["df.fixedqtl"]] <- lapply(X = collective.abbreviated.results, FUN = function(tpc) 
+    tpc$sc.allele.freq %>%
+      bind_rows() %>%
+      filter(extra1 == "qtl") %>% 
+      group_by(change, iter, cycle) %>% 
+      summarize(value = sum(value == 0 | value == 1)) %>%
+      mutate(exp_name = tp.formation) ) %>%
+    bind_rows() %>%
+    ungroup() %>%
+    sim.summarize()
+  
+  # QTL fixed for favorable allele
+  plot.list[["df.fixedqtlfav"]] <- lapply(X = collective.abbreviated.results, FUN = function(tpc) {
+      # Gather the allele frequencies
+      freq <- tpc$sc.allele.freq %>%
+        filter(extra1 == "qtl")
+      # Gather the effects
+      eff <- tpc$qtl.effects
+      # Add the effects to the frequencies
+      freq$effect <- eff$value
+      return(freq) }) %>%
+      bind_rows() %>%
+    mutate(exp_name = tp.formation) %>%
+    # Find QTL fixed for favorable allele
+    group_by(exp_name, change, iter, cycle) %>% 
+    filter((value == 0 & effect < 0) | (value == 1 & effect > 0) ) %>%
+    summarize(value = n()) %>%
+    ungroup() %>%
+    sim.summarize()
+  
+  filename2 <- sub(pattern = ".RData", replacement = "_plotdata.RData", x = filename)
   # Save the files
   save("collective.abbreviated.results", file = filename)
-
+  save("plot.list", file = filename2)
+  
 } # Close the function

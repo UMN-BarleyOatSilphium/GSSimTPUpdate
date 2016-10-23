@@ -115,22 +115,49 @@ df.list[["fixedqtl"]] <- lapply(X = total.names, FUN = function(coll.name)
            heritability = str_extract(coll.name, '05|02') %>% str_replace("0", "0.")) ) %>%
   bind_rows()
 
-# QTL freq and effect
+# Fixed markers
 
-df.list[["qtlfreqeff"]] <- lapply(X = total.names, FUN = function(coll.name) 
-  lapply(X = total.collective.data[[coll.name]], FUN = function(tpc) {
-    # Gather the allele frequencies
-    freq <- tpc$sc.allele.freq %>%
-      filter(extra1 == "qtl")
-    # Gather the effects
-    eff <- tpc$qtl.effects
-    # Add the effects to the frequencies
-    freq$effect <- eff$value
-    return(freq) }) %>%
+df.list[["fixedmar"]] <- lapply(X = total.names, FUN = function(coll.name) 
+  lapply(X = total.collective.data[[coll.name]], FUN = function(tpc) tpc$sc.allele.freq) %>%
     bind_rows() %>%
+    filter(extra1 == "markers") %>% 
+    group_by(change, iter, cycle) %>% 
+    summarize(value = sum(value == 0 | value == 1)) %>%
     mutate(exp_name = str_extract(coll.name, 'window|cumulative') %>% str_to_title(),
            heritability = str_extract(coll.name, '05|02') %>% str_replace("0", "0.")) ) %>%
   bind_rows()
+
+# QTL effects
+
+# test <- lapply(X = total.names, FUN = function(coll.name)
+#   lapply(X = total.collective.data[[coll.name]], FUN = function(tpc) {
+#     # # QTL effects
+#     # eff <- tpc$qtl.effects %>%
+#     #   rename(effect = value)
+#     # Gather the allele frequencies
+#     freq <- tpc$sc.allele.freq %>%
+#       filter(extra1 == "qtl")
+#     # Combine
+#     # full_join(freq, eff)
+#     })) %>%
+#     bind_rows() %>%
+#     mutate(exp_name = str_extract(coll.name, 'window|cumulative') %>% str_to_title(),
+#            heritability = str_extract(coll.name, '05|02') %>% str_replace("0", "0.")) ) %>%
+#   bind_rows()
+# 
+# 
+# 
+# 
+# 
+#     # Gather the effects
+#     eff <- tpc$qtl.effects
+#     # Add the effects to the frequencies
+#     freq$effect <- eff$value
+#     return(freq) }) %>%
+#     bind_rows() %>%
+#     mutate(exp_name = str_extract(coll.name, 'window|cumulative') %>% str_to_title(),
+#            heritability = str_extract(coll.name, '05|02') %>% str_replace("0", "0.")) ) %>%
+#   bind_rows()
 
 # Expected het
 

@@ -5,7 +5,7 @@
 \title{Plot data from a data frame summary}
 \usage{
 sim.ggplot(df.summary, main, ylab, xlab = "Breeding Cycle", col.factors,
-  text.y.scaling = 1.05, print.plot = TRUE, facet.vars = c("exp_name"))
+  text.y.scaling = 1.05, print.plot = TRUE, facet.vars = "exp_name")
 }
 \arguments{
 \item{df.summary}{The summary data frame produced by the \code{sim.summarize}
@@ -23,6 +23,8 @@ function.}
 the data in order to add annotations. Defaults to 1.05 (or 5 per-cent).}
 
 \item{print.plot}{Logical. Should the plot be displayed?}
+
+\item{facet.vars}{The names of the variables used for faceting}
 }
 \description{
 Plot data from a data frame summary
