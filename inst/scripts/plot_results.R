@@ -3,14 +3,14 @@
 # Load packages
 library(tidyverse, quietly = T)
 library(stringr, quietly = T)
-library(GSsim.TPUpdate)
+library(GSSimTPUpdate)
 
 
 # Set directory and grab the files
-results.dir <- "C:/Users/Jeff/Google Drive/Barley Lab/Projects/Side Projects/Simulations/GSsim.TPUpdate/Results"
+results.dir <- "C:/Users/Jeff/Google Drive/Barley Lab/Projects/Side Projects/Simulations/GSSimTPUpdate/Results"
 
 # File path for figures
-figures.dir <- "C:/Users/Jeff/Google Drive/Barley Lab/Projects/Side Projects/Simulations/GSsim.TPUpdate/figures/"
+figures.dir <- "C:/Users/Jeff/Google Drive/Barley Lab/Projects/Side Projects/Simulations/GSSimTPUpdate/inst/figures/"
 
 plot.data.file <- list.files(results.dir, full.names = T)
 load(plot.data.file)

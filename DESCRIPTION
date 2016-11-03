@@ -1,4 +1,4 @@
-Package: GSsim.TPUpdate
+Package: GSSimTPUpdate
 Title: Code and data to accompany the publication [TITLE]
 Version: 0.0.0.9000
 Authors@R: person("Jeff", "Neyhart", email = "neyhartje@gmail.com", role = c("aut", "cre"))

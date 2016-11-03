@@ -1,5 +1,5 @@
 ## Script to take genotype data from T3 and prepare it for use in the simulations
-# To accompany the Barley_GS_Simulations project
+# To accompany the GSSimTPUpdate project
 
 # Author: Jeff Neyhart
 # Date: April 13, 2016

@@ -3,10 +3,10 @@
 # Load packages
 library(tidyverse, quietly = T)
 library(stringr, quietly = T)
-library(GSsim.TPUpdate)
+library(GSSimTPUpdate)
 
 # Set directory and grab the files
-results.dir <- "/panfs/roc/groups/6/smithkp/neyhartj/Genomic_Selection/Simulations/GSsim.TPUpdate/inst/output"
+results.dir <- "/panfs/roc/groups/6/smithkp/neyhartj/Genomic_Selection/Simulations/GSSimTPUpdate/inst/output"
 
 # Load data
 all.files <- list.files(results.dir, full.names = T, pattern = "collective")
