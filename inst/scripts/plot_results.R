@@ -31,8 +31,8 @@ df1.acc <- df.list$accuracy %>%
   filter(heritability == "0.5") %>%
   select(-heritability)
 
-sim.ggplot(df.summary = df1.acc, main = "Realized Prediction Accuracy", 
-           ylab = expression(Prediction~Accuracy~(italic(r[MG]))), 
+sim.ggplot(df.summary = df1.acc, main = "", 
+           ylab = "Prediction Accuracy", 
            col.factors = tp.change.factors, facet.vars = "exp_name")
 
 ggsave(filename = file.path(figures.dir, "pred_acc_combined.jpg"),
@@ -108,7 +108,7 @@ df1.persistence <- df.list$qtl_marker_LD %>%
 
 df1.relatioship <- df.list$rel %>%
   sim.summarize() %>%
-  mutate(variable = "Average Relationship\n(Scaled to Based Population)") %>%
+  mutate(variable = "Average Relationship\n(Scaled to Base Population)") %>%
   filter(heritability == "0.5") %>%
   select(-heritability)
 
@@ -117,7 +117,7 @@ df1.relatioship <- df.list$rel %>%
 
 df1.inbreeding <- df.list$inbreeding %>%
   sim.summarize() %>%
-  mutate(variable = "Inbreeding\n(Scaled to Based Population)") %>%
+  mutate(variable = "Inbreeding\n(Scaled to Base Population)") %>%
   filter(heritability == "0.5") %>%
   select(-heritability)
 
@@ -150,14 +150,12 @@ df1.qtlfreq <- df.list$fixedqtl %>%
 
 df1 <- bind_rows(df1.persistence, df1.relatioship, df1.inbreeding, df1.qtlfreq) %>%
   mutate(variable = factor(variable, 
-                           levels = c("Average Relationship\n(Scaled to Based Population)", 
+                           levels = c("Average Relationship\n(Scaled to Base Population)", 
                                       "Persistence of LD Phase",
-                                      "Inbreeding\n(Scaled to Based Population)", 
+                                      "Inbreeding\n(Scaled to Base Population)", 
                                       "Proportion of Fixed QTL")))
 
-gp.combined <- sim.ggplot(df.summary = df1, 
-                          main = "", 
-                          ylab = "", 
+gp.combined <- sim.ggplot(df.summary = df1, main = "", ylab = "", 
                           col.factors = tp.change.factors, text.y.scaling = 1.01)
 
 ggsave(filename = file.path(figures.dir, "explanatory_vars.jpg"),

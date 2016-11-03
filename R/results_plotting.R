@@ -80,6 +80,8 @@ sim.ggplot <- function(df.summary, main, ylab, xlab = "Breeding Cycle",
     scale_shape_discrete(name = "Update Method",
                          labels = as.character(col.factors)) +
     scale_x_continuous(breaks = seq(1, n.cycles + 1, 3))
+
+    
   
   # Determine how to map the facets
   if (n.facets <= 2) {
@@ -89,6 +91,7 @@ sim.ggplot <- function(df.summary, main, ylab, xlab = "Breeding Cycle",
   if (n.facets > 2) {
     gp1 <- gp + facet_grid(as.formula(c("variable ~", str_c(facet.vars, collapse = " + "))), 
                            scales = "free_y", switch = "y")
+    
     facet.vars <- c(facet.vars, "variable")
   }
   
