@@ -21,7 +21,7 @@ recombine(genome, haploid.genomeA, haploid.genomeB, mutate = TRUE,
 \item{mutation.rate.qtl}{The per-base mutation rate of the QTL.}
 }
 \description{
-Uses the \code{\link{hypred}[hypredRecombine]} function as a base, but will 
+Uses the \code{\link[hypred]{hypredRecombine}} function as a base, but will 
 apply that function over the chromosomes in the genome list
 }
 

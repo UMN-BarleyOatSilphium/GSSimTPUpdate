@@ -56,6 +56,10 @@ if (MSI) {
 if (!all(tp.change %in% c("best", "worst", "random", "nochange", "PEVmean", "CDmean")) )
   stop("The TP change arguments are not acceptable.")
 
+# Load the datasets
+data("CAP.haploids")
+data("CAP.markers")
+
 # Set the number of cores by detection
 n.cores <- detectCores()
 
@@ -74,7 +78,7 @@ n.rep = 1
 # Minor allele frequency cut-off for markers
 min.maf = 0.03
 
-# Barley population genetics data (citation!)
+# Barley population genetics data
 mutation.rate.snp = 0
 mutation.rate.qtl = 0
 

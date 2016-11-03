@@ -1,11 +1,9 @@
 ## Script to take genotype data from T3 and prepare it for use in the simulations
 # To accompany the GSSimTPUpdate project
 
-# Author: Jeff Neyhart
-# Date: April 13, 2016
-
-# Set the working directory
-setwd("C:/Users/Jeff/Google Drive/Barley Lab/Projects/Side Projects/Simulations/BarleySimGS-TPUpdate/")
+# Load the libraries
+library(GSSimTPUpdate)
+library(dplyr)
 
 # Define a function to take a matrix and compare all columns and return an index of the identical columns
 identical.columns <- function(input.matrix) {
@@ -54,7 +52,7 @@ round2 = function(x, n) {
 ## Minimum MAF: 0
 ## Max marker missingness: 0.1
 ## Max entry missingness: 0.1
-CAP.hmp <- read.table("Files/MN_ND_CAP_genotypes_hmp.txt", header = T)
+data("CAP.hmp")
 
 # Extract the marker data, including marker name, chromosome, alleles, and position
 marker.info <- CAP.hmp[,c(1:4)]
@@ -189,7 +187,3 @@ CAP.haploids <- CAP.haploids[order(row.names(CAP.haploids)),]
 # The marker info comes from the non-redundant markers
 CAP.markers <- non.redundant.markers
 
-
-# Save the data
-save.list <- c("CAP.haploids", "CAP.markers")
-save(list = save.list, file = "Files/Barley_CAP_simuation_starting_material.RData")

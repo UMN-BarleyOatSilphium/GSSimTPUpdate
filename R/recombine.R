@@ -1,7 +1,7 @@
 #' Simulate recombination
 #' 
 #' @description 
-#' Uses the \code{\link{hypred}[hypredRecombine]} function as a base, but will 
+#' Uses the \code{\link[hypred]{hypredRecombine}} function as a base, but will 
 #' apply that function over the chromosomes in the genome list
 #' 
 #' @param genome The list of hypred genomes.
