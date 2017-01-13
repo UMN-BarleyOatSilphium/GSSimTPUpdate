@@ -13,7 +13,7 @@ if (all(is.na(args))) {
   pop.makeup <- "MNxND"
   tp.formation <- "cumulative"
   h2 <- 0.5
-  tp.change <- c("best", "worst", "random", "nochange", "PEVmean", "CDmean")
+  tp.change <- c("best", "worst", "random", "nochange", "PEVmean", "CDmean", "tails")
 
   MSI <- F
   
@@ -53,7 +53,7 @@ if (MSI) {
 }
 
 # Verify that the TP changes in the arguments are acceptable
-if (!all(tp.change %in% c("best", "worst", "random", "nochange", "PEVmean", "CDmean")) )
+if (!all(tp.change %in% c("best", "worst", "random", "nochange", "PEVmean", "CDmean", "tails")) )
   stop("The TP change arguments are not acceptable.")
 
 # Load the datasets
@@ -337,30 +337,11 @@ for (change in tp.change) {
         n.marker.LD <- min(ncol(TP.LD.genome), ncol(candidate.LD.genome))
         n.qtl.LD <- min(nrow(TP.LD.genome), nrow(candidate.LD.genome))
         
-        # Only run the permuation test on the 15th cycle
-        if (breeding.cycle == 15) {
         
-          # Copy
-          TP.candidate.LD.perm <- TP.candidate.LD
-          
-          # Run a permutation test to randomize the candidate QTL-marker pair
-          # LD and run a correlation
-          persistence.perm.results <- replicate(n = 500, expr = {
-            TP.candidate.LD.perm$candidates <- sample(TP.candidate.LD.perm$candidates)
-            cor(TP.candidate.LD.perm) %>% 
-              .[upper.tri(.)] })
-          
-        } else {
-          persistence.perm.results <- NA
-          
-        }
-          
-          
         # Create a list to save
         qtl.marker.LD.i <- list(sc.mean.max.genome = candidate.mean.max.LD.genome,
                                 tp.mean.max.genome = TP.mean.max.LD.genome,
                                 persistance.of.phase = TP.candidate.persistance.of.phase,
-                                persistence.perm.results = persistence.perm.results,
                                 n.qtl.LD = n.qtl.LD,
                                 n.marker.LD = n.marker.LD)
         
@@ -453,7 +434,7 @@ for (change in tp.change) {
         if (change != "nochange") {
           
           # If the TP change is best, worst, or random, simply subset the population.
-          if (change %in% c("best", "worst", "random")) {
+          if (change %in% c("best", "worst", "random", "tails")) {
             
             TP.addition.list <- 
               list(TP.addition.lines = select.population(value.mat = predictions.out$GEBV,

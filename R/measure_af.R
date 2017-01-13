@@ -23,7 +23,7 @@ measure.af <- function(genome, haploid.genos) {
   }
   
   # Find the position of QTL and SNP markers
-  pos.snp <- GSsim.TPUpdate:::find.pos(genome)
+  pos.snp <- GSSimTPUpdate:::find.pos(genome)
   
   # The mean of each column gives us the frequency of the 1 allele at a site.
   allele.freq <- colMeans(haploid.mat)

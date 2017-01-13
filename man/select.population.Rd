@@ -15,11 +15,18 @@ which to apply selection.}
 the number of individuals to select.}
 
 \item{selection}{The method of selection. Can be \code{"best"} (default),
-\code{"worst"}, or \code{"random"}.}
+\code{"worst"}, \code{"random"}, or \code{"tails"}.}
 
 \item{exlcusion}{A vector of line names to exclude when making selection.}
 }
 \description{
 Apply selection on a population
+}
+\details{
+The \code{"best"} method selects the top \code{sel.intensity} entries based on
+the values in the \code{value.mat}, the \code{"worst"} method selects the
+bottom entries, the \code{"random"} method select entries randomly, and the
+\code{"tails"} method select the top \eqn{sel.intensity/2} entries
+and the bottom \eqn{sel.intensity/2} entries.
 }
 

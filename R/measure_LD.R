@@ -44,9 +44,9 @@ measure.LD <- function(genome,
       
       # Find the polymorphic qtl and markers
       pos.poly.qtl <- lapply(X = pos.qtl, FUN = function(q) 
-        q[apply(X = chr.genos[,pos.qtl$ID], MARGIN = 2, FUN = GSsim.TPUpdate:::is.polymorphic )] )
+        q[apply(X = chr.genos[,pos.qtl$ID], MARGIN = 2, FUN = GSSimTPUpdate:::is.polymorphic )] )
       pos.poly.markers <- lapply(X = pos.markers, FUN = function(m) 
-        m[apply(X = chr.genos[,pos.markers$ID], MARGIN = 2, FUN = GSsim.TPUpdate:::is.polymorphic)] )
+        m[apply(X = chr.genos[,pos.markers$ID], MARGIN = 2, FUN = GSSimTPUpdate:::is.polymorphic)] )
       
       # Exit if there are not polymorphic QTL or markers
       if(length(pos.poly.qtl$ID) == 0) return(NA)
@@ -56,8 +56,8 @@ measure.LD <- function(genome,
       chr.LD.i <- mapply(pos.poly.qtl$ID, pos.poly.qtl$M, FUN = function(q.ID, q.M) {
         
         # Add and subtract the Morgan window, while rounding
-        M.i.lower <- GSsim.TPUpdate:::round.limit(x = q.M - Morgan.window, 0, "lower")
-        M.i.upper <- GSsim.TPUpdate:::round.limit(x = q.M + Morgan.window, chr@len.chr, "upper")
+        M.i.lower <- GSSimTPUpdate:::round.limit(x = q.M - Morgan.window, 0, "lower")
+        M.i.upper <- GSSimTPUpdate:::round.limit(x = q.M + Morgan.window, chr@len.chr, "upper")
         # Find snps within the window
         markers.in.window <- pos.poly.markers$ID[findInterval(x = pos.poly.markers$M, vec = c(M.i.lower, M.i.upper)) == 1]
         
@@ -85,14 +85,14 @@ measure.LD <- function(genome,
   } else {
     
     # Pull out all QTL positions and index
-    pos <- GSsim.TPUpdate:::find.pos(genome = genome)
+    pos <- GSSimTPUpdate:::find.pos(genome = genome)
     # QTL positions
     pos.qtl <- pos$pos.qtl
     pos.snp <- pos$pos.snp
     
     # Find the polymorphic qtl and markers
-    pos.poly.qtl <- pos.qtl[apply(X = genos[,pos.qtl], MARGIN = 2, FUN = GSsim.TPUpdate:::is.polymorphic)]
-    pos.poly.markers <- pos.snp[apply(X = genos[,pos.snp], MARGIN = 2, FUN = GSsim.TPUpdate:::is.polymorphic)]
+    pos.poly.qtl <- pos.qtl[apply(X = genos[,pos.qtl], MARGIN = 2, FUN = GSSimTPUpdate:::is.polymorphic)]
+    pos.poly.markers <- pos.snp[apply(X = genos[,pos.snp], MARGIN = 2, FUN = GSSimTPUpdate:::is.polymorphic)]
     
     # Exit if nothing is polymorphic
     if(length(pos.poly.qtl) == 0) return(NA)
