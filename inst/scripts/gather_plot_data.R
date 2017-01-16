@@ -7,12 +7,16 @@ library(GSSimTPUpdate)
 
 # Set directory and grab the files
 results.dir <- "/panfs/roc/groups/6/smithkp/neyhartj/Genomic_Selection/Simulations/GSSimTPUpdate/inst/output"
+results.dir <- "C:/Users/Jeff/Google Drive/Barley Lab/Projects/Side Projects/Simulations/GSSimTPUpdate/inst/output/"
+
 
 # Load data
-all.files <- list.files(results.dir, full.names = T, pattern = "collective")
+all.files <- list.files(results.dir, full.names = T, pattern = "collective.RData")
 
 # Create a list to store multiple collective data list
 total.collective.data <- list()
+
+h2 <- 0.5
 
 # Iterate over files and assign data to designators
 for (file in all.files) {
@@ -21,7 +25,7 @@ for (file in all.files) {
   # TP formation
   tp.formation <- file %>% basename() %>% str_extract('cumulative|window')
   # Heritability
-  h2 <- file %>% basename %>% str_extract('05|02')
+  # h2 <- file %>% basename %>% str_extract('05|02')
   
   load(file)
   
@@ -35,7 +39,8 @@ for (file in all.files) {
 rm(collective.abbreviated.results)
 
 tp.change.factors <- c(best = "Top", CDmean = "CDmean", nochange = "No Change", 
-                       PEVmean = "PEVmean", random = "Random", worst = "Bottom") %>%
+                       PEVmean = "PEVmean", random = "Random", worst = "Bottom",
+                       tails = "Tails") %>%
   as.factor()
 
 # Number of cycles
@@ -170,4 +175,21 @@ df.list[["exphet"]] <- lapply(X = total.names, FUN = function(coll.name)
 
 
 # Return the data
-save("df.list", file = "data_to_plot.RData")
+# save("df.list", file = "data_to_plot.RData")
+
+df.list.tails <- df.list
+
+# Reload the other data
+load("Results/data_to_plot.RData")
+
+# Combine
+df.list.combined <- list()
+for (i in seq_along(df.list)) {
+  df.list.tails[[i]] <- df.list.tails[[i]] %>%
+    mutate(heritability = "0.5")
+  
+  df.list.combined[[names(df.list)[i]]] <- bind_rows(df.list[[i]], df.list.tails[[i]])
+  
+}
+
+save("df.list.combined", file = "Results/data_to_plot_tails.RData")

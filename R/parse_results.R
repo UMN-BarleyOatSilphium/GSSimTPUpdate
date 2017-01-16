@@ -71,14 +71,14 @@ parse.results <- function(files, filename, max.reps) {
         lapply(X = rep$sim.result, FUN = function(cycle)
           return(cycle$candidate.values$true.var.components$V_g) )) %>%
       unlist() %>%
-      GSsim.TPUpdate:::nv_df(change = change)
+      GSSimTPUpdate:::nv_df(change = change)
 
     # Genotypic value of candidates
     save.list[["sc.gen.val"]] <- lapply(X = experiment.sub.results, FUN = function(rep)
       lapply(X = rep$sim.result, FUN = function(cycle)
           return(cycle$candidate.values$mu.g) )) %>%
       unlist() %>%
-      GSsim.TPUpdate:::nv_df(change = change)
+      GSSimTPUpdate:::nv_df(change = change)
 
 
     # Allele frequencies
@@ -87,14 +87,14 @@ parse.results <- function(files, filename, max.reps) {
           list(qtl = cycle$geno.summary.stats$candidate.af$qtl,
                markers = cycle$geno.summary.stats$candidate.af$snp) )) %>%
       unlist() %>%
-      GSsim.TPUpdate:::nv_df(change = change)
+      GSSimTPUpdate:::nv_df(change = change)
 
     save.list[["TP.allele.freq"]] <- lapply(X = experiment.sub.results, FUN = function(rep)
       lapply(X = rep$sim.result, FUN = function(cycle)
           list(qtl = cycle$geno.summary.stats$TP.af$qtl,
                markers = cycle$geno.summary.stats$TP.af$snp) )) %>%
       unlist() %>%
-      GSsim.TPUpdate:::nv_df(change = change)
+      GSSimTPUpdate:::nv_df(change = change)
 
     # Pairwise LD
     save.list[["qtl.marker.LD"]] <- lapply(X = experiment.sub.results, FUN = function(rep)
@@ -103,7 +103,7 @@ parse.results <- function(files, filename, max.reps) {
                tp_mean_max_genome = cycle$geno.summary.stats$qtl.marker.LD$tp.mean.max.genome,
                persistence = cycle$geno.summary.stats$qtl.marker.LD$persistance.of.phase ))) %>%
       unlist() %>%
-      GSsim.TPUpdate:::nv_df(change = change)
+      GSSimTPUpdate:::nv_df(change = change)
     
     # Number of qtl and markers used to measure LD
     save.list[["n.loci.LD"]] <- lapply(X = experiment.sub.results, FUN = function(rep)
@@ -111,21 +111,21 @@ parse.results <- function(files, filename, max.reps) {
           list(n_qtl = cycle$geno.summary.stats$qtl.marker.LD$n.qtl.LD,
                n_markers = cycle$geno.summary.stats$qtl.marker.LD$n.marker.LD) )) %>%
       unlist() %>%
-      GSsim.TPUpdate:::nv_df(change = change)
+      GSSimTPUpdate:::nv_df(change = change)
 
     # Prediction accuracy results
     save.list[["validation.results"]] <- lapply(X = experiment.sub.results, FUN = function(rep)
       lapply(X = rep$sim.result, FUN = function(cycle)
           return(cycle$prediction.accuracy) )) %>%
       unlist() %>%
-      GSsim.TPUpdate:::nv_df(change = change)
+      GSSimTPUpdate:::nv_df(change = change)
 
     # Training population updating - expected heterozygosity
     save.list[["tp.update.exp.het"]] <- lapply(X = experiment.sub.results, FUN = function(rep)
       lapply(X = rep$sim.result, FUN = function(cycle)
           return(cycle$tp.update$Exp.het) )) %>%
       unlist() %>%
-      GSsim.TPUpdate:::nv_df(change = change)
+      GSSimTPUpdate:::nv_df(change = change)
     
     # Determine the effect of the 1 allele for each QTL over iterations
     save.list[["qtl.effects"]] <- lapply(X = experiment.sub.results, FUN = function(rep)
@@ -140,26 +140,26 @@ parse.results <- function(files, filename, max.reps) {
       lapply(X = rep$sim.result, FUN = function(cycle)
           return(cycle$inbreeding$candidates) )) %>%
       unlist() %>%
-      GSsim.TPUpdate:::nv_df(change = change)
+      GSSimTPUpdate:::nv_df(change = change)
     
     save.list[["tp.additions.inbreeding"]] <- lapply(X = experiment.sub.results, FUN = function(rep)
       lapply(X = rep$sim.result, FUN = function(cycle)
           return(cycle$inbreeding$TP.additions) )) %>%
       unlist() %>%
-      GSsim.TPUpdate:::nv_df(change = change)
+      GSSimTPUpdate:::nv_df(change = change)
     
     ## Relationships
     save.list[["tp.sc.relationship"]] <- lapply(X = experiment.sub.results, FUN = function(rep)
       lapply(X = rep$sim.result, FUN = function(cycle)
           return(cycle$relationship$TP.candidates) )) %>%
       unlist() %>%
-      GSsim.TPUpdate:::nv_df(change = change)
+      GSSimTPUpdate:::nv_df(change = change)
     
     save.list[["tp.additions.relationship"]] <- lapply(X = experiment.sub.results, FUN = function(rep)
       lapply(X = rep$sim.result, FUN = function(cycle)
           return(cycle$relationship$TP.additions) )) %>%
       unlist() %>%
-      GSsim.TPUpdate:::nv_df(change = change)
+      GSSimTPUpdate:::nv_df(change = change)
     
     
     # # Results of the persistence of LD permutation tests

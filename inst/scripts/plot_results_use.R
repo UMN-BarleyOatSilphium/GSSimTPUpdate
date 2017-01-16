@@ -5,10 +5,12 @@ library(tidyverse, quietly = T)
 library(stringr, quietly = T)
 library(GSSimTPUpdate)
 
-data("plotting_data")
+# data("plotting_data")
+load("Results/data_to_plot_tails.RData")
 
 tp.change.factors <- c(best = "Top", CDmean = "CDmean", nochange = "No Change", 
-                       PEVmean = "PEVmean", random = "Random", worst = "Bottom") %>%
+                       PEVmean = "PEVmean", random = "Random", tails = "Tails",
+                       worst = "Bottom") %>%
   as.factor()
 
 # Number of cycles
@@ -17,7 +19,7 @@ n.cycles <- 15
 
 ### Figure 3 is the change in prediction accuracy
 
-df1.acc <- df1 <- plotting_data$accuracy %>%
+df1.acc <- df1 <- df.list.combined$accuracy %>%
   sim.summarize() %>%
   mutate(variable = "Prediction Accuracy") %>%
   filter(heritability == "0.5") %>%
@@ -74,14 +76,14 @@ ggsave(plot = gp1, filename = "pred_acc.jpg", height = 6, width = 10.5)
 ### Figure 4 is the change in genetic variance and genetic value
 
 # Calculate mean and CI for each change-cycle combination over iterations
-df1.genvar <- plotting_data$genvar %>%
+df1.genvar <- df.list.combined$genvar %>%
   sim.summarize() %>%
   mutate(variable = "Genetic Variance") %>%
   filter(heritability == "0.5") %>%
   select(-heritability)
 
 # Calculate mean and CI for each change-cycle combination over iterations
-df1.genval <- plotting_data$genval %>%
+df1.genval <- df.list.combined$genval %>%
   sim.summarize() %>%
   mutate(variable = "Genotypic Value") %>%
   filter(heritability == "0.5") %>%
@@ -147,7 +149,7 @@ ggsave(plot = gp1, filename = "gen_val_gen_var.jpg", height = 10.5, width = 10.5
 
 # Persistence of phase
 
-df1.persistence <- plotting_data$qtl_marker_LD %>%
+df1.persistence <- df.list.combined$qtl_marker_LD %>%
   filter(extra1 == "persistence") %>%
   sim.summarize() %>%
   mutate(variable = "Persistence of LD Phase") %>%
@@ -157,7 +159,7 @@ df1.persistence <- plotting_data$qtl_marker_LD %>%
 
 ### Relationship
 
-df1.relatioship <- plotting_data$rel %>%
+df1.relatioship <- df.list.combined$rel %>%
   sim.summarize() %>%
   mutate(variable = "Average Relationship\n(Scaled to Base Population)") %>%
   filter(heritability == "0.5") %>%
@@ -166,7 +168,7 @@ df1.relatioship <- plotting_data$rel %>%
 
 # Inbreeding
 
-df1.inbreeding <- plotting_data$inbreeding %>%
+df1.inbreeding <- df.list.combined$inbreeding %>%
   sim.summarize() %>%
   mutate(variable = "Inbreeding\n(Scaled to Base Population)") %>%
   filter(heritability == "0.5") %>%
@@ -174,7 +176,7 @@ df1.inbreeding <- plotting_data$inbreeding %>%
 
 # Fixed QTL
 
-df1.qtlfreq <- plotting_data$fixedqtl %>%
+df1.qtlfreq <- df.list.combined$fixedqtl %>%
   ungroup() %>%
   mutate(value = value / 100) %>%
   sim.summarize() %>%

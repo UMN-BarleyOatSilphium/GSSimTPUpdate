@@ -602,4 +602,4 @@ files <- list.files(save.dir, full.names = T) %>%
                              tp.formation, "_[0-9]*-[0-9]*.RData", sep = ""))
   
 # Parse
-parse.results(files = files, filename = filename)
+parse.results(files = files, filename = filename, max.reps = 250)
