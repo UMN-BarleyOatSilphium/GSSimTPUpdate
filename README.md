@@ -19,6 +19,7 @@ This manuscript is also in-review at [G3: Genes|Genomes|Genetics](http://www.g3j
 
 ### Installation
 To install, use the `devtools` package like so:
+
 ```
 devtools::install_github("UMN-BarleyOatSilphium/GSSimTPUpdate")
 ```
@@ -26,13 +27,29 @@ devtools::install_github("UMN-BarleyOatSilphium/GSSimTPUpdate")
 ### Obtaining Data
 We used data from The Triticeae Toolbox data base in our simulations. A step-by-
 step set of instructions for obtaining and downloading this data is provided
-in a package vignette. Call on the function:
+in a package vignette. Use the following code to access the vignette:
+
 ```
-browseVignettes("GSSimTPUpdate")
+vignette("t3_data_access")
 ```
 
-To access the vignette.
+### Running the Simulations
 
+The simulations were run on a supercomputing platform that accepts batch submissions.
+The file [`inst/scripts/run_simulations_use.job`](https://github.com/UMN-BarleyOatSilphium/GSSimTPUpdate/tree/master/inst/scripts/run_simulations_use.job) is a `Bash` script that calls upon
+`R` and the script [`inst/scripts/run_experiment_use.R`](https://github.com/UMN-BarleyOatSilphium/GSSimTPUpdate/tree/master/inst/scripts/run_experiment_use.R) to run the simulations. Both
+of these scripts need to be edited (i.e. with different directory paths) before
+they can be used.
+
+### Replicating the Tables/Figures
+
+Tables and figures can be replicated by using the procedure outlined in the 
+Markdown file [`inst/scripts/plot_results_use.Rmd`](https://github.com/UMN-BarleyOatSilphium/GSSimTPUpdate/tree/master/inst/scripts/plot_results_use.Rmd)
+
+### Support
+
+Please [open an issue](https://github.com/UMN-BarleyOatSilphium/GSSimTPUpdate/issues/new) 
+for support with the package or to add comments.
 
 ### Contact:
 [Jeff Neyhart](neyha001@umn.edu)
