@@ -21,7 +21,7 @@ PEVmean <- function(M, Z, A, A.inv, c, V_e, V_a) {
   # Calculate the bottom-right matrix
   br <- (crossprod(Z, M) %*% Z) + (lambda * A.inv)
   # Calculate the inverse (C_22)
-  C_22 <- GSsim.TPUpdate:::invert.mat(br, silent = T)
+  C_22 <- invert.mat(br, silent = T)
   
   numerator <- crossprod(c, C_22 ) %*% c
   denominator <- crossprod(c, c)
@@ -48,7 +48,7 @@ CDmean <- function(M, Z, A, A.inv, c, V_e, V_a) {
   # Calculate the bottom-right matrix
   br <- (crossprod(Z, M) %*% Z) + (lambda * A.inv)
   # Calculate the inverse (C_22)
-  C_22 <- GSsim.TPUpdate:::invert.mat(br, silent = T)
+  C_22 <- invert.mat(br, silent = T)
   
   # Calculate the CDmean of the set
   numerator = crossprod(c, (A - (lambda * C_22 )) ) %*% c

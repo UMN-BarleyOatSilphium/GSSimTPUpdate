@@ -3,3 +3,7 @@
 .RData
 .Ruserdata
 inst/doc
+inst/scripts/plot_results.Rmd
+inst/scripts/run_experiment.R
+inst/scripts/run_simulations.job
+Results/

@@ -12,6 +12,8 @@ optimize.whole(method, A, n.training, phenotyped.index, unphenotyped.index, V_a,
   V_e, max.iter)
 }
 \arguments{
+\item{method}{optimization procedure. Can be \code{"PEVmean"} or \code{"CDmean"}.}
+
 \item{A}{The n x n relationship matrix.}
 
 \item{n.training}{The target size of the training population.}
@@ -22,13 +24,17 @@ develop an optimized training population.}
 
 \item{unphenotyped.index}{The index of "unphenotyped" entries}
 
-\item{The}{optimization procedure. Can be \code{"PEVmean"} or \code{"CDmean"}.}
+\item{V_a}{The additive genetic variance}
+
+\item{V_e}{The residual variance}
+
+\item{max.iter}{The maximum number of iterations of the exhange algorithm}
 }
 \description{
 Optimize the PEVmean or CDmean using a subset (for faster computation) or the
 whole set of individuals.
 
-Optimize using the whole set
+Optimize PEVmean or CDmean
 }
 \section{Functions}{
 \itemize{

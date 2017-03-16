@@ -4,13 +4,16 @@
 #' Optimize the PEVmean or CDmean using a subset (for faster computation) or the
 #' whole set of individuals.
 #'  
-#' @param The optimization procedure. Can be \code{"PEVmean"} or \code{"CDmean"}.
+#' @param method optimization procedure. Can be \code{"PEVmean"} or \code{"CDmean"}.
 #' @param A The n x n relationship matrix.
 #' @param n.training The target size of the training population.
 #' @param phenotyped.index The index of the "phenotyped" entries in the matrix 
 #' \code{A}. This can be interpreted as the entries from which you wish to
 #' develop an optimized training population.
 #' @param unphenotyped.index The index of "unphenotyped" entries
+#' @param V_a The additive genetic variance
+#' @param V_e The residual variance
+#' @param max.iter The maximum number of iterations of the exhange algorithm
 #' 
 #' @importFrom MASS ginv
 #' 
@@ -23,7 +26,7 @@ optimize.subset <- function(method, A, n.training, phenotyped.index,
   n.total = n.training + length(unphenotyped.index)
   
   # Create design matrix
-  M <- GSsim.TPUpdate:::design.M(n.training)
+  M <- design.M(n.training)
   
   # Randomly sample the "phenotyped" lines to start the TP
   ## These will serve as the first sample of phenotyped lines
@@ -46,7 +49,7 @@ optimize.subset <- function(method, A, n.training, phenotyped.index,
   A1 <- A[subset.index, subset.index]
   
   # Find the inverse of the subset
-  A1.inv <- GSsim.TPUpdate:::invert.mat(A1, silent = T)
+  A1.inv <- invert.mat(A1, silent = T)
   
   # The index of the unphenotyped lines becomes the last n rows of the 
   # subsetted A matrix, where n is the number of unphenotyped lines
@@ -55,8 +58,7 @@ optimize.subset <- function(method, A, n.training, phenotyped.index,
   # Contrasts matrix
   ## The dimenstions should be row = n.total and column = n.unphenotyped 
   ## (i.e. the parents). This matrix will also remain constant
-  c.mat <- GSsim.TPUpdate:::make.contrast(unphenotyped.index = unphenotyped.index.A1, 
-                                          n.total = n.total)
+  c.mat <- make.contrast(unphenotyped.index = unphenotyped.index.A1, n.total = n.total)
   
   # Calculate the statistic
   if (method == "PEVmean") {
@@ -95,7 +97,7 @@ optimize.subset <- function(method, A, n.training, phenotyped.index,
     A1 <- A[subset.index, subset.index]
     
     # Find the inverse of the subset
-    A1.inv <- GSsim.TPUpdate:::invert.mat(A1, silent = T)
+    A1.inv <- invert.mat(A1, silent = T)
     
     # Recalculate the statistic
     if (method == "PEVmean") {
@@ -136,7 +138,7 @@ optimize.subset <- function(method, A, n.training, phenotyped.index,
 } # Close the function
 
 #' 
-#' Optimize using the whole set
+#' Optimize PEVmean or CDmean
 #' 
 #' @describeIn optimize.subset
 #' 
@@ -152,7 +154,7 @@ optimize.whole <- function(method, A, n.training, phenotyped.index,
   n.total <- nrow(A)
   
   # Create the M matrix
-  M <- GSsim.TPUpdate:::design.M(n.training)
+  M <- design.M(n.training)
   
   # Randomly sample the "phenotyped" lines to start the TP
   ## These will serve as the first sample of phenotyped lines
@@ -170,11 +172,10 @@ optimize.whole <- function(method, A, n.training, phenotyped.index,
   # Use the whole A.mat
   A1 <- A
   # Get the inverse
-  A1.inv <- GSsim.TPUpdate:::invert.mat(A1, silent = T)
+  A1.inv <- invert.mat(A1, silent = T)
   
   # Contrasts matrix
-  c.mat <- GSsim.TPUpdate:::make.contrast(unphenotyped.index = unphenotyped.index,
-                                          n.total = n.total)
+  c.mat <- make.contrast(unphenotyped.index = unphenotyped.index, n.total = n.total)
   
   # Calculate the statistic
   if (method == "PEVmean") {
