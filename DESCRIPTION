@@ -6,11 +6,11 @@ Description: Provides functions, code, and data to replicate the experiment and 
 Depends:
     R (>= 3.3.1)
 Imports:
-    hypred,
     rrBLUP,
     dplyr,
     stringr
 Suggests:
+    hypred,
     boot,
     parallel,
     testthat,
